@@ -2,6 +2,46 @@
 #include "i_alpaca_telescope.hpp"
 #include <vector>
 
+namespace zwo_commands {
+
+const std::string cmd_get_date() { return ":GC#"; };
+const std::string cmd_set_date(std::string mm, std::string dd, std::string yy) {
+  return fmt::format(":SC{0:#02d}/{1:#02d}/{2:02d}#", mm, dd, yy);
+};
+const std::string cmd_switch_to_eq_mode() { return ":AP#"; };
+const std::string cmd_switch_to_alt_az_mode() { return ":AA#"; };
+const std::string cmd_get_time() { return ":GL#"; };
+const std::string cmd_set_time(std::string hh, std::string mm, std::string ss) {
+  return fmt::format(":SL{0:#02d}:{1:#02d}:{2:#02d}#", hh, mm, ss);
+};
+const std::string cmd_get_sidereal_time() { return ":GS#"; };
+const std::string cmd_get_daylight_savings() { return ":GH#"; };
+const std::string cmd_set_daylight_savings(int on_or_off) {
+  return fmt::format(":SH{0}#", on_or_off);
+};
+
+const std::string cmd_set_timezone(char plus_or_minus, int h_offset,
+                                   int m_offset = 0) {
+  return fmt::format(":SG{0}{1:#02d}:{2:#02d}", plus_or_minus, h_offset,
+                     m_offset);
+};
+
+const std::string cmd_get_timezone() { return ":GG#"; };
+
+const std::string cmd_set_latitude(char plus_or_minus, std::string dd,
+                                   std::string mm, std::string ss) {
+  return fmt::format(":St{0}{1}*{2}:{3}#", plus_or_minus, dd, mm, ss);
+};
+
+  const std::string cmd_get_latitude() {
+    return ":Gt#";
+  }
+
+  const std::string cmd_set_longitude(std::string ddd, std::string mm, std::string ss) {
+    return fmt::format(":Sgs{0}*{1}:{ss}#", ddd, mm, ss);
+  }
+}; // namespace zwo_commands
+
 std::string zwo_am5_telescope::unique_id() { return ""; }
 
 bool zwo_am5_telescope::connected() { return false; }
@@ -84,8 +124,10 @@ bool zwo_am5_telescope::does_refraction() { return 0; }
 
 int zwo_am5_telescope::set_does_refraction(bool) { return 0; }
 
-zwo_am5_telescope::equatorial_system_enum zwo_am5_telescope::equatorial_system() { return equatorial_system_enum::j2000
-    ; }
+zwo_am5_telescope::equatorial_system_enum
+zwo_am5_telescope::equatorial_system() {
+  return equatorial_system_enum::j2000;
+}
 double zwo_am5_telescope::focal_length() { return 0; }
 
 double zwo_am5_telescope::guide_rate_declination() { return 0; }
@@ -144,7 +186,8 @@ zwo_am5_telescope::drive_rate_enum zwo_am5_telescope::tracking_rate() {
 
 int zwo_am5_telescope::tracking_rate(drive_rate_enum) { return 0; }
 
-std::vector<zwo_am5_telescope::drive_rate_enum> zwo_am5_telescope::tracking_rates() {
+std::vector<zwo_am5_telescope::drive_rate_enum>
+zwo_am5_telescope::tracking_rates() {
   return std::vector<drive_rate_enum>();
 }
 std::string zwo_am5_telescope::utc_time() { return ""; }
@@ -153,13 +196,14 @@ int zwo_am5_telescope::set_utc_time(std::string &) { return 0; }
 
 int zwo_am5_telescope::abort_slew() { return 0; }
 
-std::vector<zwo_am5_telescope::axis_rate> zwo_am5_telescope::axis_rates(telescope_axes_enum) {
+std::vector<zwo_am5_telescope::axis_rate>
+zwo_am5_telescope::axis_rates(telescope_axes_enum) {
   return std::vector<axis_rate>();
 }
 bool zwo_am5_telescope::can_move_axis(telescope_axes_enum) { return false; }
 
-zwo_am5_telescope::pier_side_enum zwo_am5_telescope::destination_side_of_pier(double ra,
-                                                           double dec) {
+zwo_am5_telescope::pier_side_enum
+zwo_am5_telescope::destination_side_of_pier(double ra, double dec) {
   return pier_side_enum::unknown;
 }
 
@@ -170,7 +214,9 @@ int zwo_am5_telescope::move_axis(telescope_axes_enum, axis_rate) { return 0; }
 int zwo_am5_telescope::park() { return 0; }
 
 int zwo_am5_telescope::pulse_guide(guide_direction_enum direction,
-                                   uint32_t duration_ms) { return 0; }
+                                   uint32_t duration_ms) {
+  return 0;
+}
 
 int zwo_am5_telescope::set_park() { return 0; }
 

@@ -3,7 +3,6 @@
 
 #include "i_alpaca_telescope.hpp"
 
-
 class zwo_am5_telescope : public i_alpaca_telescope {
 public:
   bool connected();
@@ -82,8 +81,7 @@ public:
   int find_home();
   int move_axis(telescope_axes_enum, axis_rate);
   int park();
-  int pulse_guide(guide_direction_enum direction,
-                  uint32_t duration_ms);
+  int pulse_guide(guide_direction_enum direction, uint32_t duration_ms);
   int set_park();
   int slew_to_alt_az(double alt, double az);
   int slew_to_alt_az_async(double alt, double az);
@@ -94,8 +92,6 @@ public:
   int sync_to_coordinates(double ra, double dec);
   int sync_to_target();
   int unpark();
-
 };
-
 
 #endif
