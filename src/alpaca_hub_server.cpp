@@ -1475,6 +1475,9 @@ std::string camera_state_str(i_alpaca_camera::camera_state_enum c) {
   }
 }
 
+
+static asio::io_context io_ctx(1);
+
 bool _keep_running_discovery = true;
 
 bool keep_running_discovery() {
@@ -1487,9 +1490,8 @@ void cancel_discovery() {
   _keep_running_discovery = false;
 }
 
-static asio::io_context io_ctx(1);
-
 void discovery_thread_proc() {
+  spdlog::debug("entering discovery_thread_proc");
   using namespace std::chrono_literals;
 
   // Alpaca Discovery code:
@@ -1526,7 +1528,6 @@ void discovery_thread_proc() {
   auto disc_resp = nlohmann::json(disc_resp_map).dump();
 
   while (keep_running_discovery()) {
-    // socket.non_blocking()
     asio::socket_base::bytes_readable command(true);
     socket.io_control(command);
     std::size_t bytes_readable = command.get();
@@ -1537,7 +1538,6 @@ void discovery_thread_proc() {
       spdlog::trace("received {0}", msg_received);
       if (msg_received == "alpacadiscovery1") {
         spdlog::trace("received discovery message!");
-
         spdlog::trace("sending back: {0}", disc_resp);
         socket.send_to(asio::buffer(disc_resp), client);
       } else {
@@ -1547,6 +1547,7 @@ void discovery_thread_proc() {
     std::this_thread::sleep_for(1000ms);
 
   }
+  spdlog::debug("exiting discovery_thread_proc");
 }
 
 int main(int argc, char **argv) {
@@ -1673,10 +1674,8 @@ int main(int argc, char **argv) {
     }
 
     spdlog::trace("Exiting restinio loop");
-    // io_context.run
     spdlog::trace("joining discovery thread");
     cancel_discovery();
-    // io_ctx.stop();
 
     discovery_thread.join();
     spdlog::trace("discovery thread joined");

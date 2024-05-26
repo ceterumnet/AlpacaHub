@@ -4,7 +4,7 @@
 #include "fmt/ostream.h"
 #include <variant>
 
-#include "nlohmann/json.hpp"
+#include <nlohmann/json.hpp>
 #include <cstdint>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>

@@ -29,7 +29,6 @@ int qhy_alpaca_camera::InitializeQHYSDK() {
   // This line will enable fairly verbose logging from the QHYSDK
   // EnableQHYCCDMessage(true);
   spdlog::trace("InitQHYCCDResource() returned: {0}", result);
-
   spdlog::trace("Registering plug and unplug callbacks");
 
   RegisterPnpEventIn(&qhy_alpaca_camera::on_camera_plugged);
@@ -84,7 +83,6 @@ int qhy_alpaca_camera::get_is_qhy_control_available(CONTROL_ID control_id) {
 }
 
 void qhy_alpaca_camera::initialize_camera_by_camera_id(std::string &camera_id) {
-  // We will use this to store the results of our QHYCCD SDK calls
   uint32_t qhy_res = QHYCCD_ERROR;
 
   _cam_handle = OpenQHYCCD(&camera_id[0]);
@@ -136,8 +134,6 @@ void qhy_alpaca_camera::initialize_camera_by_camera_id(std::string &camera_id) {
   }
 
   // Chip info
-  // TODO: need to handle cameras where the chip resolution is different
-  // from the effective resolution
   qhy_res = GetQHYCCDChipInfo(_cam_handle, &_chip_w, &_chip_h, &_image_w,
                               &_image_h, &_pixel_w, &_pixel_h, &_bpp);
   if (qhy_res == QHYCCD_SUCCESS) {
@@ -290,13 +286,14 @@ void qhy_alpaca_camera::initialize_camera_by_camera_id(std::string &camera_id) {
     _sensor_name = "Generic CCD";
   }
 
-  // I should check this to see if there is a temp sensor:
-  // CONTROL_ID::CAM_CHIPTEMPERATURESENSOR_INTERFACE
-  double pwm_min = 0, pwm_max = 0, pwm_step_size = 0;
   if (get_is_qhy_control_available(CONTROL_ID::CONTROL_COOLER) ==
       QHYCCD_SUCCESS) {
     _can_control_cooler_power = true;
 
+    // The QHYSDK _may_ have an issue that's outside of my control here.
+    // The first time that CONTROL_COOLER is set, there is an uninitialized
+    // buffer error reported from valgrind
+    //
     // spdlog::trace("I think this is the call that is causing valgrind to
     // complain.");
     uint32_t c_set_r = QHYCCD_ERROR;
@@ -420,15 +417,10 @@ void qhy_alpaca_camera::initialize_camera_by_camera_id(std::string &camera_id) {
   spdlog::trace("Determining max binning");
   _max_bin = 1;
 
-  // I commented this out because I was troubleshooting a problem, but I doubt
-  // this code is a problem
-  //
-  // if (IsQHYCCDControlAvailable(_cam_handle, CAM_BIN8X8MODE) ==
-  // QHYCCD_SUCCESS)
-  //   _max_bin = 8;
-  // if (IsQHYCCDControlAvailable(_cam_handle, CAM_BIN6X6MODE) ==
-  // QHYCCD_SUCCESS)
-  //   _max_bin = 6;
+  if (IsQHYCCDControlAvailable(_cam_handle, CAM_BIN8X8MODE) == QHYCCD_SUCCESS)
+    _max_bin = 8;
+  if (IsQHYCCDControlAvailable(_cam_handle, CAM_BIN6X6MODE) == QHYCCD_SUCCESS)
+    _max_bin = 6;
   if (IsQHYCCDControlAvailable(_cam_handle, CAM_BIN4X4MODE) == QHYCCD_SUCCESS)
     _max_bin = 4;
   if (IsQHYCCDControlAvailable(_cam_handle, CAM_BIN2X2MODE) == QHYCCD_SUCCESS)
@@ -964,15 +956,8 @@ int qhy_alpaca_camera::start_exposure_proc() {
   spdlog::trace("start_exposure_proc() invoked");
   spdlog::trace("Invoking ExpQHYCCDSingleFrame");
 
-  // TODO: need to change this to support overscan mechanics and
-  // make sure the roi / binning mechanics are also correctly
-  // considered
-  // GetQHYCCDReadModeResolution(_cam_handle, 0, &_image_w, &_image_h);
-  // SetQHYCCDResolution(_cam_handle, 0, 0, _image_w, _image_h);
-
   auto time_stamp = std::chrono::system_clock::now();
 
-  // auto time_stamp_fits = fmt::format("{0}", time_stamp);
   _last_exposure_start_time_fits = fmt::format("{:%FT%T}", time_stamp);
   spdlog::trace("Start Time of exposure: {0}", _last_exposure_start_time_fits);
 
@@ -1263,6 +1248,4 @@ std::shared_ptr<qhy_alpaca_filterwheel> qhy_alpaca_camera::filter_wheel() {
   }
 }
 
-std::string qhy_alpaca_camera::unique_id() {
-  return _camera_id;
-}
+std::string qhy_alpaca_camera::unique_id() { return _camera_id; }
