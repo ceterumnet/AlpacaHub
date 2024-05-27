@@ -47,9 +47,14 @@ add_subdirectory("${3rd_Party_ROOT}/spdlog-1.14.1")
 
 add_subdirectory("${3rd_Party_ROOT}/json-3.11.3")
 
+add_subdirectory("${3rd_Party_ROOT}/Catch2-3.6.0")
+
 add_executable(AlpacaHub ${all_SOURCES})
 
 message(STATUS "asio_INCLUDE_DIRS: ${asio_INCLUDE_DIRS}")
-target_link_libraries(AlpacaHub restinio qhyccd spdlog nlohmann_json uuid)
+target_link_libraries(AlpacaHub restinio qhyccd spdlog nlohmann_json uuid Catch2)
+
+add_executable(AlpacaHubTests zwo_am5_telescope.cpp alpaca_exception.cpp)
+target_link_libraries(AlpacaHubTests PRIVATE Catch2::Catch2WithMain restinio qhyccd spdlog nlohmann_json uuid)
 
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/html DESTINATION ${CMAKE_CURRENT_BINARY_DIR} )

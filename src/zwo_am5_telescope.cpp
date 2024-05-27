@@ -1,49 +1,107 @@
+#include "alpaca_exception.hpp"
 #include "zwo_am5_telescope.hpp"
 #include "i_alpaca_telescope.hpp"
+#include <catch2/catch_test_macros.hpp>
 #include <vector>
 
 namespace zwo_commands {
 
+// Time and location commands
 const std::string cmd_get_date() { return ":GC#"; }
-const std::string cmd_set_date(std::string mm, std::string dd, std::string yy) {
-  return fmt::format(":SC{0:#02d}/{1:#02d}/{2:02d}#", mm, dd, yy);
+
+// I wonder if I should create a date type and ensure it is a valid date?
+const std::string cmd_set_date(const int &mm, const int &dd, const int &yy) {
+  if (mm < 1 || mm > 12)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "month must be 1 through 12");
+  if (dd < 1 || dd > 31)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "day must be 1 through 31");
+  if (yy < 0 || yy > 99)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "year must be 0 through 99");
+
+  return fmt::format(":SC{:#02d}/{:#02d}/{:02d}#", mm, dd, yy);
 }
 const std::string cmd_switch_to_eq_mode() { return ":AP#"; }
 const std::string cmd_switch_to_alt_az_mode() { return ":AA#"; }
 const std::string cmd_get_time() { return ":GL#"; }
-const std::string cmd_set_time(std::string hh, std::string mm, std::string ss) {
+const std::string cmd_set_time(const int &hh, const int &mm, const int &ss) {
+  if (hh < 0 || hh > 23)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "hour must be 0 through 23");
+  if (mm < 0 || mm > 59)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "minutes must 0 through 59");
+  if (ss < 0 || ss > 59)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "seconds must 0 through 99");
+
   return fmt::format(":SL{0:#02d}:{1:#02d}:{2:#02d}#", hh, mm, ss);
 }
 const std::string cmd_get_sidereal_time() { return ":GS#"; }
 const std::string cmd_get_daylight_savings() { return ":GH#"; }
-const std::string cmd_set_daylight_savings(int on_or_off) {
+const std::string cmd_set_daylight_savings(const int &on_or_off) {
   return fmt::format(":SH{0}#", on_or_off);
 }
 
-const std::string cmd_set_timezone(char plus_or_minus, int h_offset,
-                                   int m_offset = 0) {
+const std::string cmd_set_timezone(const char &plus_or_minus,
+                                   const int &h_offset, int m_offset = 0) {
   return fmt::format(":SG{0}{1:#02d}:{2:#02d}", plus_or_minus, h_offset,
                      m_offset);
 }
 
 const std::string cmd_get_timezone() { return ":GG#"; }
 
-const std::string cmd_set_latitude(char plus_or_minus, std::string dd,
-                                   std::string mm, std::string ss) {
-  return fmt::format(":St{0}{1}*{2}:{3}#", plus_or_minus, dd, mm, ss);
+const std::string cmd_set_latitude(const char &plus_or_minus, const int &dd,
+                                   const int &mm, int ss) {
+  return fmt::format(":St{0}{1:#02d}*{2:#02d}:{3:#02d}#", plus_or_minus, dd, mm,
+                     ss);
 }
 
 const std::string cmd_get_latitude() { return ":Gt#"; }
 
-const std::string cmd_set_longitude(std::string ddd, std::string mm,
-                                    std::string ss) {
-  return fmt::format(":Sgs{0}*{1}:{ss}#", ddd, mm, ss);
+const std::string cmd_set_longitude(const int &ddd, const int &mm,
+                                    const int &ss) {
+  return fmt::format(":Sgs{0:#03d}*{1:#02d}:{2:#02d}#", ddd, mm, ss);
 }
 
 const std::string cmd_get_longitude() { return ":Gg#"; }
 
 const std::string cmd_get_current_cardinal_direction() { return ":Gm#"; }
+
+// Moving commands
+
+const std::string cmd_set_target_ra(const int &hh, const int &mm,
+                                    const int &ss) {
+  return fmt::format(":Sr{0:#02d}:{1:#02d}:{2:#02d}#", hh, mm, ss);
+}
 }; // namespace zwo_commands
+
+TEST_CASE("ZWO commands are correctly formatted and padded with happy values",
+          "[zwo_commands]") {
+  using namespace zwo_commands;
+
+  REQUIRE(cmd_get_date() == ":GC#");
+  REQUIRE(cmd_set_date(1.0, 2.0, 24.0) == ":SC01/02/24#");
+  REQUIRE(cmd_switch_to_eq_mode() == ":AP#");
+  REQUIRE(cmd_switch_to_alt_az_mode() == ":AA#");
+  REQUIRE(cmd_get_time() == ":GL#");
+  REQUIRE(cmd_set_time(13, 54, 59) == ":SL13:54:59#");
+}
+
+TEST_CASE("ZWO commands throw exception with invalid values",
+          "[zwo_commands]") {
+  using namespace zwo_commands;
+
+  REQUIRE_THROWS_AS(cmd_set_date(14.0, 2.0, 24.0), alpaca_exception);
+  REQUIRE_THROWS_AS(cmd_set_date(11.0, 40.0, 24.0), alpaca_exception);
+  REQUIRE_THROWS_AS(cmd_set_date(11.0, 10.0, 100.0), alpaca_exception);
+
+  REQUIRE_THROWS_AS(cmd_set_time(25, 54, 59), alpaca_exception);
+  REQUIRE_THROWS_AS(cmd_set_time(23, 61, 59), alpaca_exception);
+  REQUIRE_THROWS_AS(cmd_set_time(23, 54, 61), alpaca_exception);
+}
 
 std::string zwo_am5_telescope::unique_id() { return ""; }
 
