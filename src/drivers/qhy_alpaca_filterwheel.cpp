@@ -1,5 +1,4 @@
 #include "qhy_alpaca_filterwheel.hpp"
-#include "alpaca_exception.hpp"
 #include "qhy_alpaca_camera.hpp"
 #include <qhyccderr.h>
 

@@ -1,4 +1,4 @@
-#include "alpaca_exception.hpp"
+#include "common/alpaca_exception.hpp"
 #include "zwo_am5_telescope.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <vector>

@@ -54,7 +54,6 @@ add_subdirectory("${3rd_Party_ROOT}/Catch2-3.6.0")
 
 add_subdirectory(common)
 add_subdirectory(drivers)
-target_include_directories(drivers PUBLIC common)
 
 add_executable(AlpacaHub ${all_SOURCES})
 

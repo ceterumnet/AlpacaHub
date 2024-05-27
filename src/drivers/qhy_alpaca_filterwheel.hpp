@@ -1,7 +1,9 @@
 #ifndef QHY_ALPACA_FILTERWHEEL_HPP
 #define QHY_ALPACA_FILTERWHEEL_HPP
 
+#include "common/alpaca_exception.hpp"
 #include "interfaces/i_alpaca_filterwheel.hpp"
+
 // #include "qhy_alpaca_camera.hpp"
 #include <qhyccd.h>
 
