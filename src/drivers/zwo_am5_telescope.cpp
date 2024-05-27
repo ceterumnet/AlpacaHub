@@ -1,6 +1,5 @@
 #include "alpaca_exception.hpp"
 #include "zwo_am5_telescope.hpp"
-#include "i_alpaca_telescope.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <vector>
 

@@ -11,6 +11,9 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 file(GLOB all_SOURCES "*.cpp" "*.c")
 file(GLOB all_HEADERS "*.hpp" "*.h")
 
+# file(GLOB driver_SOURCES "drivers/*.cpp" "drivers/*.c")
+# file(GLOB driver_HEADERS "drivers/*.hpp" "drivers/*.h")
+
 if( CMAKE_SIZEOF_VOID_P EQUAL 8 )
   message(STATUS "detected 64 bit build")
   set(IS_64 true)
@@ -49,12 +52,19 @@ add_subdirectory("${3rd_Party_ROOT}/json-3.11.3")
 
 add_subdirectory("${3rd_Party_ROOT}/Catch2-3.6.0")
 
+add_subdirectory(common)
+add_subdirectory(drivers)
+target_include_directories(drivers PUBLIC common)
+
 add_executable(AlpacaHub ${all_SOURCES})
 
-message(STATUS "asio_INCLUDE_DIRS: ${asio_INCLUDE_DIRS}")
-target_link_libraries(AlpacaHub restinio qhyccd spdlog nlohmann_json uuid Catch2)
+# target_include_directories(AlpacaHub ${driver_HEADERS})
 
-add_executable(AlpacaHubTests zwo_am5_telescope.cpp alpaca_exception.cpp)
-target_link_libraries(AlpacaHubTests PRIVATE Catch2::Catch2WithMain restinio qhyccd spdlog nlohmann_json uuid)
+message(STATUS "asio_INCLUDE_DIRS: ${asio_INCLUDE_DIRS}")
+
+target_link_libraries(AlpacaHub PUBLIC restinio qhyccd spdlog nlohmann_json uuid Catch2 drivers common)
+
+# add_executable(AlpacaHubTests drivers/zwo_am5_telescope.cpp alpaca_exception.cpp)
+# target_link_libraries(AlpacaHubTests PRIVATE Catch2::Catch2WithMain restinio qhyccd spdlog nlohmann_json uuid)
 
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/html DESTINATION ${CMAKE_CURRENT_BINARY_DIR} )

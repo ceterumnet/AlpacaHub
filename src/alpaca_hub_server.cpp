@@ -1,6 +1,6 @@
 #include "alpaca_hub_server.hpp"
 #include "alpaca_exception.hpp"
-#include "i_alpaca_camera.hpp"
+#include "interfaces/i_alpaca_camera.hpp"
 #include "image_bytes.hpp"
 #include "nlohmann/json_fwd.hpp"
 #include "restinio/cast_to.hpp"

@@ -1,9 +1,9 @@
 #ifndef QHY_ALPACA_CAMERA_HPP
 #define QHY_ALPACA_CAMERA_HPP
 
-#include "alpaca_exception.hpp"
+#include "common/alpaca_exception.hpp"
 #include "fmt/format.h"
-#include "i_alpaca_camera.hpp"
+#include "interfaces/i_alpaca_camera.hpp"
 #include "qhy_alpaca_filterwheel.hpp"
 #include "spdlog/spdlog.h"
 #include <asio/io_context.hpp>

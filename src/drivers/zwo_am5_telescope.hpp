@@ -1,7 +1,7 @@
 #ifndef ZWO_AM5_TELESCOPE_HPP
 #define ZWO_AM5_TELESCOPE_HPP
 
-#include "i_alpaca_telescope.hpp"
+#include "interfaces/i_alpaca_telescope.hpp"
 
 class zwo_am5_telescope : public i_alpaca_telescope {
 public:
