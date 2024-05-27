@@ -1,12 +1,16 @@
 #ifndef ALPACA_HUB_SERVER_HPP
 #define ALPACA_HUB_SERVER_HPP
 
+#include "alpaca_exception.hpp"
 #include "alpaca_hub_common.hpp"
 #include "drivers/qhy_alpaca_camera.hpp"
 #include "drivers/qhy_alpaca_filterwheel.hpp"
+#include "http_server_logger.hpp"
+#include "image_bytes.hpp"
 #include "interfaces/i_alpaca_camera.hpp"
 #include "interfaces/i_alpaca_device.hpp"
 #include "interfaces/i_alpaca_telescope.hpp"
+#include "nlohmann/json_fwd.hpp"
 #include "restinio/cast_to.hpp"
 #include "restinio/common_types.hpp"
 #include "restinio/core.hpp"
@@ -16,7 +20,12 @@
 #include "restinio/router/easy_parser_router.hpp"
 #include "restinio/router/express.hpp"
 #include "restinio/sync_chain/fixed_size.hpp"
+#include "spdlog/common.h"
+#include "spdlog/sinks/basic_file_sink.h"
+#include "spdlog/spdlog.h"
+#include <asio/ip/udp.hpp>
 #include <bit>
+#include <cctype>
 #include <cstdint>
 #include <filesystem>
 #include <ios>

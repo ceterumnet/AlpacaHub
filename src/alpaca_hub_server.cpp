@@ -1,58 +1,4 @@
 #include "alpaca_hub_server.hpp"
-#include "alpaca_exception.hpp"
-#include "interfaces/i_alpaca_camera.hpp"
-#include "image_bytes.hpp"
-#include "nlohmann/json_fwd.hpp"
-#include "restinio/cast_to.hpp"
-#include "restinio/http_headers.hpp"
-#include "spdlog/common.h"
-#include "spdlog/sinks/basic_file_sink.h"
-#include "spdlog/spdlog.h"
-#include "uuid/uuid.h"
-#include <asio/ip/udp.hpp>
-#include <cctype>
-
-class http_server_logger_t {
-public:
-  http_server_logger_t(std::shared_ptr<spdlog::logger> logger)
-      : m_logger{std::move(logger)} {}
-
-  template <typename Builder> void trace(Builder &&msg_builder) {
-    log_if_enabled(spdlog::level::trace, std::forward<Builder>(msg_builder));
-  }
-
-  template <typename Builder> void info(Builder &&msg_builder) {
-    log_if_enabled(spdlog::level::info, std::forward<Builder>(msg_builder));
-  }
-
-  template <typename Builder> void warn(Builder &&msg_builder) {
-    log_if_enabled(spdlog::level::warn, std::forward<Builder>(msg_builder));
-  }
-
-  template <typename Builder> void error(Builder &&msg_builder) {
-    log_if_enabled(spdlog::level::err, std::forward<Builder>(msg_builder));
-  }
-
-private:
-  template <typename Builder>
-  void log_if_enabled(spdlog::level::level_enum lv, Builder &&msg_builder) {
-    if (m_logger->should_log(lv)) {
-      m_logger->log(lv, msg_builder());
-    }
-  }
-
-  //! Logger object.
-  std::shared_ptr<spdlog::logger> m_logger;
-};
-
-static std::map<std::string, std::string> device_uuid_lookup{
-    {std::string("QHY9S-M"),
-     std::string("25dd748b-2433-45b7-a219-05bf5bd716e4")},
-    {std::string("QHYFW"),
-     std::string("f0b60810-a45e-4035-b880-ec4d1fb02edf")}};
-
-// static auto common_logger =
-//   spdlog::basic_logger_mt(logger_name, );
 
 // We need these for 2 reasons:
 //  1. If we ever want to log source location etc...these are compile time
@@ -706,22 +652,9 @@ auto server_handler() {
             // Kinda kludgy...but I can revisit this as I work on more
             // devices as a collection related stuff
             device_entry["DeviceNumber"] = idx++;
-            // Need to think about unique ids here.
-            uuid_t device_uuid;
-
-            // device_uuid.resize(36);
-            uuid_generate(device_uuid);
-            // std::vector<unsigned char> uuid_vec;
-            // uuid_vec.assign(*device_uuid, 16);
-            std::string device_uuid_str;
-            device_uuid_str.resize(36);
-
-            uuid_unparse(device_uuid, &device_uuid_str[0]);
-
             device_entry["UniqueID"] = d_entry->unique_id();
             device_management_list.push_back(device_entry);
           }
-          // device_entry["name"] = iter.second;
         }
 
         response_map["Value"] = device_management_list;
