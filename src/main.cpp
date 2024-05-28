@@ -1,4 +1,4 @@
-#include "alpaca_hub_server.hpp"
+#include "server/alpaca_hub_server.hpp"
 
 // We need these for 2 reasons:
 //  1. If we ever want to log source location etc...these are compile time

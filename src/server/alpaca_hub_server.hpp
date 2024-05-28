@@ -1,7 +1,7 @@
 #ifndef ALPACA_HUB_SERVER_HPP
 #define ALPACA_HUB_SERVER_HPP
 
-#include "alpaca_hub_common.hpp"
+#include "common/alpaca_hub_common.hpp"
 #include "common/alpaca_exception.hpp"
 #include "drivers/qhy_alpaca_camera.hpp"
 #include "drivers/qhy_alpaca_filterwheel.hpp"
