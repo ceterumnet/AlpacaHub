@@ -3,12 +3,12 @@
 #include "spdlog/spdlog.h"
 #include <catch2/catch_test_macros.hpp>
 #include <memory>
+#include <regex>
 #include <vector>
 
 namespace zwo_commands {
 
-
-  // This doesn't respond with anything
+// This doesn't respond with anything
 const std::string cmd_switch_to_eq_mode() { return ":AP#"; }
 
 // This doesn't respond with anything
@@ -18,7 +18,7 @@ const std::string cmd_switch_to_alt_az_mode() { return ":AA#"; }
 const std::string cmd_get_date() { return ":GC#"; }
 
 // I wonder if I should create a date type and ensure it is a valid date?
-  // response should be 1 for success or 0 for failure
+// response should be 1 for success or 0 for failure
 const std::string cmd_set_date(const int &mm, const int &dd, const int &yy) {
   if (mm < 1 || mm > 12)
     throw alpaca_exception(alpaca_exception::INVALID_VALUE,
@@ -33,7 +33,7 @@ const std::string cmd_set_date(const int &mm, const int &dd, const int &yy) {
   return fmt::format(":SC{:#02d}/{:#02d}/{:02d}#", mm, dd, yy);
 }
 
-  // Response should be 1 for success and 0 for failure
+// Response should be 1 for success and 0 for failure
 const std::string cmd_set_time(const int &hh, const int &mm, const int &ss) {
   if (hh < 0 || hh > 23)
     throw alpaca_exception(alpaca_exception::INVALID_VALUE,
@@ -48,23 +48,23 @@ const std::string cmd_set_time(const int &hh, const int &mm, const int &ss) {
   return fmt::format(":SL{0:#02d}:{1:#02d}:{2:#02d}#", hh, mm, ss);
 }
 
-  // response should be "HH:MM:SS#"
+// response should be "HH:MM:SS#"
 const std::string cmd_get_time() { return ":GL#"; }
 
 // response should be "HH:MM:SS#"
 const std::string cmd_get_sidereal_time() { return ":GS#"; }
 
-  // response is 1 for daylight savings on and 0 for off
+// response is 1 for daylight savings on and 0 for off
 const std::string cmd_get_daylight_savings() { return ":GH#"; }
 
-  // response should be 1
+// response should be 1
 const std::string cmd_set_daylight_savings(const int &on_or_off) {
   if (on_or_off < 0 || on_or_off > 1)
     throw alpaca_exception(alpaca_exception::INVALID_VALUE, "must be 0 or 1");
   return fmt::format(":SH{0}#", on_or_off);
 }
 
-  // response should be 1 for success and 0 for failure
+// response should be 1 for success and 0 for failure
 const std::string cmd_set_timezone(const char &plus_or_minus,
                                    const int &h_offset, int m_offset = 0) {
   if (plus_or_minus != '+' && plus_or_minus != '-')
@@ -81,10 +81,10 @@ const std::string cmd_set_timezone(const char &plus_or_minus,
                      m_offset);
 }
 
-  // Response should be "sHH:MM#"
+// Response should be "sHH:MM#"
 const std::string cmd_get_timezone() { return ":GG#"; }
 
-  // Response should be 1 for success and 0 for failure
+// Response should be 1 for success and 0 for failure
 const std::string cmd_set_latitude(const char &plus_or_minus, const int &dd,
                                    const int &mm, int ss) {
   if (plus_or_minus != '+' && plus_or_minus != '-')
@@ -106,7 +106,7 @@ const std::string cmd_set_latitude(const char &plus_or_minus, const int &dd,
 // Response should be "sDD*MM#"
 const std::string cmd_get_latitude() { return ":Gt#"; }
 
-  // Response should be 1 for success and 0 for failure
+// Response should be 1 for success and 0 for failure
 const std::string cmd_set_longitude(const char &plus_or_minus, const int &ddd,
                                     const int &mm, const int &ss) {
   if (plus_or_minus != '+' && plus_or_minus != '-')
@@ -128,7 +128,7 @@ const std::string cmd_set_longitude(const char &plus_or_minus, const int &ddd,
 // Response should be "sDDD*MM#"
 const std::string cmd_get_longitude() { return ":Gg#"; }
 
-  // Response should be "E or W or N for home / zero position"
+// Response should be "E or W or N for home / zero position"
 const std::string cmd_get_current_cardinal_direction() { return ":Gm#"; }
 
 // Response should be "HH:MM:SS#"
@@ -174,22 +174,22 @@ const std::string cmd_set_target_dec(const char &plus_or_minus, const int &dd,
                      ss);
 }
 
-  // Response should be "HH:MM:SS#"
+// Response should be "HH:MM:SS#"
 const std::string cmd_get_current_ra() { return ":GR#"; }
 
-  // Response should be "sDD*MM:SS#"
+// Response should be "sDD*MM:SS#"
 const std::string cmd_get_current_dec() { return ":GD#"; }
 
-  // Response should be "DDD*MM:SS#"
+// Response should be "DDD*MM:SS#"
 const std::string cmd_get_azimuth() { return ":GZ#"; }
 
-  // Response should be "sDD*MM:SS#"
+// Response should be "sDD*MM:SS#"
 const std::string cmd_get_altitude() { return ":GA#"; }
 
-  // Response should be 1 for success or "e2#"
+// Response should be 1 for success or "e2#"
 const std::string cmd_goto() { return ":MS#"; }
 
-  // Response should be none
+// Response should be none
 const std::string cmd_stop_moving() { return ":Q#"; }
 
 enum move_speed_enum : int {
@@ -218,7 +218,7 @@ const std::string cmd_set_moving_speed(move_speed_enum move_speed) {
   return fmt::format(":R{0}#", move_speed);
 }
 
-  // Response should be none
+// Response should be none
 const std::string cmd_set_0_5x_sidereal_rate() { return ":RG#"; }
 
 // Response should be none
@@ -274,7 +274,7 @@ const std::string cmd_set_guide_rate_to_lunar() { return ":TL#"; }
 // Response will be one of 1# 2# or 3# corresponding with the tracking rate enum
 const std::string cmd_get_tracking_rate() { return ":GT#"; }
 
-  // Returns 1 for success or 0 for failure
+// Returns 1 for success or 0 for failure
 const std::string cmd_start_tracking() { return ":Te#"; }
 
 // Returns 1 for success or 0 for failure
@@ -295,7 +295,7 @@ const std::string cmd_guide(const char &direction, const int &rate) {
   return fmt::format(":Mg{0}{1:#04d}#", direction, rate);
 }
 
-  // Response should be none
+// Response should be none
 const std::string cmd_set_guide_rate(const double &guide_rate) {
   if (guide_rate < .1 || guide_rate > .9)
     throw alpaca_exception(alpaca_exception::INVALID_VALUE,
@@ -303,10 +303,10 @@ const std::string cmd_set_guide_rate(const double &guide_rate) {
   return fmt::format(":Rg{0:#01.2f}#", guide_rate);
 }
 
-  // Response is 0.nn#
+// Response is 0.nn#
 const std::string cmd_get_guide_rate() { return ":Ggr#"; }
 
-  // Response is 1 for success and 0 for failure
+// Response is 1 for success and 0 for failure
 const std::string
 cmd_set_act_of_crossing_meridian(const int &perform_meridian_flip,
                                  const int &continue_to_track_after_meridian,
@@ -333,14 +333,14 @@ cmd_set_act_of_crossing_meridian(const int &perform_meridian_flip,
                      limit_angle_after_meridian);
 }
 
-  // TODO: create structure to interpret this
+// TODO: create structure to interpret this
 // Response should be nnsnn#
 const std::string cmd_get_act_of_crossing_meridian() { return ":GTa#"; }
 
 // Response is N/A# for success and e2# for error
 const std::string cmd_sync() { return ":CM#"; }
 
-  // Response should be none
+// Response should be none
 const std::string cmd_home_position() { return ":hC#"; }
 
 // This is a complicated response...I'm not sure I have this one right yet
@@ -356,10 +356,10 @@ const std::string cmd_home_position() { return ":hC#"; }
 // n N G 0 0 00 00 0 0 state 0# <- sample response from cmd_get_status
 const std::string cmd_get_status() { return ":GU#"; }
 
-  // Response should be none
+// Response should be none
 const std::string cmd_park() { return ":hP#"; }
 
-  // Response should be 1 for success or 0 for failure
+// Response should be 1 for success or 0 for failure
 // :SMGEsDD*MM:SS&sDDD*MM:SS#
 const std::string cmd_set_lat_and_long(const char &plus_or_minus_lat,
                                        const int &lat_dd, const int lat_mm,
@@ -455,7 +455,7 @@ const std::string cmd_get_current_ra_and_dec() { return ":GMEQ#"; }
 // Should return "DDD*MM:SS&sDD*MM:SS#"
 const std::string cmd_get_az_and_alt() { return ":GMZA#"; }
 
-  // Should return 1 for success and e+error_code+#
+// Should return 1 for success and e+error_code+#
 // :SMeqHH:MM:SS&sDD*MM:SS#
 const std::string cmd_set_target_ra_and_dec_and_goto(
     const int &ra_hh, const int &ra_mm, const int &ra_ss,
@@ -785,13 +785,186 @@ TEST_CASE("ZWO commands throw exception with invalid values",
       cmd_set_target_ra_and_dec_and_sync(23, 2, 59, '+', 89, 59, 60),
       alpaca_exception);
 }
+
 namespace zwoc = zwo_commands;
+
+namespace zwo_responses {
+
+// 1#, 0# or e+error_code+#
+int parse_standard_response(const std::string &resp) {
+  std::string response = resp;
+  std::regex resp_regex("^e?([0-9])#");
+  std::match_results<std::string::iterator> res;
+  auto is_matched = std::regex_search(response.begin(), response.end(), res, resp_regex);
+  if(!is_matched)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           fmt::format("problem parsing response {0}", resp));
+  std::string matched_str = res[1].str();
+  return atoi(matched_str.c_str());
+}
+
+struct hh_mm_ss {
+  int hh;
+  int mm;
+  int ss;
+};
+
+hh_mm_ss parse_hh_mm_ss_response(const std::string &resp) {
+  hh_mm_ss data;
+  std::string response = resp;
+  auto expression = R"(^([0-9]{2}):([0-9]{2}):([0-9]{2})#)";
+  std::regex resp_regex(expression);
+  std::match_results<std::string::iterator> res;
+  auto is_matched =
+      std::regex_search(response.begin(), response.end(), res, resp_regex);
+  if (!is_matched)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           fmt::format("problem parsing response {0}", resp));
+
+  std::string hh_matched_str = res[1].str();
+  data.hh = atoi(hh_matched_str.c_str());
+  std::string mm_matched_str = res[2].str();
+  data.mm = atoi(mm_matched_str.c_str());
+  std::string ss_matched_str = res[3].str();
+  data.ss = atoi(ss_matched_str.c_str());
+  return data;
+}
+
+struct dd_mm_ss {
+  int dd;
+  int mm;
+  int ss;
+};
+
+dd_mm_ss parse_dd_mm_ss_response(const std::string &resp) {
+  dd_mm_ss data;
+  std::string response = resp;
+  auto expression = R"(^([0-9]{2})\*([0-9]{2}):([0-9]{2})#)";
+  std::regex resp_regex(expression);
+  std::match_results<std::string::iterator> res;
+  auto is_matched =
+      std::regex_search(response.begin(), response.end(), res, resp_regex);
+  if (!is_matched)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           fmt::format("problem parsing response {0}", resp));
+  std::string dd_matched_str = res[1].str();
+  data.dd = atoi(dd_matched_str.c_str());
+  std::string mm_matched_str = res[2].str();
+  data.mm = atoi(mm_matched_str.c_str());
+  std::string ss_matched_str = res[3].str();
+  data.ss = atoi(ss_matched_str.c_str());
+  return data;
+}
+
+struct mm_dd_yy {
+  int mm;
+  int dd;
+  int yy;
+};
+
+mm_dd_yy parse_mm_dd_yy_response(const std::string &resp) {
+  mm_dd_yy data;
+  std::string response = resp;
+  auto expression = R"(^([0-9]{2})/([0-9]{2})/([0-9]{2})#)";
+  std::regex resp_regex(expression);
+  std::match_results<std::string::iterator> res;
+  auto is_matched =
+      std::regex_search(response.begin(), response.end(), res, resp_regex);
+  if (!is_matched)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           fmt::format("problem parsing response {0}", resp));
+  std::string mm_matched_str = res[1].str();
+  data.mm = atoi(mm_matched_str.c_str());
+  std::string dd_matched_str = res[2].str();
+  data.dd = atoi(dd_matched_str.c_str());
+  std::string yy_matched_str = res[3].str();
+  data.yy = atoi(yy_matched_str.c_str());
+  return data;
+}
+
+struct shh_mm {
+  char plus_or_minus;
+  int hh;
+  int mm;
+};
+
+shh_mm parse_shh_mm_response(const std::string &resp) {
+  shh_mm data;
+  std::string response = resp;
+  auto expression = R"(^([+-]{1})([0-9]{2}):([0-9]{2})#)";
+  std::regex resp_regex(expression);
+  std::match_results<std::string::iterator> res;
+  auto is_matched =
+      std::regex_search(response.begin(), response.end(), res, resp_regex);
+  if (!is_matched)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           fmt::format("problem parsing response {0}", resp));
+  std::string s_matched_str = res[1].str();
+  data.plus_or_minus = s_matched_str.c_str()[0];
+  std::string hh_matched_str = res[2].str();
+  data.hh = atoi(hh_matched_str.c_str());
+  std::string mm_matched_str = res[3].str();
+  data.mm = atoi(mm_matched_str.c_str());
+  return data;
+}
+
+}; // namespace zwo_responses
+
+// namespace zwo_responses
+// namespace zwor = zwo_responses;
+
+TEST_CASE("ZWO single value responses", "[zwo_responses_single_value]") {
+  using namespace zwo_responses;
+  REQUIRE(parse_standard_response("1#") == 1);
+  REQUIRE(parse_standard_response("0#") == 0);
+  REQUIRE(parse_standard_response("e2#") == 2);
+  REQUIRE_THROWS_AS(parse_standard_response("e2"), alpaca_exception);
+}
+
+TEST_CASE("ZWO hours, minutes, seconds responses", "[zwo_responses_time]") {
+  using namespace zwo_responses;
+  REQUIRE(parse_hh_mm_ss_response("12:10:34#").hh == 12);
+  REQUIRE(parse_hh_mm_ss_response("12:10:34#").mm == 10);
+  REQUIRE(parse_hh_mm_ss_response("12:10:34#").ss == 34);
+  REQUIRE(parse_hh_mm_ss_response("02:10:34#").hh == 2);
+  REQUIRE(parse_hh_mm_ss_response("02:10:04#").ss == 4);
+
+  REQUIRE_THROWS_AS(parse_hh_mm_ss_response("02:99:123#"), alpaca_exception);
+}
+
+TEST_CASE("ZWO degrees, minutes, seconds responses", "[zwo_responses_dec]") {
+  using namespace zwo_responses;
+  REQUIRE(parse_dd_mm_ss_response("12*10:34#").dd == 12);
+  REQUIRE(parse_dd_mm_ss_response("12*10:34#").mm == 10);
+  REQUIRE(parse_dd_mm_ss_response("12*10:34#").ss == 34);
+  REQUIRE(parse_dd_mm_ss_response("02*10:34#").dd == 2);
+  REQUIRE(parse_dd_mm_ss_response("02*10:04#").ss == 4);
+  REQUIRE_THROWS_AS(parse_dd_mm_ss_response("02*99:123#"), alpaca_exception);
+}
+
+TEST_CASE("ZWO month, day, year responses", "[zwo_responses_date]") {
+  using namespace zwo_responses;
+  REQUIRE(parse_mm_dd_yy_response("12/10/34#").mm == 12);
+  REQUIRE(parse_mm_dd_yy_response("12/10/34#").dd == 10);
+  REQUIRE(parse_mm_dd_yy_response("12/10/34#").yy == 34);
+  REQUIRE(parse_mm_dd_yy_response("02/10/34#").mm == 2);
+  REQUIRE(parse_mm_dd_yy_response("02/10/04#").yy == 4);
+  REQUIRE_THROWS_AS(parse_dd_mm_ss_response("02/99/123#"), alpaca_exception);
+}
+
+TEST_CASE("ZWO timezone format", "[zwo_responses_tz]") {
+  using namespace zwo_responses;
+  REQUIRE(parse_shh_mm_response("+05:30#").plus_or_minus == '+');
+  REQUIRE(parse_shh_mm_response("+05:30#").hh == 5);
+  REQUIRE(parse_shh_mm_response("+05:30#").mm == 30);
+
+  REQUIRE_THROWS_AS(parse_shh_mm_response("+05/30#"), alpaca_exception);
+  REQUIRE_THROWS_AS(parse_shh_mm_response("+05:30"), alpaca_exception);
+}
 
 std::string zwo_am5_telescope::unique_id() { return ""; }
 
 bool zwo_am5_telescope::connected() { return _connected; }
-
-
 
 int zwo_am5_telescope::set_connected(bool connected) {
   // covers already connected with connect request and
@@ -832,8 +1005,7 @@ int zwo_am5_telescope::set_connected(bool connected) {
   return -1;
 }
 
-TEST_CASE("Serial connection attempt",
-          "[set_connected]") {
+TEST_CASE("Serial connection attempt", "[set_connected]") {
   spdlog::set_level(spdlog::level::debug);
   zwo_am5_telescope telescope;
   SECTION("Invalid serial device path") {
@@ -848,16 +1020,20 @@ TEST_CASE("Serial connection attempt",
   }
 }
 
-zwo_am5_telescope::zwo_am5_telescope() : _io_context(1), _serial_port(_io_context) {
-  // _io_service = std::make_unique<asio::io_service>();
-  // _serial_port = std::make_unique<asio::serial_port>(_io_service.get());
-};
+zwo_am5_telescope::zwo_am5_telescope()
+    : _io_context(1),
+      _serial_port(_io_context){
+          // _io_service = std::make_unique<asio::io_service>();
+          // _serial_port =
+          // std::make_unique<asio::serial_port>(_io_service.get());
+      };
 
 zwo_am5_telescope::~zwo_am5_telescope(){};
 
 void zwo_am5_telescope::throw_if_not_connected() {
-  if ( !_connected )
-    throw alpaca_exception(alpaca_exception::NOT_CONNECTED, "Mount not connected");
+  if (!_connected)
+    throw alpaca_exception(alpaca_exception::NOT_CONNECTED,
+                           "Mount not connected");
 }
 
 std::string zwo_am5_telescope::send_command_to_mount(const std::string &cmd) {
