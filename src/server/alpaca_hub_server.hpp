@@ -6,7 +6,7 @@
 #include "drivers/qhy_alpaca_camera.hpp"
 #include "drivers/qhy_alpaca_filterwheel.hpp"
 #include "http_server_logger.hpp"
-#include "image_bytes.hpp"
+#include "common/image_bytes.hpp"
 #include "interfaces/i_alpaca_camera.hpp"
 #include "interfaces/i_alpaca_device.hpp"
 #include "interfaces/i_alpaca_telescope.hpp"

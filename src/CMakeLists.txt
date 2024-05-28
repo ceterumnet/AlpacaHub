@@ -8,7 +8,7 @@ set(3rd_Party_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/3rd_party")
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
-file(GLOB all_SOURCES "*.cpp" "*.c")
+# file(GLOB all_SOURCES "*.cpp" "*.c")
 file(GLOB all_HEADERS "*.hpp" "*.h")
 
 # file(GLOB driver_SOURCES "drivers/*.cpp" "drivers/*.c")
@@ -56,7 +56,7 @@ add_subdirectory(common)
 add_subdirectory(drivers)
 add_subdirectory(server)
 
-add_executable(AlpacaHub ${all_SOURCES})
+add_executable(AlpacaHub main.cpp)
 
 # target_include_directories(AlpacaHub ${driver_HEADERS})
 
@@ -64,7 +64,7 @@ message(STATUS "asio_INCLUDE_DIRS: ${asio_INCLUDE_DIRS}")
 
 target_link_libraries(AlpacaHub PUBLIC restinio qhyccd spdlog nlohmann_json uuid Catch2 drivers common server)
 
-# add_executable(AlpacaHubTests )
-# target_link_libraries(AlpacaHubTests PRIVATE Catch2::Catch2WithMain restinio qhyccd spdlog nlohmann_json uuid)
+add_executable(AlpacaHubTests drivers/zwo_am5_telescope.cpp)
+target_link_libraries(AlpacaHubTests PRIVATE Catch2::Catch2WithMain common server drivers restinio qhyccd spdlog nlohmann_json uuid)
 
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/html DESTINATION ${CMAKE_CURRENT_BINARY_DIR} )
