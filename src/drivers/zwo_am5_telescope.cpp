@@ -60,7 +60,7 @@ const std::string cmd_set_timezone(const char &plus_or_minus,
                            "first param must be '+' or '-'");
   if (h_offset < 0 || h_offset > 23)
     throw alpaca_exception(alpaca_exception::INVALID_VALUE,
-                           "hour offest must be 0 through 23");
+                           "hour offset must be 0 through 23");
   if (m_offset != 0 && m_offset != 30)
     throw alpaca_exception(alpaca_exception::INVALID_VALUE,
                            "minutes offset must be 0 or 30");
@@ -264,7 +264,8 @@ cmd_set_act_of_crossing_meridian(const int &perform_meridian_flip,
   if (perform_meridian_flip != 0 && perform_meridian_flip != 1)
     throw alpaca_exception(alpaca_exception::INVALID_VALUE,
                            "perform_meridian_flip must be 0 or 1");
-  if (continue_to_track_after_meridian != 0 && continue_to_track_after_meridian != 1)
+  if (continue_to_track_after_meridian != 0 &&
+      continue_to_track_after_meridian != 1)
     throw alpaca_exception(alpaca_exception::INVALID_VALUE,
                            "continue_to_track_after_meridian must be 0 or 1");
   if (plus_or_minus != '+' && plus_or_minus != '-')
@@ -272,11 +273,177 @@ cmd_set_act_of_crossing_meridian(const int &perform_meridian_flip,
                            "sign of limit angle be '+' or '-'");
 
   if (limit_angle_after_meridian < 0 || limit_angle_after_meridian > 15)
-    throw alpaca_exception(alpaca_exception::INVALID_VALUE, "limit_angle_after_meridian must be between 0 and 15");
+    throw alpaca_exception(
+        alpaca_exception::INVALID_VALUE,
+        "limit_angle_after_meridian must be between 0 and 15");
   return fmt::format(":STa{0:#01d}{1:#01d}{2}{3:#02d}#", perform_meridian_flip,
-                     continue_to_track_after_meridian,
-                     plus_or_minus,
+                     continue_to_track_after_meridian, plus_or_minus,
                      limit_angle_after_meridian);
+}
+
+const std::string cmd_get_act_of_crossing_meridian() { return ":GTa#"; }
+
+const std::string cmd_sync() { return ":CM#"; }
+
+const std::string cmd_home_position() { return ":hC#"; }
+
+const std::string cmd_get_status() { return ":GU#"; }
+
+const std::string cmd_park() { return ":hP#"; }
+
+// :SMGEsDD*MM:SS&sDDD*MM:SS#
+const std::string cmd_set_lat_and_long(const char &plus_or_minus_lat,
+                                       const int &lat_dd, const int lat_mm,
+                                       const int &lat_ss,
+                                       const char &plus_or_minus_long,
+                                       const int &long_ddd, const int &long_mm,
+                                       const int &long_ss) {
+  if (plus_or_minus_lat != '+' && plus_or_minus_lat != '-')
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "lat +/- param must be '+' or '-'");
+  if (lat_dd < 0 || lat_dd > 90)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "latitude degrees must be 0 through 90");
+  if (lat_mm < 0 || lat_mm > 59)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "minutes must 0 through 59");
+  if (lat_ss < 0 || lat_ss > 59)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "seconds must 0 through 59");
+  if (plus_or_minus_long != '+' && plus_or_minus_long != '-')
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "longitude +/- param must be '+' or '-'");
+  if (long_ddd < 0 || long_ddd > 180)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "longitude degrees must be 0 through 90");
+  if (long_mm < 0 || long_mm > 59)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "minutes must 0 through 59");
+  if (long_ss < 0 || long_ss > 59)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "seconds must 0 through 59");
+
+  return fmt::format(
+      ":SMGE{0}{1:#02d}*{2:#02d}:{3:#02d}&{4}{5:#03d}*{6:#02d}:{7:#02d}#",
+      plus_or_minus_lat, lat_dd, lat_mm, lat_ss, plus_or_minus_long, long_ddd,
+      long_mm, long_ss);
+}
+
+const std::string cmd_get_lat_and_long() { return ":GMGE#"; }
+
+// :SMTIMM/DD/YY&HH:MM:SS&sHH:MM#
+const std::string cmd_set_date_time_and_tz(
+    const int &date_mm, const int &date_dd, const int &date_yy,
+    const int &time_hh, const int &time_mm, const int &time_ss,
+    const char &plus_or_minus_tz, const int tz_hh, int tz_mm = 0) {
+  if (date_mm < 1 || date_mm > 12)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "month must be 1 through 12");
+  if (date_dd < 1 || date_dd > 31)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "day must be 1 through 31");
+  if (date_yy < 0 || date_yy > 99)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "year must be 0 through 99");
+  if (time_hh < 0 || time_hh > 23)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "hour must be 0 through 23");
+  if (time_mm < 0 || time_mm > 59)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "minutes must 0 through 59");
+  if (time_ss < 0 || time_ss > 59)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "seconds must 0 through 59");
+
+  if (plus_or_minus_tz != '+' && plus_or_minus_tz != '-')
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "plus_or_minus_tz must be '+' or '-'");
+  if (tz_hh < 0 || tz_hh > 23)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "hour offset must be 0 through 23");
+  if (tz_mm != 0 && tz_mm != 30)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "minutes offset must be 0 or 30");
+
+  return fmt::format(
+      ":SMTI{0:#02d}/{1:#02d}/"
+      "{2:#02d}&{3:#02d}:{4:#02d}:{5:#02d}&{6}{7:#02d}:{8:#02d}#",
+      date_mm, date_dd, date_yy, time_hh, time_mm, time_ss, plus_or_minus_tz,
+      tz_hh, tz_mm);
+}
+
+const std::string cmd_get_date_and_tz() { return ":GMTI#"; }
+
+const std::string cmd_get_target_ra_and_dec() { return ":GMeq#"; }
+
+const std::string cmd_get_current_ra_and_dec() { return ":GMEQ#"; }
+
+const std::string cmd_get_az_and_alt() { return ":GMZA#"; }
+
+// :SMeqHH:MM:SS&sDD*MM:SS#
+const std::string cmd_set_target_ra_and_dec_and_goto(
+    const int &ra_hh, const int &ra_mm, const int &ra_ss,
+    const char &plus_or_minus_dec, const int &dec_dd, const int &dec_mm,
+    const int &dec_ss) {
+
+  if (ra_hh < 0 || ra_hh > 23)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "hours must 0 through 23");
+  if (ra_mm < 0 || ra_mm > 59)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "minutes must 0 through 59");
+  if (ra_ss < 0 || ra_ss > 59)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "seconds must 0 through 59");
+  if (plus_or_minus_dec != '+' && plus_or_minus_dec != '-')
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "plus_or_minus_dec must be '+' or '-'");
+  if (dec_dd < 0 || dec_dd > 90)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "degrees must 0 through 90");
+  if (dec_mm < 0 || dec_mm > 59)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "minutes must 0 through 59");
+  if (dec_ss < 0 || dec_ss > 59)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "seconds must 0 through 59");
+
+  return fmt::format(
+      ":SMeq{0:#02d}:{1:#02d}:{2:#02d}&{3}{4:#02d}*{5:#02d}:{6:#02d}#", ra_hh,
+      ra_mm, ra_ss, plus_or_minus_dec, dec_dd, dec_mm, dec_ss);
+}
+
+// :SMMCHH:MM:SS&sDD*MM:SS#
+const std::string cmd_set_target_ra_and_dec_and_sync(
+    const int &ra_hh, const int &ra_mm, const int &ra_ss,
+    const char &plus_or_minus_dec, const int &dec_dd, const int &dec_mm,
+    const int &dec_ss) {
+
+  if (ra_hh < 0 || ra_hh > 23)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "hours must 0 through 23");
+  if (ra_mm < 0 || ra_mm > 59)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "minutes must 0 through 59");
+  if (ra_ss < 0 || ra_ss > 59)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "seconds must 0 through 59");
+  if (plus_or_minus_dec != '+' && plus_or_minus_dec != '-')
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "plus_or_minus_dec must be '+' or '-'");
+  if (dec_dd < 0 || dec_dd > 90)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "degrees must 0 through 90");
+  if (dec_mm < 0 || dec_mm > 59)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "minutes must 0 through 59");
+  if (dec_ss < 0 || dec_ss > 59)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "seconds must 0 through 59");
+
+  return fmt::format(
+      ":SMMC{0:#02d}:{1:#02d}:{2:#02d}&{3}{4:#02d}*{5:#02d}:{6:#02d}#", ra_hh,
+      ra_mm, ra_ss, plus_or_minus_dec, dec_dd, dec_mm, dec_ss);
 }
 
 }; // namespace zwo_commands
@@ -394,6 +561,37 @@ TEST_CASE("ZWO commands are correctly formatted and padded with happy values",
   REQUIRE(cmd_get_guide_rate() == ":Ggr#");
 
   REQUIRE(cmd_set_act_of_crossing_meridian(1, 1, '+', 14) == ":STa11+14#");
+
+  REQUIRE(cmd_get_act_of_crossing_meridian() == ":GTa#");
+
+  REQUIRE(cmd_sync() == ":CM#");
+
+  REQUIRE(cmd_home_position() == ":hC#");
+
+  REQUIRE(cmd_get_status() == ":GU#");
+
+  REQUIRE(cmd_park() == ":hP#");
+
+  REQUIRE(cmd_set_lat_and_long('+', 14, 44, 51, '-', 12, 32, 0) ==
+          ":SMGE+14*44:51&-012*32:00#");
+
+  REQUIRE(cmd_get_lat_and_long() == ":GMGE#");
+
+  REQUIRE(cmd_set_date_time_and_tz(11, 4, 24, 5, 1, 0, '-', 5) ==
+          ":SMTI11/04/24&05:01:00&-05:00#");
+
+  REQUIRE(cmd_get_date_and_tz() == ":GMTI#");
+
+  REQUIRE(cmd_get_target_ra_and_dec() == ":GMeq#");
+
+  REQUIRE(cmd_get_current_ra_and_dec() == ":GMEQ#");
+
+  REQUIRE(cmd_get_az_and_alt() == ":GMZA#");
+
+  REQUIRE(cmd_set_target_ra_and_dec_and_goto(1, 2, 1, '+', 9, 1, 2) ==
+          ":SMeq01:02:01&+09*01:02#");
+  REQUIRE(cmd_set_target_ra_and_dec_and_sync(1, 2, 1, '+', 9, 1, 2) ==
+          ":SMMC01:02:01&+09*01:02#");
 }
 
 TEST_CASE("ZWO commands throw exception with invalid values",
@@ -443,13 +641,72 @@ TEST_CASE("ZWO commands throw exception with invalid values",
   REQUIRE_THROWS_AS(cmd_set_guide_rate(.91), alpaca_exception);
   REQUIRE_THROWS_AS(cmd_set_guide_rate(1.91), alpaca_exception);
 
-  REQUIRE_THROWS_AS(cmd_set_act_of_crossing_meridian(2, 1, '+', 14), alpaca_exception);
+  REQUIRE_THROWS_AS(cmd_set_act_of_crossing_meridian(2, 1, '+', 14),
+                    alpaca_exception);
   REQUIRE_THROWS_AS(cmd_set_act_of_crossing_meridian(1, 2, '+', 14),
                     alpaca_exception);
   REQUIRE_THROWS_AS(cmd_set_act_of_crossing_meridian(1, 1, '?', 14),
                     alpaca_exception);
   REQUIRE_THROWS_AS(cmd_set_act_of_crossing_meridian(1, 1, '+', 16),
                     alpaca_exception);
+
+  REQUIRE_THROWS_AS(cmd_set_lat_and_long('z', 14, 44, 51, '-', 12, 32, 0),
+                    alpaca_exception);
+  REQUIRE_THROWS_AS(cmd_set_lat_and_long('-', 14, 44, 51, 'z', 12, 32, 0),
+                    alpaca_exception);
+  REQUIRE_THROWS_AS(cmd_set_lat_and_long('+', 91, 44, 51, '-', 12, 32, 0),
+                    alpaca_exception);
+  REQUIRE_THROWS_AS(cmd_set_lat_and_long('+', 89, 44, 51, '-', 181, 32, 0),
+                    alpaca_exception);
+  REQUIRE_THROWS_AS(cmd_set_lat_and_long('+', 89, 44, 51, '-', 179, 60, 0),
+                    alpaca_exception);
+
+  REQUIRE_THROWS_AS(cmd_set_date_time_and_tz(13, 4, 24, 5, 1, 0, '-', 5),
+                    alpaca_exception);
+  REQUIRE_THROWS_AS(cmd_set_date_time_and_tz(11, 41, 24, 5, 1, 0, '-', 5),
+                    alpaca_exception);
+  REQUIRE_THROWS_AS(cmd_set_date_time_and_tz(11, 1, 124, 5, 1, 0, '-', 5),
+                    alpaca_exception);
+  REQUIRE_THROWS_AS(cmd_set_date_time_and_tz(11, 1, 24, 5, 1, 0, 'z', 5),
+                    alpaca_exception);
+  REQUIRE_THROWS_AS(cmd_set_date_time_and_tz(11, 1, 24, 5, 1, 0, '-', 5, 45),
+                    alpaca_exception);
+
+  REQUIRE_THROWS_AS(cmd_set_target_ra_and_dec_and_goto(24, 2, 1, '+', 9, 1, 2),
+                    alpaca_exception);
+  REQUIRE_THROWS_AS(cmd_set_target_ra_and_dec_and_goto(23, 60, 1, '+', 9, 1, 2),
+                    alpaca_exception);
+  REQUIRE_THROWS_AS(cmd_set_target_ra_and_dec_and_goto(23, 2, 60, '+', 9, 1, 2),
+                    alpaca_exception);
+  REQUIRE_THROWS_AS(cmd_set_target_ra_and_dec_and_goto(23, 2, 59, 'z', 9, 1, 2),
+                    alpaca_exception);
+  REQUIRE_THROWS_AS(
+      cmd_set_target_ra_and_dec_and_goto(23, 2, 59, '+', 91, 1, 2),
+      alpaca_exception);
+  REQUIRE_THROWS_AS(
+      cmd_set_target_ra_and_dec_and_goto(23, 2, 59, '+', 89, 60, 2),
+      alpaca_exception);
+  REQUIRE_THROWS_AS(
+      cmd_set_target_ra_and_dec_and_goto(23, 2, 59, '+', 89, 59, 60),
+      alpaca_exception);
+
+  REQUIRE_THROWS_AS(cmd_set_target_ra_and_dec_and_sync(24, 2, 1, '+', 9, 1, 2),
+                    alpaca_exception);
+  REQUIRE_THROWS_AS(cmd_set_target_ra_and_dec_and_sync(23, 60, 1, '+', 9, 1, 2),
+                    alpaca_exception);
+  REQUIRE_THROWS_AS(cmd_set_target_ra_and_dec_and_sync(23, 2, 60, '+', 9, 1, 2),
+                    alpaca_exception);
+  REQUIRE_THROWS_AS(cmd_set_target_ra_and_dec_and_sync(23, 2, 59, 'z', 9, 1, 2),
+                    alpaca_exception);
+  REQUIRE_THROWS_AS(
+      cmd_set_target_ra_and_dec_and_sync(23, 2, 59, '+', 91, 1, 2),
+      alpaca_exception);
+  REQUIRE_THROWS_AS(
+      cmd_set_target_ra_and_dec_and_sync(23, 2, 59, '+', 89, 60, 2),
+      alpaca_exception);
+  REQUIRE_THROWS_AS(
+      cmd_set_target_ra_and_dec_and_sync(23, 2, 59, '+', 89, 59, 60),
+      alpaca_exception);
 }
 
 std::string zwo_am5_telescope::unique_id() { return ""; }
