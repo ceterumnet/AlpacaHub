@@ -1,14 +1,24 @@
 #include "zwo_am5_telescope.hpp"
 #include "common/alpaca_exception.hpp"
+#include "spdlog/spdlog.h"
 #include <catch2/catch_test_macros.hpp>
+#include <memory>
 #include <vector>
 
 namespace zwo_commands {
 
-// Time and location commands
+
+  // This doesn't respond with anything
+const std::string cmd_switch_to_eq_mode() { return ":AP#"; }
+
+// This doesn't respond with anything
+const std::string cmd_switch_to_alt_az_mode() { return ":AA#"; }
+
+// response should be "MM/DD/YY#"
 const std::string cmd_get_date() { return ":GC#"; }
 
 // I wonder if I should create a date type and ensure it is a valid date?
+  // response should be 1 for success or 0 for failure
 const std::string cmd_set_date(const int &mm, const int &dd, const int &yy) {
   if (mm < 1 || mm > 12)
     throw alpaca_exception(alpaca_exception::INVALID_VALUE,
@@ -23,12 +33,7 @@ const std::string cmd_set_date(const int &mm, const int &dd, const int &yy) {
   return fmt::format(":SC{:#02d}/{:#02d}/{:02d}#", mm, dd, yy);
 }
 
-const std::string cmd_switch_to_eq_mode() { return ":AP#"; }
-
-const std::string cmd_switch_to_alt_az_mode() { return ":AA#"; }
-
-const std::string cmd_get_time() { return ":GL#"; }
-
+  // Response should be 1 for success and 0 for failure
 const std::string cmd_set_time(const int &hh, const int &mm, const int &ss) {
   if (hh < 0 || hh > 23)
     throw alpaca_exception(alpaca_exception::INVALID_VALUE,
@@ -43,16 +48,23 @@ const std::string cmd_set_time(const int &hh, const int &mm, const int &ss) {
   return fmt::format(":SL{0:#02d}:{1:#02d}:{2:#02d}#", hh, mm, ss);
 }
 
+  // response should be "HH:MM:SS#"
+const std::string cmd_get_time() { return ":GL#"; }
+
+// response should be "HH:MM:SS#"
 const std::string cmd_get_sidereal_time() { return ":GS#"; }
 
+  // response is 1 for daylight savings on and 0 for off
 const std::string cmd_get_daylight_savings() { return ":GH#"; }
 
+  // response should be 1
 const std::string cmd_set_daylight_savings(const int &on_or_off) {
   if (on_or_off < 0 || on_or_off > 1)
     throw alpaca_exception(alpaca_exception::INVALID_VALUE, "must be 0 or 1");
   return fmt::format(":SH{0}#", on_or_off);
 }
 
+  // response should be 1 for success and 0 for failure
 const std::string cmd_set_timezone(const char &plus_or_minus,
                                    const int &h_offset, int m_offset = 0) {
   if (plus_or_minus != '+' && plus_or_minus != '-')
@@ -69,8 +81,10 @@ const std::string cmd_set_timezone(const char &plus_or_minus,
                      m_offset);
 }
 
+  // Response should be "sHH:MM#"
 const std::string cmd_get_timezone() { return ":GG#"; }
 
+  // Response should be 1 for success and 0 for failure
 const std::string cmd_set_latitude(const char &plus_or_minus, const int &dd,
                                    const int &mm, int ss) {
   if (plus_or_minus != '+' && plus_or_minus != '-')
@@ -89,8 +103,10 @@ const std::string cmd_set_latitude(const char &plus_or_minus, const int &dd,
                      ss);
 }
 
+// Response should be "sDD*MM#"
 const std::string cmd_get_latitude() { return ":Gt#"; }
 
+  // Response should be 1 for success and 0 for failure
 const std::string cmd_set_longitude(const char &plus_or_minus, const int &ddd,
                                     const int &mm, const int &ss) {
   if (plus_or_minus != '+' && plus_or_minus != '-')
@@ -109,12 +125,16 @@ const std::string cmd_set_longitude(const char &plus_or_minus, const int &ddd,
                      mm, ss);
 }
 
+// Response should be "sDDD*MM#"
 const std::string cmd_get_longitude() { return ":Gg#"; }
 
+  // Response should be "E or W or N for home / zero position"
 const std::string cmd_get_current_cardinal_direction() { return ":Gm#"; }
 
-// Moving commands
+// Response should be "HH:MM:SS#"
+const std::string cmd_get_target_ra() { return ":Gr#"; }
 
+// Response should be 1 for success or 0 for failure
 const std::string cmd_set_target_ra(const int &hh, const int &mm,
                                     const int &ss) {
   if (hh < 0 || hh > 23)
@@ -130,8 +150,11 @@ const std::string cmd_set_target_ra(const int &hh, const int &mm,
   return fmt::format(":Sr{0:#02d}:{1:#02d}:{2:#02d}#", hh, mm, ss);
 }
 
-const std::string cmd_get_target_ra() { return ":Gr#"; }
+// Response should be "DD:MM:SS#"
+// TODO: verify that this doesn't return a * after DD
+const std::string cmd_get_target_dec() { return ":Gd#"; }
 
+// Response should be 1 for success 0 or for failure
 const std::string cmd_set_target_dec(const char &plus_or_minus, const int &dd,
                                      const int &mm, const int &ss) {
   if (plus_or_minus != '+' && plus_or_minus != '-')
@@ -151,18 +174,22 @@ const std::string cmd_set_target_dec(const char &plus_or_minus, const int &dd,
                      ss);
 }
 
-const std::string cmd_get_target_dec() { return ":Gd#"; }
-
+  // Response should be "HH:MM:SS#"
 const std::string cmd_get_current_ra() { return ":GR#"; }
 
+  // Response should be "sDD*MM:SS#"
 const std::string cmd_get_current_dec() { return ":GD#"; }
 
+  // Response should be "DDD*MM:SS#"
 const std::string cmd_get_azimuth() { return ":GZ#"; }
 
+  // Response should be "sDD*MM:SS#"
 const std::string cmd_get_altitude() { return ":GA#"; }
 
+  // Response should be 1 for success or "e2#"
 const std::string cmd_goto() { return ":MS#"; }
 
+  // Response should be none
 const std::string cmd_stop_moving() { return ":Q#"; }
 
 enum move_speed_enum : int {
@@ -182,6 +209,7 @@ auto format_as(move_speed_enum s) { return fmt::underlying(s); }
 
 // 0 - 9 move speed corresponds with:
 // .25, .5, 1, 2, 4, 8, 20, 60, 720, 1440
+// Response should be none
 const std::string cmd_set_moving_speed(move_speed_enum move_speed) {
   if (move_speed < 0 || move_speed > 9)
     throw alpaca_exception(alpaca_exception::INVALID_VALUE,
@@ -190,14 +218,19 @@ const std::string cmd_set_moving_speed(move_speed_enum move_speed) {
   return fmt::format(":R{0}#", move_speed);
 }
 
+  // Response should be none
 const std::string cmd_set_0_5x_sidereal_rate() { return ":RG#"; }
 
+// Response should be none
 const std::string cmd_set_1x_sidereal_rate() { return ":RC#"; }
 
+// Response should be none
 const std::string cmd_set_720x_sidereal_rate() { return ":RM#"; }
 
+// Response should be none
 const std::string cmd_set_1440x_sidereal_rate() { return ":RS#"; }
 
+// Response should be none
 const std::string cmd_set_moving_speed_precise(const double &move_speed) {
   if (move_speed < 0 || move_speed > 1440)
     throw alpaca_exception(alpaca_exception::INVALID_VALUE,
@@ -205,36 +238,52 @@ const std::string cmd_set_moving_speed_precise(const double &move_speed) {
   return fmt::format(":Rv{0:#04.2f}#", move_speed);
 }
 
+// Response should be none
 const std::string cmd_move_towards_east() { return ":Me#"; }
 
+// Response should be none
 const std::string cmd_stop_moving_towards_east() { return ":Qe#"; }
 
+// Response should be none
 const std::string cmd_move_towards_west() { return ":Mw#"; }
 
+// Response should be none
 const std::string cmd_stop_moving_towards_west() { return ":Qw#"; }
 
+// Response should be none
 const std::string cmd_move_towards_north() { return ":Mn#"; }
 
+// Response should be none
 const std::string cmd_stop_moving_towards_north() { return ":Qn#"; }
 
+// Response should be none
 const std::string cmd_move_towards_south() { return ":Ms#"; }
 
+// Response should be none
 const std::string cmd_stop_moving_towards_south() { return ":Qs#"; }
 
+// Response should be none
 const std::string cmd_set_guide_rate_to_sidereal() { return ":TQ#"; }
 
+// Response should be none
 const std::string cmd_set_guide_rate_to_solar() { return ":TS#"; }
 
+// Response should be none
 const std::string cmd_set_guide_rate_to_lunar() { return ":TL#"; }
 
+// Response will be one of 1# 2# or 3# corresponding with the tracking rate enum
 const std::string cmd_get_tracking_rate() { return ":GT#"; }
 
+  // Returns 1 for success or 0 for failure
 const std::string cmd_start_tracking() { return ":Te#"; }
 
+// Returns 1 for success or 0 for failure
 const std::string cmd_stop_tracking() { return ":Td#"; }
 
+// Returns 0# for tracking off, 1# for tracking on, e+error code+#
 const std::string cmd_get_tracking_status() { return ":GAT#"; }
 
+// Response should be none
 const std::string cmd_guide(const char &direction, const int &rate) {
   if (direction != 'e' && direction != 'w' && direction != 'n' &&
       direction != 's')
@@ -246,6 +295,7 @@ const std::string cmd_guide(const char &direction, const int &rate) {
   return fmt::format(":Mg{0}{1:#04d}#", direction, rate);
 }
 
+  // Response should be none
 const std::string cmd_set_guide_rate(const double &guide_rate) {
   if (guide_rate < .1 || guide_rate > .9)
     throw alpaca_exception(alpaca_exception::INVALID_VALUE,
@@ -253,8 +303,10 @@ const std::string cmd_set_guide_rate(const double &guide_rate) {
   return fmt::format(":Rg{0:#01.2f}#", guide_rate);
 }
 
+  // Response is 0.nn#
 const std::string cmd_get_guide_rate() { return ":Ggr#"; }
 
+  // Response is 1 for success and 0 for failure
 const std::string
 cmd_set_act_of_crossing_meridian(const int &perform_meridian_flip,
                                  const int &continue_to_track_after_meridian,
@@ -281,16 +333,33 @@ cmd_set_act_of_crossing_meridian(const int &perform_meridian_flip,
                      limit_angle_after_meridian);
 }
 
+  // TODO: create structure to interpret this
+// Response should be nnsnn#
 const std::string cmd_get_act_of_crossing_meridian() { return ":GTa#"; }
 
+// Response is N/A# for success and e2# for error
 const std::string cmd_sync() { return ":CM#"; }
 
+  // Response should be none
 const std::string cmd_home_position() { return ":hC#"; }
 
+// This is a complicated response...I'm not sure I have this one right yet
+// nNG000000000#
+// ^^^^^^^^^^^^
+// |||||| | |||
+// |||||| | || -> state
+// |||||| | | --> DEC rate
+// |||||| |  ---> RA rate
+// ||||||  -----> flags of dec axis
+// ||||| -------> flags of ra axis
+//
+// n N G 0 0 00 00 0 0 state 0# <- sample response from cmd_get_status
 const std::string cmd_get_status() { return ":GU#"; }
 
+  // Response should be none
 const std::string cmd_park() { return ":hP#"; }
 
+  // Response should be 1 for success or 0 for failure
 // :SMGEsDD*MM:SS&sDDD*MM:SS#
 const std::string cmd_set_lat_and_long(const char &plus_or_minus_lat,
                                        const int &lat_dd, const int lat_mm,
@@ -329,8 +398,10 @@ const std::string cmd_set_lat_and_long(const char &plus_or_minus_lat,
       long_mm, long_ss);
 }
 
+// Response should be "sDD*MM&sDDD*MM#"
 const std::string cmd_get_lat_and_long() { return ":GMGE#"; }
 
+// Response should be 1 for success and 0 for failure
 // :SMTIMM/DD/YY&HH:MM:SS&sHH:MM#
 const std::string cmd_set_date_time_and_tz(
     const int &date_mm, const int &date_dd, const int &date_yy,
@@ -372,14 +443,19 @@ const std::string cmd_set_date_time_and_tz(
       tz_hh, tz_mm);
 }
 
-const std::string cmd_get_date_and_tz() { return ":GMTI#"; }
+// Should return "MM/DD/YY&HH:MM:SS&sHH:MM#"
+const std::string cmd_get_date_and_time_and_tz() { return ":GMTI#"; }
 
+// Should return "HH:MM:SS&sDD*MM:SS#"
 const std::string cmd_get_target_ra_and_dec() { return ":GMeq#"; }
 
+// Should return "HH:MM:SS&sDD*MM:SS#"
 const std::string cmd_get_current_ra_and_dec() { return ":GMEQ#"; }
 
+// Should return "DDD*MM:SS&sDD*MM:SS#"
 const std::string cmd_get_az_and_alt() { return ":GMZA#"; }
 
+  // Should return 1 for success and e+error_code+#
 // :SMeqHH:MM:SS&sDD*MM:SS#
 const std::string cmd_set_target_ra_and_dec_and_goto(
     const int &ra_hh, const int &ra_mm, const int &ra_ss,
@@ -413,6 +489,7 @@ const std::string cmd_set_target_ra_and_dec_and_goto(
       ra_mm, ra_ss, plus_or_minus_dec, dec_dd, dec_mm, dec_ss);
 }
 
+// Should return N/A#: Success, e+ error code+#
 // :SMMCHH:MM:SS&sDD*MM:SS#
 const std::string cmd_set_target_ra_and_dec_and_sync(
     const int &ra_hh, const int &ra_mm, const int &ra_ss,
@@ -580,7 +657,7 @@ TEST_CASE("ZWO commands are correctly formatted and padded with happy values",
   REQUIRE(cmd_set_date_time_and_tz(11, 4, 24, 5, 1, 0, '-', 5) ==
           ":SMTI11/04/24&05:01:00&-05:00#");
 
-  REQUIRE(cmd_get_date_and_tz() == ":GMTI#");
+  REQUIRE(cmd_get_date_and_time_and_tz() == ":GMTI#");
 
   REQUIRE(cmd_get_target_ra_and_dec() == ":GMeq#");
 
@@ -708,16 +785,87 @@ TEST_CASE("ZWO commands throw exception with invalid values",
       cmd_set_target_ra_and_dec_and_sync(23, 2, 59, '+', 89, 59, 60),
       alpaca_exception);
 }
+namespace zwoc = zwo_commands;
 
 std::string zwo_am5_telescope::unique_id() { return ""; }
 
-bool zwo_am5_telescope::connected() { return false; }
+bool zwo_am5_telescope::connected() { return _connected; }
 
-int zwo_am5_telescope::set_connected(bool) { return 0; }
 
-zwo_am5_telescope::zwo_am5_telescope(){};
+
+int zwo_am5_telescope::set_connected(bool connected) {
+  // covers already connected with connect request and
+  // not connected with disconnect request
+  if (_connected && connected)
+    return 0;
+
+  if (connected) {
+    try {
+      printf("Opening serial device\n");
+      spdlog::debug("Opening serial device at {0}", _serial_device_path);
+      _serial_port.open(_serial_device_path);
+      _serial_port.set_option(asio::serial_port_base::baud_rate(9600));
+      _serial_port.set_option(asio::serial_port_base::character_size(8));
+      _serial_port.set_option(asio::serial_port_base::flow_control(
+          asio::serial_port_base::flow_control::none));
+      _serial_port.set_option(
+          asio::serial_port_base::parity(asio::serial_port_base::parity::none));
+      _serial_port.set_option(asio::serial_port_base::stop_bits(
+          asio::serial_port_base::stop_bits::one));
+
+      char buf[512] = {0};
+
+      _serial_port.write_some(asio::buffer(zwoc::cmd_get_status()));
+      _serial_port.read_some(asio::buffer(buf));
+
+      spdlog::debug("mount returned {0}", buf);
+      _connected = true;
+      return 0;
+    } catch (asio::system_error &e) {
+      throw alpaca_exception(
+          alpaca_exception::DRIVER_ERROR,
+          fmt::format(
+              "Problem opening serial connection at {0} with error: {1}",
+              _serial_device_path, e.what()));
+    }
+  }
+  return -1;
+}
+
+TEST_CASE("Serial connection attempt",
+          "[set_connected]") {
+  spdlog::set_level(spdlog::level::debug);
+  zwo_am5_telescope telescope;
+  SECTION("Invalid serial device path") {
+    telescope.set_serial_device("/dev/ttyARGGWTF");
+    REQUIRE_THROWS_AS(telescope.set_connected(true), alpaca_exception);
+  }
+
+  SECTION("Valid serial device path") {
+    telescope.set_serial_device("/dev/ttyACM0");
+    telescope.set_connected(true);
+    REQUIRE(telescope.connected());
+  }
+}
+
+zwo_am5_telescope::zwo_am5_telescope() : _io_context(1), _serial_port(_io_context) {
+  // _io_service = std::make_unique<asio::io_service>();
+  // _serial_port = std::make_unique<asio::serial_port>(_io_service.get());
+};
 
 zwo_am5_telescope::~zwo_am5_telescope(){};
+
+void zwo_am5_telescope::throw_if_not_connected() {
+  if ( !_connected )
+    throw alpaca_exception(alpaca_exception::NOT_CONNECTED, "Mount not connected");
+}
+
+std::string zwo_am5_telescope::send_command_to_mount(const std::string &cmd) {
+  char buf[512] = {0};
+  _serial_port.write_some(asio::buffer(cmd));
+  _serial_port.read_some(asio::buffer(buf));
+  return std::string(buf);
+}
 
 uint32_t zwo_am5_telescope::interface_version() { return 3; }
 
@@ -731,7 +879,7 @@ std::string zwo_am5_telescope::driverinfo() {
   return "ZWO AM5 Telescop Driver Information";
 }
 
-std::string zwo_am5_telescope::name() { return ""; };
+std::string zwo_am5_telescope::name() { return "ZWO AM5 Mount"; };
 
 std::vector<std::string> zwo_am5_telescope::supported_actions() {
   return std::vector<std::string>();
@@ -848,7 +996,19 @@ bool zwo_am5_telescope::tracking() { return 0; }
 int zwo_am5_telescope::set_tracking(bool) { return 0; }
 
 zwo_am5_telescope::drive_rate_enum zwo_am5_telescope::tracking_rate() {
+  spdlog::trace("getting tracking rate from mount");
+  auto result = send_command_to_mount(zwoc::cmd_get_tracking_rate());
+  spdlog::trace("mount returned: {0}", result[0]);
+
   return drive_rate_enum::sidereal;
+}
+
+TEST_CASE("Get tracking rate", "[tracking_rate]") {
+  spdlog::set_level(spdlog::level::trace);
+  zwo_am5_telescope telescope;
+  telescope.set_serial_device("/dev/ttyACM0");
+  telescope.set_connected(true);
+  telescope.tracking_rate();
 }
 
 int zwo_am5_telescope::tracking_rate(drive_rate_enum) { return 0; }
@@ -874,7 +1034,11 @@ zwo_am5_telescope::destination_side_of_pier(double ra, double dec) {
   return pier_side_enum::unknown;
 }
 
-int zwo_am5_telescope::find_home() { return 0; }
+int zwo_am5_telescope::find_home() {
+  throw_if_not_connected();
+  send_command_to_mount(zwo_commands::cmd_home_position());
+  return 0;
+}
 
 int zwo_am5_telescope::move_axis(telescope_axes_enum, axis_rate) { return 0; }
 
@@ -904,3 +1068,13 @@ int zwo_am5_telescope::sync_to_coordinates(double ra, double dec) { return 0; }
 int zwo_am5_telescope::sync_to_target() { return 0; }
 
 int zwo_am5_telescope::unpark() { return 0; }
+
+int zwo_am5_telescope::set_serial_device(
+    const std::string &serial_device_path) {
+  _serial_device_path = serial_device_path;
+  return 0;
+}
+
+std::string zwo_am5_telescope::get_serial_device_path() {
+  return _serial_device_path;
+}

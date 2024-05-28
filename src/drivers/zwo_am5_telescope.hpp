@@ -1,10 +1,15 @@
 #ifndef ZWO_AM5_TELESCOPE_HPP
 #define ZWO_AM5_TELESCOPE_HPP
 
+#include "asio/io_context.hpp"
+#include "asio/io_service.hpp"
+#include "asio/serial_port.hpp"
 #include "interfaces/i_alpaca_telescope.hpp"
+#include <memory>
 
 class zwo_am5_telescope : public i_alpaca_telescope {
 public:
+
   bool connected();
   int set_connected(bool);
   zwo_am5_telescope();
@@ -92,6 +97,20 @@ public:
   int sync_to_coordinates(double ra, double dec);
   int sync_to_target();
   int unpark();
+
+  int set_serial_device(const std::string &);
+  std::string get_serial_device_path();
+private:
+  std::string _serial_device_path;
+  // std::unique_ptr<asio::serial_port> _serial_port;
+  // std::unique_ptr<asio::io_service> _io_service;
+  asio::io_context _io_context;
+  asio::serial_port _serial_port;
+  bool _connected;
+
+  void throw_if_not_connected();
+
+  std::string send_command_to_mount(const std::string &cmd);
 };
 
 #endif
