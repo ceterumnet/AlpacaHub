@@ -39,9 +39,6 @@
 #include <thread>
 #include <vector>
 
-// static auto SPD_CONSOLD = spdlog::stdout_color_mt("console");
-// static auto ERR_LOGGER = spdlog::stderr_color_mt("stderr");
-
 static auto console_sink =
     std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
 static auto http_logger =
