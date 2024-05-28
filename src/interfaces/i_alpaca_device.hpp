@@ -22,7 +22,7 @@ public:
   virtual std::string driver_version() = 0;
   // virtual std::vector<std::string> supported_actions() = 0;
   // i_alpaca_device()
-  virtual ~i_alpaca_device(){};
+  virtual ~i_alpaca_device() { printf("i_alpaca_device destructor called\n"); };
 
   virtual std::vector<std::string> supported_actions() = 0;
 

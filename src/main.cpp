@@ -5,8 +5,6 @@
 //     loggers
 //  2. During destruction of the http logger, restinio attempts to destroy the
 //     sink
-static auto SPD_CONSOLD = spdlog::stdout_color_mt("console");
-static auto ERR_LOGGER = spdlog::stderr_color_mt("stderr");
 
 static asio::io_context io_ctx(1);
 
@@ -83,6 +81,7 @@ void discovery_thread_proc() {
 }
 
 int main(int argc, char **argv) {
+  spdlog::set_default_logger(core_logger);
 
   std::map<std::string, std::string> cli_args;
   for (int i = 1; i < argc; i++) {
@@ -93,18 +92,14 @@ int main(int argc, char **argv) {
     }
   }
 
-  // auto http_logger =
-  // std::make_shared<spdlog::logger>(spdlog::default_logger());
-  auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-  // std::string logger_name = ("common logger");
-  auto http_logger = std::make_shared<spdlog::logger>("HTTP", console_sink);
-  auto core_logger = std::make_shared<spdlog::logger>("CORE", console_sink);
+  // auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+  // auto http_logger = std::make_shared<spdlog::logger>("HTTP", console_sink);
+  // auto core_logger = std::make_shared<spdlog::logger>("CORE", console_sink);
 
   // I may try to get some good formatting in place later. I think
   // this is the default format:
   // spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%n] [%l] %v");
 
-  spdlog::set_default_logger(core_logger);
 
   auto cli_map_iter = cli_args.find("-l");
 
@@ -184,7 +179,7 @@ int main(int argc, char **argv) {
                    thread_pool_size);
       restinio::run(
         restinio::on_thread_pool<alpaca_hub_server::chained_device_traits_t>(thread_pool_size)
-              .logger(std::move(http_logger))
+              .logger(http_logger)
               .address("0.0.0.0")
         .request_handler(alpaca_hub_server::create_device_api_handler(), alpaca_hub_server::server_handler())
               .read_next_http_message_timelimit(100s)
@@ -196,7 +191,7 @@ int main(int argc, char **argv) {
                    thread_pool_size);
       restinio::run(
         restinio::on_this_thread<alpaca_hub_server::chained_device_traits_t>() // single
-              .logger(std::move(http_logger))
+              .logger(http_logger)
               .address("0.0.0.0")
         .request_handler(alpaca_hub_server::create_device_api_handler(), alpaca_hub_server::server_handler())
               .read_next_http_message_timelimit(100s)

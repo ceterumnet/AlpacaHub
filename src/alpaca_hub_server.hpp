@@ -39,6 +39,16 @@
 #include <thread>
 #include <vector>
 
+// static auto SPD_CONSOLD = spdlog::stdout_color_mt("console");
+// static auto ERR_LOGGER = spdlog::stderr_color_mt("stderr");
+
+static auto console_sink =
+    std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+static auto http_logger =
+    std::make_shared<spdlog::logger>("HTTP", console_sink);
+static auto core_logger =
+    std::make_shared<spdlog::logger>("CORE", console_sink);
+
 namespace alpaca_hub_server {
 
 // Move all of this below to the implementation file
@@ -173,30 +183,8 @@ public:
                            const std::string &route_action);
 };
 
-// std::function<restinio::request_handling_status_t(
-//     std::shared_ptr<restinio::generic_request_t<
-//         restinio::no_extra_data_factory_t::data_t>>)>
-
-using device_request_t = restinio::generic_request_t<device_data_factory>;
-
-using device_request_handler_generic_express_lambda_t =
-    std::function<restinio::request_handling_status_t(
-        std::shared_ptr<restinio::router::generic_express_router_t<
-            restinio::router::std_regex_engine_t, device_data_factory>>)>;
-
-using device_request_handler_generic_easy_router_lambda_t =
-    std::function<restinio::request_handling_status_t(
-        std::shared_ptr<restinio::router::generic_easy_parser_router_t<
-            device_data_factory>>)>;
-
-// restinio::router::generic_easy_parser_router_t<
-//     alpaca_hub_server::device_data_factory>
-
 using device_lambda_t =
     std::function<device_request_handler_t(device_request_handle_t &)>;
-// This handler is meant to be the first in the chain
-
-// restinio::request_handling_status_t handler(restinio::request_handle_t req);
 
 std::function<restinio::request_handling_status_t(device_request_handle_t)>
 create_device_api_handler();
