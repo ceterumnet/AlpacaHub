@@ -8,8 +8,10 @@
 #include <memory>
 #include <regex>
 #include <stdexcept>
+#include <thread>
 #include <vector>
 #include <asio/steady_timer.hpp>
+#include "common/alpaca_hub_serial.hpp"
 
 namespace zwo_commands {
 
@@ -1227,78 +1229,6 @@ void zwo_am5_telescope::throw_if_not_connected() {
                            "Mount not connected");
 }
 
-class blocking_reader {
-  asio::serial_port &port;
-  size_t timeout;
-  char c;
-  asio::steady_timer timer;
-  bool read_error;
-  asio::io_context &_io_ctx;
-  // Called when an async read completes or has been cancelled
-  void read_complete(const asio::error_code &error,
-                     size_t bytes_transferred) {
-    // read_error = error;
-    spdlog::trace("read_complete invoked: msg: {0}", error.message());
-    spdlog::trace("  bytes read:               {0}", bytes_transferred);
-
-    if(error.message() != "Success")
-      read_error = true;
-    else
-      read_error = false;
-    // Read has finished, so cancel the
-    // timer.
-    timer.cancel();
-  }
-
-  // Called when the timer's deadline expires.
-  void time_out(const asio::error_code &error) {
-    // Was the timeout was cancelled?
-    spdlog::trace("time_out invoked {0}", error.message());
-    if (error.message() != "Success") {
-      // yes
-      return;
-    }
-    // no, we have timed out, so kill
-    // the read operation
-    // The read callback will be called
-    // with an error
-    port.cancel();
-  }
-
-public:
-  blocking_reader(asio::serial_port &port, size_t timeout, asio::io_context &io_ctx)
-    : port(port), timeout(timeout), _io_ctx(io_ctx), timer(port.get_executor()),
-        read_error(true) {}
-
-  bool read_char(char& val) {
-    using namespace std::chrono_literals;
-
-    val = c = '\0';
-    // After a timeout & cancel it seems we need
-    // to do a reset for subsequent reads to work.
-    _io_ctx.reset();
-    // Asynchronously read 1 character.
-    port.async_read_some(asio::buffer(&c, 1),
-                         std::bind(&blocking_reader::read_complete, this,
-                                   std::placeholders::_1,
-                                   std::placeholders::_2));
-
-    // Setup a deadline time to implement our timeout.
-    timer.expires_from_now(std::chrono::milliseconds(timeout));
-    timer.async_wait(std::bind(&blocking_reader::time_out, this,
-                               std::placeholders::_1));
-    // This will block until a character is read
-    // or until the it is cancelled.
-
-    _io_ctx.run();
-
-    if (!read_error)
-      val = c;
-    return !read_error;
-  }
-
-};
-
 std::string zwo_am5_telescope::send_command_to_mount(const std::string &cmd, bool read_response) {
   char buf[512] = {0};
   _serial_port.write_some(asio::buffer(cmd));
@@ -1309,7 +1239,7 @@ std::string zwo_am5_telescope::send_command_to_mount(const std::string &cmd, boo
     _io_context.reset();
 
     // TODO: we may need to make the read timeout configurable here
-    blocking_reader reader(_serial_port, 100, _io_context);
+    alpaca_hub_serial::blocking_reader reader(_serial_port, 100, _io_context);
     char c;
     while (reader.read_char(c)) {
       rsp += c;
@@ -1373,13 +1303,18 @@ bool zwo_am5_telescope::at_home() {
 }
 
 TEST_CASE("Test mount At home", "[at_home]") {
-  // spdlog::set_level(spdlog::level::trace);
+  spdlog::set_level(spdlog::level::trace);
   zwo_am5_telescope telescope;
   telescope.set_serial_device("/dev/ttyACM0");
   telescope.set_connected(true);
   spdlog::trace("sending cmd_home_position()");
-  telescope.send_command_to_mount(zwoc::cmd_home_position(), false);
+  telescope.send_command_to_mount(zwoc::cmd_home_position());
+  using namespace std::chrono_literals;
+  // Wait for the mount to home...
+  std::this_thread::sleep_for(1000ms);
   REQUIRE(telescope.at_home() == true);
+
+
 }
 
 bool zwo_am5_telescope::at_park() { return false; }
@@ -1491,13 +1426,13 @@ zwo_am5_telescope::drive_rate_enum zwo_am5_telescope::tracking_rate() {
 }
 
 // TODO: finish writing this case
-TEST_CASE("Get tracking rate", "[tracking_rate]") {
-  spdlog::set_level(spdlog::level::trace);
-  zwo_am5_telescope telescope;
-  telescope.set_serial_device("/dev/ttyACM0");
-  telescope.set_connected(true);
-  telescope.tracking_rate();
-}
+// TEST_CASE("Get tracking rate", "[tracking_rate]") {
+//   spdlog::set_level(spdlog::level::trace);
+//   zwo_am5_telescope telescope;
+//   telescope.set_serial_device("/dev/ttyACM0");
+//   telescope.set_connected(true);
+//   telescope.tracking_rate();
+// }
 
 int zwo_am5_telescope::tracking_rate(drive_rate_enum) { return 0; }
 
