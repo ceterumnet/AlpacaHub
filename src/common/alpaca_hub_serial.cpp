@@ -9,9 +9,8 @@ blocking_reader::blocking_reader(asio::serial_port &port, size_t timeout,
 
 void blocking_reader::read_complete(const asio::error_code &error,
                                     size_t bytes_transferred) {
-  // read_error = error;
-  spdlog::trace("read_complete invoked: msg: {0}", error.message());
-  spdlog::trace("  bytes read:               {0}", bytes_transferred);
+  // spdlog::trace("read_complete invoked: msg: {0}", error.message());
+  // spdlog::trace("  bytes read:               {0}", bytes_transferred);
 
   if (error.message() != "Success") {
     read_error = true;
@@ -23,14 +22,14 @@ void blocking_reader::read_complete(const asio::error_code &error,
   }
   // Read has finished, so cancel the
   // timer.
-  spdlog::trace("canceling timer in read_complete");
+  // spdlog::trace("canceling timer in read_complete");
   timer.cancel();
 }
 
 // Called when the timer's deadline expires.
 void blocking_reader::time_out(const asio::error_code &error) {
   // Was the timeout was cancelled?
-  spdlog::trace("time_out invoked {0}", error.message());
+  // spdlog::trace("time_out invoked {0}", error.message());
   if (error.message() != "Success") {
     // yes
     return;
@@ -39,7 +38,7 @@ void blocking_reader::time_out(const asio::error_code &error) {
   // the read operation
   // The read callback will be called
   // with an error
-  spdlog::trace("calling port.cancel()");
+  spdlog::warn("calling port.cancel() - ensure that all telescope commands are explicit if they expect a response or not.");
   port.cancel();
 }
 

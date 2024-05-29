@@ -3,11 +3,13 @@
 
 #include "i_alpaca_device.hpp"
 
+enum pier_side_enum : int { east = 0, west = 1, unknown = -1 };
+
 class i_alpaca_telescope : public i_alpaca_device {
 public:
-  enum alignment_mode_enum { alt_az = 0, polar = 0, german_polar = 0 };
+  enum alignment_mode_enum : int { alt_az = 0, polar = 1, german_polar = 2 };
 
-  enum equatorial_system_enum {
+  enum equatorial_system_enum : int {
     // Custom or unknown equinox and/or reference frame.
     other = 0,
 
@@ -34,11 +36,10 @@ public:
     local_topocentric = 1
   };
 
-  enum pier_side_enum { east = 0, west = 1, unknown = -1 };
 
-  enum drive_rate_enum { sidereal = 0, lunar = 1, solar = 2, king = 3 };
+  enum drive_rate_enum : int { sidereal = 0, lunar = 1, solar = 2, king = 3 };
 
-  enum telescope_axes_enum { primary = 0, secondary = 1, tertiary = 2 };
+  enum telescope_axes_enum : int { primary = 0, secondary = 1, tertiary = 2 };
 
   struct axis_rate {
     double max;
@@ -46,7 +47,7 @@ public:
     axis_rate(const double &max_, const double &min_) : max(max_), min(min_){};
   };
 
-  enum guide_direction_enum {
+  enum guide_direction_enum : int {
     guide_north = 0,
     guide_south = 1,
     guide_east = 2,
