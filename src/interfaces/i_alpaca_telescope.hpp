@@ -57,6 +57,7 @@ public:
   virtual alignment_mode_enum alignment_mode() = 0;
   virtual double altitude() = 0;
   virtual double aperture_diameter() = 0;
+  virtual int set_aperture_diameter(const double &) = 0;
   virtual bool at_home() = 0;
   virtual bool at_park() = 0;
   virtual double azimuth() = 0;

@@ -25,6 +25,7 @@ public:
   alignment_mode_enum alignment_mode();
   double altitude();
   double aperture_diameter();
+  int set_aperture_diameter(const double &);
   bool at_home();
   bool at_park();
   double azimuth();
@@ -100,6 +101,9 @@ public:
 
   int set_serial_device(const std::string &);
   std::string get_serial_device_path();
+
+  std::string send_command_to_mount(const std::string &cmd, bool read_response = true);
+
 private:
   std::string _serial_device_path;
   // std::unique_ptr<asio::serial_port> _serial_port;
@@ -107,10 +111,9 @@ private:
   asio::io_context _io_context;
   asio::serial_port _serial_port;
   bool _connected;
-
+  double _aperture_diameter;
   void throw_if_not_connected();
 
-  std::string send_command_to_mount(const std::string &cmd);
 };
 
 #endif

@@ -1,10 +1,15 @@
 #include "zwo_am5_telescope.hpp"
+#include "asio/io_context.hpp"
 #include "common/alpaca_exception.hpp"
 #include "spdlog/spdlog.h"
 #include <catch2/catch_test_macros.hpp>
+#include <chrono>
+#include <functional>
 #include <memory>
 #include <regex>
+#include <stdexcept>
 #include <vector>
+#include <asio/steady_timer.hpp>
 
 namespace zwo_commands {
 
@@ -788,6 +793,9 @@ TEST_CASE("ZWO commands throw exception with invalid values",
 
 namespace zwoc = zwo_commands;
 
+// I've implemented these with std::regex initially
+// I'm not a huge fan of how I've done this, but it should
+// work pretty well and be "safe"
 namespace zwo_responses {
 
 // 1#, 0# or e+error_code+#
@@ -795,8 +803,9 @@ int parse_standard_response(const std::string &resp) {
   std::string response = resp;
   std::regex resp_regex("^e?([0-9])#");
   std::match_results<std::string::iterator> res;
-  auto is_matched = std::regex_search(response.begin(), response.end(), res, resp_regex);
-  if(!is_matched)
+  auto is_matched =
+      std::regex_search(response.begin(), response.end(), res, resp_regex);
+  if (!is_matched)
     throw alpaca_exception(alpaca_exception::INVALID_VALUE,
                            fmt::format("problem parsing response {0}", resp));
   std::string matched_str = res[1].str();
@@ -807,6 +816,7 @@ struct hh_mm_ss {
   int hh;
   int mm;
   int ss;
+  double as_decimal() { return hh + (mm / 60.0) + (ss / 3600.0); }
 };
 
 hh_mm_ss parse_hh_mm_ss_response(const std::string &resp) {
@@ -834,6 +844,8 @@ struct dd_mm_ss {
   int dd;
   int mm;
   int ss;
+
+  double as_decimal() { return dd + (mm / 60.0) + (ss / 3600.0); }
 };
 
 dd_mm_ss parse_dd_mm_ss_response(const std::string &resp) {
@@ -852,6 +864,41 @@ dd_mm_ss parse_dd_mm_ss_response(const std::string &resp) {
   std::string mm_matched_str = res[2].str();
   data.mm = atoi(mm_matched_str.c_str());
   std::string ss_matched_str = res[3].str();
+  data.ss = atoi(ss_matched_str.c_str());
+  return data;
+}
+
+struct sdd_mm_ss {
+  char plus_or_minus;
+  int dd;
+  int mm;
+  int ss;
+  double as_decimal() {
+    double value = dd + (mm / 60.0) + (ss / 3600.0);
+    if (plus_or_minus == '-')
+      value = value * -1;
+    return value;
+  }
+};
+
+sdd_mm_ss parse_sdd_mm_ss_response(const std::string &resp) {
+  sdd_mm_ss data;
+  std::string response = resp;
+  auto expression = R"(^([+-])([0-9]{2})\*([0-9]{2}):([0-9]{2})#)";
+  std::regex resp_regex(expression);
+  std::match_results<std::string::iterator> res;
+  auto is_matched =
+      std::regex_search(response.begin(), response.end(), res, resp_regex);
+  if (!is_matched)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           fmt::format("problem parsing response {0}", resp));
+  std::string s_matched_str = res[1].str();
+  data.plus_or_minus = s_matched_str.c_str()[0];
+  std::string dd_matched_str = res[2].str();
+  data.dd = atoi(dd_matched_str.c_str());
+  std::string mm_matched_str = res[3].str();
+  data.mm = atoi(mm_matched_str.c_str());
+  std::string ss_matched_str = res[4].str();
   data.ss = atoi(ss_matched_str.c_str());
   return data;
 }
@@ -908,10 +955,108 @@ shh_mm parse_shh_mm_response(const std::string &resp) {
   return data;
 }
 
+struct sdd_mm {
+  char plus_or_minus;
+  int dd;
+  int mm;
+};
+
+sdd_mm parse_sdd_mm_response(const std::string &resp) {
+  sdd_mm data;
+  std::string response = resp;
+  auto expression = R"(^([+-]{1})([0-9]{2})\*([0-9]{2})#)";
+  std::regex resp_regex(expression);
+  std::match_results<std::string::iterator> res;
+  auto is_matched =
+      std::regex_search(response.begin(), response.end(), res, resp_regex);
+  if (!is_matched)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           fmt::format("problem parsing response {0}", resp));
+  std::string s_matched_str = res[1].str();
+  data.plus_or_minus = s_matched_str.c_str()[0];
+  std::string dd_matched_str = res[2].str();
+  data.dd = atoi(dd_matched_str.c_str());
+  std::string mm_matched_str = res[3].str();
+  data.mm = atoi(mm_matched_str.c_str());
+  return data;
+}
+
+struct sddd_mm {
+  char plus_or_minus;
+  int ddd;
+  int mm;
+};
+
+sddd_mm parse_sddd_mm_response(const std::string &resp) {
+  sddd_mm data;
+  std::string response = resp;
+  auto expression = R"(^([+-]{1})([0-9]{3})\*([0-9]{2})#)";
+  std::regex resp_regex(expression);
+  std::match_results<std::string::iterator> res;
+  auto is_matched =
+      std::regex_search(response.begin(), response.end(), res, resp_regex);
+  if (!is_matched)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           fmt::format("problem parsing response {0}", resp));
+  std::string s_matched_str = res[1].str();
+  data.plus_or_minus = s_matched_str.c_str()[0];
+  std::string ddd_matched_str = res[2].str();
+  data.ddd = atoi(ddd_matched_str.c_str());
+  std::string mm_matched_str = res[3].str();
+  data.mm = atoi(mm_matched_str.c_str());
+  return data;
+}
+
+std::vector<std::string> split_on(const std::string &string_to_split,
+                                  const std::string &separator) {
+  std::string copy_of_str = string_to_split;
+  std::vector<std::string> results;
+  size_t pos = 0;
+  while (pos != std::string::npos) {
+    pos = copy_of_str.find(separator);
+    int end_of_chunk = pos;
+    std::string chunk;
+    if (end_of_chunk != std::string::npos)
+      chunk = copy_of_str.substr(0, pos);
+    else
+      chunk = copy_of_str;
+    results.push_back(chunk);
+    copy_of_str = copy_of_str.substr(pos + 1, copy_of_str.size());
+  }
+
+  return results;
+}
+
+struct sdd_mm_sddd_mm {
+  sdd_mm sdd_mm_data;
+  sddd_mm sddd_mm_data;
+};
+
+sdd_mm_sddd_mm parse_sdd_mm_and_sddd_mm_response(const std::string &resp) {
+  sdd_mm_sddd_mm data;
+  std::string sdd_mm_resp_str = split_on(resp, "&")[0];
+  sdd_mm_resp_str.append("#");
+  std::string sddd_mm_resp_str = split_on(resp, "&")[1];
+  data.sdd_mm_data = parse_sdd_mm_response(sdd_mm_resp_str);
+  data.sddd_mm_data = parse_sddd_mm_response(sddd_mm_resp_str);
+  return data;
+}
+
 }; // namespace zwo_responses
 
 // namespace zwo_responses
-// namespace zwor = zwo_responses;
+namespace zwor = zwo_responses;
+
+TEST_CASE("Split On", "[split_on]") {
+  using namespace zwo_responses;
+  spdlog::set_level(spdlog::level::trace);
+  REQUIRE(split_on("foo&bar", "&").size() == 2);
+  REQUIRE(split_on("foo&bar", "&")[0] == "foo");
+  REQUIRE(split_on("foo&bar", "&")[1] == "bar");
+  REQUIRE(split_on("foo&bar&baz", "&")[1] == "bar");
+  REQUIRE(split_on("foo&bar&baz", "&")[2] == "baz");
+  REQUIRE(split_on("foobar", "&").size() == 1);
+}
 
 TEST_CASE("ZWO single value responses", "[zwo_responses_single_value]") {
   using namespace zwo_responses;
@@ -962,6 +1107,44 @@ TEST_CASE("ZWO timezone format", "[zwo_responses_tz]") {
   REQUIRE_THROWS_AS(parse_shh_mm_response("+05:30"), alpaca_exception);
 }
 
+TEST_CASE("ZWO latitude format", "[zwo_responses_latitude]") {
+  using namespace zwo_responses;
+  REQUIRE(parse_sdd_mm_response("+05*30#").plus_or_minus == '+');
+  REQUIRE(parse_sdd_mm_response("+05*30#").dd == 5);
+  REQUIRE(parse_sdd_mm_response("+05*30#").mm == 30);
+
+  REQUIRE_THROWS_AS(parse_sdd_mm_response("+05*30"), alpaca_exception);
+  REQUIRE_THROWS_AS(parse_sdd_mm_response("+05/30#"), alpaca_exception);
+}
+
+TEST_CASE("ZWO longitude format", "[zwo_responses_longitude]") {
+  using namespace zwo_responses;
+  REQUIRE(parse_sddd_mm_response("+105*30#").plus_or_minus == '+');
+  REQUIRE(parse_sddd_mm_response("+105*30#").ddd == 105);
+  REQUIRE(parse_sddd_mm_response("+005*30#").mm == 30);
+
+  REQUIRE_THROWS_AS(parse_sddd_mm_response("+05*30"), alpaca_exception);
+  REQUIRE_THROWS_AS(parse_sddd_mm_response("+05/30#"), alpaca_exception);
+}
+
+TEST_CASE("ZWO altitude format", "[zwo_responses_altitude]") {
+  using namespace zwo_responses;
+  REQUIRE(parse_sdd_mm_ss_response("+34*11:23#").plus_or_minus == '+');
+  REQUIRE(parse_sdd_mm_ss_response("+34*11:23#").dd == 34);
+  REQUIRE(parse_sdd_mm_ss_response("+34*11:23#").mm == 11);
+  REQUIRE(parse_sdd_mm_ss_response("+34*11:23#").ss == 23);
+  REQUIRE_THROWS_AS(parse_sdd_mm_ss_response("+34*11:23"), alpaca_exception);
+}
+
+TEST_CASE("Degrees, hours, minutes, seconds conversions", "[zwo_responses_conversions]") {
+  using namespace zwo_responses;
+
+  sdd_mm_ss data{.plus_or_minus = '-', .dd = 81, .mm = 30, .ss = 30};
+  REQUIRE(data.as_decimal() < -81.508);
+  REQUIRE(data.as_decimal() > -81.509);
+}
+
+// TODO: Need to figure out how to have a unique identifier for this
 std::string zwo_am5_telescope::unique_id() { return ""; }
 
 bool zwo_am5_telescope::connected() { return _connected; }
@@ -969,13 +1152,16 @@ bool zwo_am5_telescope::connected() { return _connected; }
 int zwo_am5_telescope::set_connected(bool connected) {
   // covers already connected with connect request and
   // not connected with disconnect request
-  if (_connected && connected)
+  if (_connected && connected) {
+    spdlog::warn(
+        "set_connected called with connected:{0} but is already in that state");
     return 0;
+  }
 
   if (connected) {
     try {
-      printf("Opening serial device\n");
-      spdlog::debug("Opening serial device at {0}", _serial_device_path);
+      spdlog::debug("Attempting to open serial device at {0}",
+                    _serial_device_path);
       _serial_port.open(_serial_device_path);
       _serial_port.set_option(asio::serial_port_base::baud_rate(9600));
       _serial_port.set_option(asio::serial_port_base::character_size(8));
@@ -1001,6 +1187,16 @@ int zwo_am5_telescope::set_connected(bool connected) {
               "Problem opening serial connection at {0} with error: {1}",
               _serial_device_path, e.what()));
     }
+  } else {
+    try {
+      _serial_port.close();
+    } catch (asio::system_error &e) {
+      throw alpaca_exception(
+          alpaca_exception::DRIVER_ERROR,
+          fmt::format(
+              "Problem closing serial connection at {0} with error: {1}",
+              _serial_device_path, e.what()));
+    }
   }
   return -1;
 }
@@ -1021,12 +1217,7 @@ TEST_CASE("Serial connection attempt", "[set_connected]") {
 }
 
 zwo_am5_telescope::zwo_am5_telescope()
-    : _io_context(1),
-      _serial_port(_io_context){
-          // _io_service = std::make_unique<asio::io_service>();
-          // _serial_port =
-          // std::make_unique<asio::serial_port>(_io_service.get());
-      };
+  : _aperture_diameter(0), _io_context(1), _serial_port(_io_context){};
 
 zwo_am5_telescope::~zwo_am5_telescope(){};
 
@@ -1036,11 +1227,99 @@ void zwo_am5_telescope::throw_if_not_connected() {
                            "Mount not connected");
 }
 
-std::string zwo_am5_telescope::send_command_to_mount(const std::string &cmd) {
+class blocking_reader {
+  asio::serial_port &port;
+  size_t timeout;
+  char c;
+  asio::steady_timer timer;
+  bool read_error;
+  asio::io_context &_io_ctx;
+  // Called when an async read completes or has been cancelled
+  void read_complete(const asio::error_code &error,
+                     size_t bytes_transferred) {
+    // read_error = error;
+    spdlog::trace("read_complete invoked: msg: {0}", error.message());
+    spdlog::trace("  bytes read:               {0}", bytes_transferred);
+
+    if(error.message() != "Success")
+      read_error = true;
+    else
+      read_error = false;
+    // Read has finished, so cancel the
+    // timer.
+    timer.cancel();
+  }
+
+  // Called when the timer's deadline expires.
+  void time_out(const asio::error_code &error) {
+    // Was the timeout was cancelled?
+    spdlog::trace("time_out invoked {0}", error.message());
+    if (error.message() != "Success") {
+      // yes
+      return;
+    }
+    // no, we have timed out, so kill
+    // the read operation
+    // The read callback will be called
+    // with an error
+    port.cancel();
+  }
+
+public:
+  blocking_reader(asio::serial_port &port, size_t timeout, asio::io_context &io_ctx)
+    : port(port), timeout(timeout), _io_ctx(io_ctx), timer(port.get_executor()),
+        read_error(true) {}
+
+  bool read_char(char& val) {
+    using namespace std::chrono_literals;
+
+    val = c = '\0';
+    // After a timeout & cancel it seems we need
+    // to do a reset for subsequent reads to work.
+    _io_ctx.reset();
+    // Asynchronously read 1 character.
+    port.async_read_some(asio::buffer(&c, 1),
+                         std::bind(&blocking_reader::read_complete, this,
+                                   std::placeholders::_1,
+                                   std::placeholders::_2));
+
+    // Setup a deadline time to implement our timeout.
+    timer.expires_from_now(std::chrono::milliseconds(timeout));
+    timer.async_wait(std::bind(&blocking_reader::time_out, this,
+                               std::placeholders::_1));
+    // This will block until a character is read
+    // or until the it is cancelled.
+
+    _io_ctx.run();
+
+    if (!read_error)
+      val = c;
+    return !read_error;
+  }
+
+};
+
+std::string zwo_am5_telescope::send_command_to_mount(const std::string &cmd, bool read_response) {
   char buf[512] = {0};
   _serial_port.write_some(asio::buffer(cmd));
-  _serial_port.read_some(asio::buffer(buf));
-  return std::string(buf);
+
+  std::string rsp;
+
+  if(read_response) {
+    _io_context.reset();
+
+    // TODO: we may need to make the read timeout configurable here
+    blocking_reader reader(_serial_port, 100, _io_context);
+    char c;
+    while (reader.read_char(c)) {
+      rsp += c;
+      if (c == '#') {
+        break;
+      }
+    }
+  }
+
+  return rsp;
 }
 
 uint32_t zwo_am5_telescope::interface_version() { return 3; }
@@ -1061,15 +1340,47 @@ std::vector<std::string> zwo_am5_telescope::supported_actions() {
   return std::vector<std::string>();
 }
 
+// I'm going to hard code this. Based on the development documentation for the
+// AM5, it seems that the mount must be rebooted when the mode is switched.
+// Given that the use case for this is imaging - alt / az mode doesn't really
+// sense.
 zwo_am5_telescope::alignment_mode_enum zwo_am5_telescope::alignment_mode() {
-  return alignment_mode_enum::german_polar;
+  return alignment_mode_enum::polar;
 }
 
-double zwo_am5_telescope::altitude() { return 0; }
+double zwo_am5_telescope::altitude() {
+  throw_if_not_connected();
 
-double zwo_am5_telescope::aperture_diameter() { return 0; }
+  std::string resp = send_command_to_mount(zwoc::cmd_get_altitude());
+  zwor::sdd_mm_ss result = zwor::parse_sdd_mm_ss_response(resp);
 
-bool zwo_am5_telescope::at_home() { return false; }
+  return result.as_decimal();
+}
+
+double zwo_am5_telescope::aperture_diameter() { return _aperture_diameter; }
+
+int zwo_am5_telescope::set_aperture_diameter(const double &diameter) {
+  _aperture_diameter = diameter;
+  return 0;
+};
+
+bool zwo_am5_telescope::at_home() {
+  throw_if_not_connected();
+  std::string resp = send_command_to_mount(zwoc::cmd_get_status());
+  if(resp.find('H') != std::string::npos)
+    return true;
+  return false;
+}
+
+TEST_CASE("Test mount At home", "[at_home]") {
+  // spdlog::set_level(spdlog::level::trace);
+  zwo_am5_telescope telescope;
+  telescope.set_serial_device("/dev/ttyACM0");
+  telescope.set_connected(true);
+  spdlog::trace("sending cmd_home_position()");
+  telescope.send_command_to_mount(zwoc::cmd_home_position(), false);
+  REQUIRE(telescope.at_home() == true);
+}
 
 bool zwo_am5_telescope::at_park() { return false; }
 
@@ -1179,6 +1490,7 @@ zwo_am5_telescope::drive_rate_enum zwo_am5_telescope::tracking_rate() {
   return drive_rate_enum::sidereal;
 }
 
+// TODO: finish writing this case
 TEST_CASE("Get tracking rate", "[tracking_rate]") {
   spdlog::set_level(spdlog::level::trace);
   zwo_am5_telescope telescope;
