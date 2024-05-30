@@ -1516,19 +1516,45 @@ TEST_CASE("Test get declination", "[declination]") {
   // REQUIRE(telescope.at_home() == true);
 }
 
-double zwo_am5_telescope::declination_rate() { return 0; }
+// Returning 0 because we aren't supporting setting a dec rate
+double zwo_am5_telescope::declination_rate() {
+  throw_if_not_connected();
+  return 0;
+}
 
-int zwo_am5_telescope::set_declination_rate(double) { return 0; }
+// not supported
+int zwo_am5_telescope::set_declination_rate(double) {
+  throw_if_not_connected();
+  throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED, "Cannot set declination rate");
+  return 0;
+}
 
-bool zwo_am5_telescope::does_refraction() { return 0; }
+bool zwo_am5_telescope::does_refraction() {
+  throw_if_not_connected();
+  return false;
+}
 
-int zwo_am5_telescope::set_does_refraction(bool) { return 0; }
+int zwo_am5_telescope::set_does_refraction(bool) {
+  throw_if_not_connected();
+  throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED, "Setting refraction not supported");
+  return 0;
+}
 
-zwo_am5_telescope::equatorial_system_enum
-zwo_am5_telescope::equatorial_system() {
+zwo_am5_telescope::equatorial_system_enum zwo_am5_telescope::equatorial_system() {
+  throw_if_not_connected();
   return equatorial_system_enum::j2000;
 }
-double zwo_am5_telescope::focal_length() { return 0; }
+
+double zwo_am5_telescope::focal_length() {
+  throw_if_not_connected();
+  return _focal_length;
+}
+
+int zwo_am5_telescope::set_focal_length(double focal_length) {
+  throw_if_not_connected();
+  _focal_length = focal_length;
+  return 0;
+}
 
 double zwo_am5_telescope::guide_rate_declination() { return 0; }
 

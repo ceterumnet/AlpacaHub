@@ -51,6 +51,7 @@ public:
   int set_does_refraction(bool);
   equatorial_system_enum equatorial_system();
   double focal_length();
+  int set_focal_length(double);
   double guide_rate_declination();
   int set_guide_rate_declination(double);
   double guide_rate_ascension();
@@ -112,6 +113,7 @@ private:
   asio::serial_port _serial_port;
   bool _connected;
   double _aperture_diameter;
+  double _focal_length;
   void throw_if_not_connected();
 
 };
