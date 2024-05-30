@@ -2,6 +2,7 @@
 #include "asio/io_context.hpp"
 #include "common/alpaca_exception.hpp"
 #include "common/alpaca_hub_serial.hpp"
+#include "spdlog/fmt/bundled/format.h"
 #include "spdlog/spdlog.h"
 #include <asio/steady_timer.hpp>
 #include <catch2/catch_test_macros.hpp>
@@ -1054,7 +1055,26 @@ struct ddd_mm_ss {
     double value = ddd + (mm / 60.0) + (ss / 3600.0);
     return value;
   }
+
+  ddd_mm_ss() {};
+  // CTOR to support easy initialization
+  ddd_mm_ss(const double &val) {
+    ddd = val;
+    mm = (val - ddd) * 60.0;
+    ss = (val - ddd - (mm/60.0)) * 3600.0;
+  }
+
+  // format_as()
 };
+
+TEST_CASE("Construction of ddd_mm_ss from double", "[zwo_responses_ddd_mm_ss_ctor]") {
+  using namespace zwo_responses;
+  double val = 100.55;
+  ddd_mm_ss converted(val);
+  spdlog::info("converted: {0} to {1:#03d}*{2:#02d}:{3:#02d}", val, converted.ddd, converted.mm, converted.ss);
+
+  spdlog::info("using formatter converted: {0} to {1}", val, converted);
+}
 
 ddd_mm_ss parse_ddd_mm_ss_response(const std::string &resp) {
   ddd_mm_ss data;
@@ -1081,6 +1101,58 @@ ddd_mm_ss parse_ddd_mm_ss_response(const std::string &resp) {
 
 // namespace zwo_responses
 namespace zwor = zwo_responses;
+
+template <> struct fmt::formatter<zwor::hh_mm_ss> : formatter<string_view> {
+  auto format(zwor::hh_mm_ss d, format_context &ctx) const {
+    return format_to(ctx.out(), "{:#02d}:{:#02d}:{:#02d}", d.hh, d.mm, d.ss);
+  };
+};
+
+template <> struct fmt::formatter<zwor::dd_mm_ss> : formatter<string_view> {
+  auto format(zwor::dd_mm_ss d, format_context &ctx) const {
+    return format_to(ctx.out(), "{:#02d}*{:#02d}:{:#02d}", d.dd, d.mm, d.ss);
+  };
+};
+
+template <> struct fmt::formatter<zwor::sdd_mm_ss> : formatter<string_view> {
+  auto format(zwor::sdd_mm_ss d, format_context &ctx) const {
+    return format_to(ctx.out(), "{}{:#02d}*{:#02d}:{:#02d}", d.plus_or_minus,
+                     d.dd, d.mm, d.ss);
+  };
+};
+
+template <> struct fmt::formatter<zwor::mm_dd_yy> : formatter<string_view> {
+  auto format(zwor::mm_dd_yy d, format_context &ctx) const {
+    return format_to(ctx.out(), "{:#02d}/{:#02d}/{:#02d}",
+                     d.mm, d.dd, d.yy);
+  };
+};
+
+template <> struct fmt::formatter<zwor::shh_mm> : formatter<string_view> {
+  auto format(zwor::shh_mm d, format_context &ctx) const {
+    return format_to(ctx.out(), "{}{:#02d}:{:#02d}", d.plus_or_minus, d.hh, d.mm);
+  };
+};
+
+template <> struct fmt::formatter<zwor::sdd_mm> : formatter<string_view> {
+  auto format(zwor::sdd_mm d, format_context &ctx) const {
+    return format_to(ctx.out(), "{}{:#02d}:{:#02d}", d.plus_or_minus, d.dd,
+                     d.mm);
+  };
+};
+
+template <> struct fmt::formatter<zwor::sddd_mm> : formatter<string_view> {
+  auto format(zwor::sddd_mm d, format_context &ctx) const {
+    return format_to(ctx.out(), "{}{:#03d}:{:#02d}", d.plus_or_minus, d.ddd,
+                     d.mm);
+  };
+};
+
+template <> struct fmt::formatter<zwor::ddd_mm_ss> : formatter<string_view> {
+  auto format(zwor::ddd_mm_ss d, format_context &ctx) const {
+    return format_to(ctx.out(), "{:#03d}*{:#02d}:{:#02d}", d.ddd, d.mm, d.ss);
+  };
+};
 
 TEST_CASE("Split On", "[split_on]") {
   using namespace zwo_responses;
@@ -1363,14 +1435,14 @@ TEST_CASE("Test mount At home", "[at_home]") {
   telescope.find_home();
   using namespace std::chrono_literals;
   // Wait for the mount to home...
-  for(int i = 0; i < 30; i++) {
-    if(telescope.is_slewing())
+  for (int i = 0; i < 30; i++) {
+    if (telescope.is_slewing())
       spdlog::debug("slewing...");
 
-    if(telescope.at_home())
+    if (telescope.at_home())
       break;
 
-    spdlog::debug("waiting 1 second for mount to settle");
+    // spdlog::debug("waiting 1 second for mount to settle");
     std::this_thread::sleep_for(1000ms);
   }
   REQUIRE(telescope.at_home() == true);
@@ -1402,7 +1474,8 @@ bool zwo_am5_telescope::at_park() {
 double zwo_am5_telescope::azimuth() {
   throw_if_not_connected();
   std::string resp = send_command_to_mount(zwoc::cmd_get_azimuth());
-  spdlog::trace("raw value returned from mount for cmd_get_azimuth(): {0}", resp);
+  spdlog::trace("raw value returned from mount for cmd_get_azimuth(): {0}",
+                resp);
   return zwor::parse_ddd_mm_ss_response(resp).as_decimal();
 }
 
@@ -1539,7 +1612,8 @@ double zwo_am5_telescope::declination_rate() {
 // not supported
 int zwo_am5_telescope::set_declination_rate(double) {
   throw_if_not_connected();
-  throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED, "Cannot set declination rate");
+  throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED,
+                         "Cannot set declination rate");
   return 0;
 }
 
@@ -1550,11 +1624,13 @@ bool zwo_am5_telescope::does_refraction() {
 
 int zwo_am5_telescope::set_does_refraction(bool) {
   throw_if_not_connected();
-  throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED, "Setting refraction not supported");
+  throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED,
+                         "Setting refraction not supported");
   return 0;
 }
 
-zwo_am5_telescope::equatorial_system_enum zwo_am5_telescope::equatorial_system() {
+zwo_am5_telescope::equatorial_system_enum
+zwo_am5_telescope::equatorial_system() {
   throw_if_not_connected();
   return equatorial_system_enum::j2000;
 }
@@ -1615,11 +1691,12 @@ int zwo_am5_telescope::set_right_ascension_rate() {
 // accuracy of this is a little bit questionable...
 pier_side_enum zwo_am5_telescope::side_of_pier() {
   spdlog::trace("side_of_pier invoked");
-  std::string resp = send_command_to_mount(zwoc::cmd_get_current_cardinal_direction());
+  std::string resp =
+      send_command_to_mount(zwoc::cmd_get_current_cardinal_direction());
   spdlog::trace("cmd_get_current_cardinal_direction() returned {0}", resp);
-  if(resp.find("W"))
+  if (resp.find("W"))
     return pier_side_enum::west;
-  if(resp.find("E"))
+  if (resp.find("E"))
     return pier_side_enum::east;
   return pier_side_enum::unknown;
 }
@@ -1724,7 +1801,8 @@ bool zwo_am5_telescope::can_move_axis(telescope_axes_enum axis) {
   return false;
 }
 
-pier_side_enum zwo_am5_telescope::destination_side_of_pier(double ra, double dec) {
+pier_side_enum zwo_am5_telescope::destination_side_of_pier(double ra,
+                                                           double dec) {
   return pier_side_enum::unknown;
 }
 
@@ -1733,20 +1811,17 @@ class blocking_telescope_command {
   asio::steady_timer _t;
   zwo_am5_telescope &_telescope;
   bool _is_done_moving;
-public:
-  blocking_telescope_command(zwo_am5_telescope &telescope) : _t(_io_ctx), _telescope(telescope), _is_done_moving(false) {
 
-  }
+public:
+  blocking_telescope_command(zwo_am5_telescope &telescope)
+      : _t(_io_ctx), _telescope(telescope), _is_done_moving(false) {}
+
   void check_is_slewing() {
     using namespace std::chrono_literals;
-
-    spdlog::trace("check_is_slewing invoked");
     _t.expires_from_now(100ms);
-    // auto f = std::bind(&zwo_am5_telescope::block_while_moving, this, t);
     if (_telescope.is_slewing()) {
       _t.expires_from_now(100ms);
-    }
-    else {
+    } else {
       _is_done_moving = true;
       _t.cancel();
     }
@@ -1754,21 +1829,26 @@ public:
 
   bool is_still_moving() {
     using namespace std::chrono_literals;
-
     _io_ctx.reset();
-    _t.async_wait(std::bind(&blocking_telescope_command::check_is_slewing, this));
+    _t.async_wait(
+        std::bind(&blocking_telescope_command::check_is_slewing, this));
     _t.expires_from_now(100ms);
     _io_ctx.run();
     return !_is_done_moving;
   }
+
+  void run() {
+    while(is_still_moving());
+  }
 };
+
 // block until not moving
 void zwo_am5_telescope::block_while_moving() {
   using namespace std::chrono_literals;
   spdlog::trace("block_while_moving invoked");
   blocking_telescope_command cmd(*this);
-  while(cmd.is_still_moving())
-    spdlog::trace("is_still_moving is true" );
+  // while (cmd.is_still_moving());
+  cmd.run();
 }
 
 int zwo_am5_telescope::find_home() {
@@ -1783,20 +1863,52 @@ int zwo_am5_telescope::find_home() {
 
 int zwo_am5_telescope::move_axis(telescope_axes_enum, axis_rate) { return 0; }
 
-int zwo_am5_telescope::park() { return 0; }
+int zwo_am5_telescope::park() {
+  throw_if_not_connected();
+  spdlog::trace("sending cmd_park()");
+  send_command_to_mount(zwoc::cmd_park());
+  block_while_moving();
+  return 0;
+}
 
 int zwo_am5_telescope::pulse_guide(guide_direction_enum direction,
                                    uint32_t duration_ms) {
   return 0;
 }
 
-int zwo_am5_telescope::set_park() { return 0; }
+int zwo_am5_telescope::set_park() {
+  throw_if_not_connected();
+  throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED,
+                         "This mount does not support setting park position");
+  return 0;
+}
 
-int zwo_am5_telescope::slew_to_alt_az(double alt, double az) { return 0; }
+// TODO: implement
+int zwo_am5_telescope::slew_to_alt_az(double alt, double az) {
+  throw_if_not_connected();
+  return 0;
+}
 
-int zwo_am5_telescope::slew_to_alt_az_async(double alt, double az) { return 0; }
+// TODO: implement
+int zwo_am5_telescope::slew_to_alt_az_async(double alt, double az) {
+  throw_if_not_connected();
+  return 0;
+}
 
-int zwo_am5_telescope::slew_to_coordinates(double ra, double dec) { return 0; }
+// TODO: implement
+int zwo_am5_telescope::slew_to_coordinates(double ra, double dec) {
+  throw_if_not_connected();
+  char plus_or_minus = '+';
+  if(dec < 0)
+    plus_or_minus = '-';
+  // TODO: implement from_double on structs
+  // int ra_hh = 0;
+  // int ra_mm = 0;
+  // int ra_ss = 0;
+
+  //send_command_to_mount(zwoc::cmd_set_target_ra_and_dec_and_goto())
+  return 0;
+}
 
 int zwo_am5_telescope::slew_to_target() { return 0; }
 
