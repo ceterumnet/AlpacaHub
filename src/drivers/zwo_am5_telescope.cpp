@@ -1255,7 +1255,10 @@ TEST_CASE("Serial connection attempt", "[set_connected]") {
 zwo_am5_telescope::zwo_am5_telescope()
     : _aperture_diameter(0), _io_context(1), _serial_port(_io_context){};
 
-zwo_am5_telescope::~zwo_am5_telescope(){};
+zwo_am5_telescope::~zwo_am5_telescope() {
+  spdlog::debug("Closing serial connection");
+  _serial_port.close();
+};
 
 void zwo_am5_telescope::throw_if_not_connected() {
   if (!_connected)
@@ -1329,6 +1332,16 @@ int zwo_am5_telescope::set_aperture_diameter(const double &diameter) {
   return 0;
 };
 
+bool zwo_am5_telescope::is_slewing() {
+  auto resp = send_command_to_mount(zwoc::cmd_get_status());
+  auto last_2_chars = resp.substr(resp.size() - 2, resp.size());
+  // 4 is moving status
+  if (last_2_chars.find("4") != std::string::npos &&
+      last_2_chars.find("#") != std::string::npos)
+    return true;
+  return false;
+}
+
 bool zwo_am5_telescope::at_home() {
   throw_if_not_connected();
   std::string resp = send_command_to_mount(zwoc::cmd_get_status());
@@ -1339,28 +1352,29 @@ bool zwo_am5_telescope::at_home() {
 
 // Commenting this out because it moves the scope...
 //  - I need to figure out how to run moving tests separately
-// TEST_CASE("Test mount At home", "[at_home]") {
-//   spdlog::set_level(spdlog::level::debug);
-//   zwo_am5_telescope telescope;
-//   telescope.set_serial_device("/dev/ttyACM0");
-//   telescope.set_connected(true);
-//   spdlog::trace("sending cmd_home_position()");
+TEST_CASE("Test mount At home", "[at_home]") {
+  spdlog::set_level(spdlog::level::trace);
+  zwo_am5_telescope telescope;
+  telescope.set_serial_device("/dev/ttyACM0");
+  telescope.set_connected(true);
+  spdlog::trace("sending cmd_home_position()");
 
-//   telescope.send_command_to_mount(zwoc::cmd_home_position());
-//   using namespace std::chrono_literals;
-//   // Wait for the mount to home...
-//   for(int i = 0; i < 30; i++) {
-//     std::string resp =
-//     telescope.send_command_to_mount(zwoc::cmd_get_status());
-//     spdlog::debug("get_status: {0}", resp);
-//     if(telescope.at_home()) {
-//       break;
-//     }
-//     spdlog::debug("waiting 1 second for mount to settle");
-//     std::this_thread::sleep_for(1000ms);
-//   }
-//   REQUIRE(telescope.at_home() == true);
-// }
+  // telescope.send_command_to_mount(zwoc::cmd_home_position());
+  telescope.find_home();
+  using namespace std::chrono_literals;
+  // Wait for the mount to home...
+  for(int i = 0; i < 30; i++) {
+    if(telescope.is_slewing())
+      spdlog::debug("slewing...");
+
+    if(telescope.at_home())
+      break;
+
+    spdlog::debug("waiting 1 second for mount to settle");
+    std::this_thread::sleep_for(1000ms);
+  }
+  REQUIRE(telescope.at_home() == true);
+}
 
 // TODO: implement
 bool zwo_am5_telescope::at_park() {
@@ -1627,8 +1641,6 @@ int zwo_am5_telescope::set_side_of_pier(pier_side_enum) {
   throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED,
                          "Setting side of pier not supported on this mount");
   return 0;
-
-  return 0;
 }
 
 double zwo_am5_telescope::sidereal_time() { return 0; }
@@ -1716,9 +1728,56 @@ pier_side_enum zwo_am5_telescope::destination_side_of_pier(double ra, double dec
   return pier_side_enum::unknown;
 }
 
+class blocking_telescope_command {
+  asio::io_context _io_ctx;
+  asio::steady_timer _t;
+  zwo_am5_telescope &_telescope;
+  bool _is_done_moving;
+public:
+  blocking_telescope_command(zwo_am5_telescope &telescope) : _t(_io_ctx), _telescope(telescope), _is_done_moving(false) {
+
+  }
+  void check_is_slewing() {
+    using namespace std::chrono_literals;
+
+    spdlog::trace("check_is_slewing invoked");
+    _t.expires_from_now(100ms);
+    // auto f = std::bind(&zwo_am5_telescope::block_while_moving, this, t);
+    if (_telescope.is_slewing()) {
+      _t.expires_from_now(100ms);
+    }
+    else {
+      _is_done_moving = true;
+      _t.cancel();
+    }
+  }
+
+  bool is_still_moving() {
+    using namespace std::chrono_literals;
+
+    _io_ctx.reset();
+    _t.async_wait(std::bind(&blocking_telescope_command::check_is_slewing, this));
+    _t.expires_from_now(100ms);
+    _io_ctx.run();
+    return !_is_done_moving;
+  }
+};
+// block until not moving
+void zwo_am5_telescope::block_while_moving() {
+  using namespace std::chrono_literals;
+  spdlog::trace("block_while_moving invoked");
+  blocking_telescope_command cmd(*this);
+  while(cmd.is_still_moving())
+    spdlog::trace("is_still_moving is true" );
+}
+
 int zwo_am5_telescope::find_home() {
+  using namespace std::chrono_literals;
   throw_if_not_connected();
   send_command_to_mount(zwo_commands::cmd_home_position());
+  block_while_moving();
+  spdlog::debug("initial timer has ended");
+  // block_while_moving();
   return 0;
 }
 
