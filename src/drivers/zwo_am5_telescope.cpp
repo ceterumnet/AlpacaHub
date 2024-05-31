@@ -7,6 +7,7 @@
 #include <asio/steady_timer.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <chrono>
+#include <cstdlib>
 #include <functional>
 #include <memory>
 #include <regex>
@@ -1056,22 +1057,24 @@ struct ddd_mm_ss {
     return value;
   }
 
-  ddd_mm_ss() {};
+  ddd_mm_ss(){};
   // CTOR to support easy initialization
   ddd_mm_ss(const double &val) {
     ddd = val;
     mm = (val - ddd) * 60.0;
-    ss = (val - ddd - (mm/60.0)) * 3600.0;
+    ss = (val - ddd - (mm / 60.0)) * 3600.0;
   }
 
   // format_as()
 };
 
-TEST_CASE("Construction of ddd_mm_ss from double", "[zwo_responses_ddd_mm_ss_ctor]") {
+TEST_CASE("Construction of ddd_mm_ss from double",
+          "[zwo_responses_ddd_mm_ss_ctor]") {
   using namespace zwo_responses;
   double val = 100.55;
   ddd_mm_ss converted(val);
-  spdlog::info("converted: {0} to {1:#03d}*{2:#02d}:{3:#02d}", val, converted.ddd, converted.mm, converted.ss);
+  spdlog::info("converted: {0} to {1:#03d}*{2:#02d}:{3:#02d}", val,
+               converted.ddd, converted.mm, converted.ss);
 
   spdlog::info("using formatter converted: {0} to {1}", val, converted);
 }
@@ -1123,14 +1126,14 @@ template <> struct fmt::formatter<zwor::sdd_mm_ss> : formatter<string_view> {
 
 template <> struct fmt::formatter<zwor::mm_dd_yy> : formatter<string_view> {
   auto format(zwor::mm_dd_yy d, format_context &ctx) const {
-    return format_to(ctx.out(), "{:#02d}/{:#02d}/{:#02d}",
-                     d.mm, d.dd, d.yy);
+    return format_to(ctx.out(), "{:#02d}/{:#02d}/{:#02d}", d.mm, d.dd, d.yy);
   };
 };
 
 template <> struct fmt::formatter<zwor::shh_mm> : formatter<string_view> {
   auto format(zwor::shh_mm d, format_context &ctx) const {
-    return format_to(ctx.out(), "{}{:#02d}:{:#02d}", d.plus_or_minus, d.hh, d.mm);
+    return format_to(ctx.out(), "{}{:#02d}:{:#02d}", d.plus_or_minus, d.hh,
+                     d.mm);
   };
 };
 
@@ -1325,7 +1328,8 @@ TEST_CASE("Serial connection attempt", "[set_connected]") {
 }
 
 zwo_am5_telescope::zwo_am5_telescope()
-    : _aperture_diameter(0), _io_context(1), _serial_port(_io_context){};
+    : _site_longitude(0), _site_latitude(0), _site_elevation(0),
+      _aperture_diameter(0), _io_context(1), _serial_port(_io_context){};
 
 zwo_am5_telescope::~zwo_am5_telescope() {
   spdlog::debug("Closing serial connection");
@@ -1646,13 +1650,29 @@ int zwo_am5_telescope::set_focal_length(double focal_length) {
   return 0;
 }
 
-double zwo_am5_telescope::guide_rate_declination() { return 0; }
+// TODO: clean this up so it is safe
+double zwo_am5_telescope::guide_rate_declination() {
+  throw_if_not_connected();
+  auto resp = send_command_to_mount(zwoc::cmd_get_guide_rate());
+  std::string value = resp.substr(0, 3);
+  return atof(&value[0]);
+}
 
-int zwo_am5_telescope::set_guide_rate_declination(double) { return 0; }
+int zwo_am5_telescope::set_guide_rate_declination(double rate) {
+  throw_if_not_connected();
+  send_command_to_mount(zwoc::cmd_set_guide_rate(rate));
+  return 0;
+}
 
-double zwo_am5_telescope::guide_rate_ascension() { return 0; }
+// We just use the same method as declination
+double zwo_am5_telescope::guide_rate_ascension() {
+  return guide_rate_declination();
+}
 
-int zwo_am5_telescope::set_guide_rate_ascension(double) { return 0; }
+// We just use the same method as declination
+int zwo_am5_telescope::set_guide_rate_ascension(double rate) {
+  return set_guide_rate_declination(rate);
+}
 
 bool zwo_am5_telescope::is_pulse_guiding() { return 0; }
 
@@ -1720,17 +1740,39 @@ int zwo_am5_telescope::set_side_of_pier(pier_side_enum) {
   return 0;
 }
 
-double zwo_am5_telescope::sidereal_time() { return 0; }
+double zwo_am5_telescope::sidereal_time() {
+  throw_if_not_connected();
+  auto resp = send_command_to_mount(zwoc::cmd_get_sidereal_time());
+  zwor::hh_mm_ss data = zwor::parse_hh_mm_ss_response(resp);
+  return data.as_decimal();
+}
 
-double zwo_am5_telescope::site_elevation() { return 0; }
+double zwo_am5_telescope::site_elevation() {
+  throw_if_not_connected();
+  return _site_elevation;
+}
 
-int zwo_am5_telescope::set_site_elevation(double) { return 0; }
+int zwo_am5_telescope::set_site_elevation(double site_elevation) {
+  throw_if_not_connected();
+  _site_elevation = site_elevation;
+  return 0;
+}
 
-double zwo_am5_telescope::site_latitude() { return 0; }
+double zwo_am5_telescope::site_latitude() {
+  throw_if_not_connected();
+  return _site_latitude;
+}
 
-int zwo_am5_telescope::set_site_latitude(double) { return 0; }
+int zwo_am5_telescope::set_site_latitude(double site_latitude) {
+  throw_if_not_connected();
+  _site_latitude = site_latitude;
+  return 0;
+}
 
-double zwo_am5_telescope::site_longitude() { return 0; }
+double zwo_am5_telescope::site_longitude() {
+  throw_if_not_connected();
+  return _site_longitude;
+}
 
 int zwo_am5_telescope::set_site_longitude(double) { return 0; }
 
@@ -1838,7 +1880,8 @@ public:
   }
 
   void run() {
-    while(is_still_moving());
+    while (is_still_moving())
+      ;
   }
 };
 
@@ -1861,7 +1904,54 @@ int zwo_am5_telescope::find_home() {
   return 0;
 }
 
-int zwo_am5_telescope::move_axis(telescope_axes_enum, axis_rate) { return 0; }
+// I'm making an assumption that east/west is mapped to RA...need to test
+int zwo_am5_telescope::move_axis(telescope_axes_enum axis, double rate) {
+  switch(axis) {
+  // RA
+  case telescope_axes_enum::primary:
+    send_command_to_mount(zwoc::cmd_set_moving_speed_precise(std::abs(rate)), false);
+    if(rate > 0)
+      send_command_to_mount(zwoc::cmd_move_towards_east(), false);
+    else if(rate < 0)
+      send_command_to_mount(zwoc::cmd_move_towards_west(), false);
+    else {
+      send_command_to_mount(zwoc::cmd_stop_moving_towards_east(), false);
+      send_command_to_mount(zwoc::cmd_stop_moving_towards_west(), false);
+    }
+    break;
+  // Dec
+  case telescope_axes_enum::secondary:
+    send_command_to_mount(zwoc::cmd_set_moving_speed_precise(std::abs(rate)));
+    if(rate > 0)
+      send_command_to_mount(zwoc::cmd_move_towards_north(), false);
+    else if(rate < 0)
+      send_command_to_mount(zwoc::cmd_move_towards_south(), false);
+    else {
+      send_command_to_mount(zwoc::cmd_stop_moving_towards_south(), false);
+      send_command_to_mount(zwoc::cmd_stop_moving_towards_north(), false);
+    }
+    break;
+  default:
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE, "unrecognized axis");
+  }
+  return 0;
+}
+
+TEST_CASE("Test east/west/north/souch", "[move_axis]") {
+  spdlog::set_level(spdlog::level::trace);
+  zwo_am5_telescope telescope;
+  telescope.set_serial_device("/dev/ttyACM0");
+  telescope.set_connected(true);
+
+  using namespace std::chrono_literals;
+  telescope.send_command_to_mount(zwoc::cmd_set_moving_speed_precise(1440.0),
+                        false);
+  telescope.send_command_to_mount(zwoc::cmd_move_towards_east(), false);
+  spdlog::debug("moving east");
+  std::this_thread::sleep_for(2s);
+  spdlog::debug("moving stopping");
+  telescope.send_command_to_mount(zwoc::cmd_stop_moving_towards_east(), false);
+}
 
 int zwo_am5_telescope::park() {
   throw_if_not_connected();
@@ -1899,14 +1989,14 @@ int zwo_am5_telescope::slew_to_alt_az_async(double alt, double az) {
 int zwo_am5_telescope::slew_to_coordinates(double ra, double dec) {
   throw_if_not_connected();
   char plus_or_minus = '+';
-  if(dec < 0)
+  if (dec < 0)
     plus_or_minus = '-';
   // TODO: implement from_double on structs
   // int ra_hh = 0;
   // int ra_mm = 0;
   // int ra_ss = 0;
 
-  //send_command_to_mount(zwoc::cmd_set_target_ra_and_dec_and_goto())
+  // send_command_to_mount(zwoc::cmd_set_target_ra_and_dec_and_goto())
   return 0;
 }
 

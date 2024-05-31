@@ -87,7 +87,7 @@ public:
   bool can_move_axis(telescope_axes_enum);
   pier_side_enum destination_side_of_pier(double ra, double dec);
   int find_home();
-  int move_axis(telescope_axes_enum, axis_rate);
+  int move_axis(telescope_axes_enum, double);
   int park();
   int pulse_guide(guide_direction_enum direction, uint32_t duration_ms);
   int set_park();
@@ -123,6 +123,9 @@ private:
   double _focal_length;
   void throw_if_not_connected();
   void block_while_moving();
+  double _site_elevation;
+  double _site_latitude;
+  double _site_longitude;
 };
 
 #endif

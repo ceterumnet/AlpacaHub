@@ -118,7 +118,7 @@ public:
   virtual bool can_move_axis(telescope_axes_enum) = 0;
   virtual pier_side_enum destination_side_of_pier(double ra, double dec) = 0;
   virtual int find_home() = 0;
-  virtual int move_axis(telescope_axes_enum, axis_rate) = 0;
+  virtual int move_axis(telescope_axes_enum, double) = 0;
   virtual int park() = 0;
   virtual int pulse_guide(guide_direction_enum direction,
                           uint32_t duration_ms) = 0;

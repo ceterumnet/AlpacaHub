@@ -1,5 +1,16 @@
 # Alpaca Hub
 
+## Name ideas
+- Alpacapus
+- Starmada
+- AlpacaBerry
+
+## Shoulders of Giants
+- ASCOM
+- INDI
+- Indigo
+- AlpacaPi
+- PixInsight
 
 ## Code Style
 I think I'm going to try and stick to Google's C++ guide:
@@ -7,6 +18,11 @@ https://google.github.io/styleguide/cppguide.html
 
 ## Background / Intent of System
 Just for those that are curious as to "why are you building this?"
+
+First of all, a *huge* motivation for this project is scratching my
+itch to write some code for astrophotography. There are more and better
+projects than ever, so I can't exactly claim that this project will
+be better or have any particular advantage.
 
 I wanted to be able to setup my imaging system in a way that "makes
 sense to me." Years ago I started a project that implemented image
@@ -31,12 +47,32 @@ following:
   NINA instance
 - In order to do this, I think the ASCOM Alpaca standard makes sense
 
+## Cool Ideas
+- Embed a lua interpreter
+- Create a sophisticated web app to run everything
+- Use PCL (PixInsight Class Library) to support image stuff in the web pages
+- Create an Alpaca proxy
+- Add web based view of logs
+- Write a web based planetarium :-) and leverage web asm / webgl
+  - Stellarium Web exists...
+-
+
 ## Design Thoughts
 
+### Other Alpaca devices
 - What is the pattern for another remote alpaca device?
   - I don't think I should handle this use case actually...
   - I think that this is a simple hub that can host one or more
     directly connected devices to the system it is running on
+
+## Decision Rationale
+
+### Why C++?
+
+### Why ASCOM Alpaca?
+
+###
+
 - Need to have device level locking / multi-threaded support
 
 # Build notes
