@@ -75,10 +75,13 @@ public:
   int set_slew_settle_time(double);
   double target_declination();
   int set_target_declination(double);
+  double target_right_ascension();
+  int set_target_right_ascension(double);
+
   bool tracking();
   int set_tracking(bool);
   drive_rate_enum tracking_rate();
-  int tracking_rate(drive_rate_enum);
+  int set_tracking_rate(drive_rate_enum);
   std::vector<drive_rate_enum> tracking_rates();
   std::string utc_time();
   int set_utc_time(std::string &);
@@ -106,12 +109,6 @@ public:
 
   std::string send_command_to_mount(const std::string &cmd, bool read_response = true);
 
-  // I'm debating how to approach the async calls which
-  // require knowing when certain operations are complete
-  // for example, GOTO operations
-  // ... the is_slewing is a WIP where I'm checking to see if I
-  // can reliably detect that the mount is busy
-  bool is_slewing();
 private:
   std::string _serial_device_path;
   // std::unique_ptr<asio::serial_port> _serial_port;
@@ -126,6 +123,9 @@ private:
   double _site_elevation;
   double _site_latitude;
   double _site_longitude;
+  double _guide_rate;
+  double _slew_settle_time;
+  bool _parked;
 };
 
 #endif

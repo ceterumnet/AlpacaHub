@@ -3,7 +3,24 @@
 
 #include "i_alpaca_device.hpp"
 
+#include "fmt/format.h"
+
 enum pier_side_enum : int { east = 0, west = 1, unknown = -1 };
+
+struct axis_rate {
+  double Max;
+  double Min;
+  axis_rate(const double &max_, const double &min_) : Max(max_), Min(min_){};
+};
+
+enum guide_direction_enum : int {
+  guide_north = 0,
+  guide_south = 1,
+  guide_east = 2,
+  guide_west = 3
+};
+
+enum drive_rate_enum : int { sidereal = 0, lunar = 1, solar = 2, king = 3 };
 
 class i_alpaca_telescope : public i_alpaca_device {
 public:
@@ -37,22 +54,9 @@ public:
   };
 
 
-  enum drive_rate_enum : int { sidereal = 0, lunar = 1, solar = 2, king = 3 };
 
   enum telescope_axes_enum : int { primary = 0, secondary = 1, tertiary = 2 };
 
-  struct axis_rate {
-    double max;
-    double min;
-    axis_rate(const double &max_, const double &min_) : max(max_), min(min_){};
-  };
-
-  enum guide_direction_enum : int {
-    guide_north = 0,
-    guide_south = 1,
-    guide_east = 2,
-    guide_west = 3
-  };
 
   virtual ~i_alpaca_telescope(){};
   virtual alignment_mode_enum alignment_mode() = 0;
@@ -106,10 +110,13 @@ public:
   virtual int set_slew_settle_time(double) = 0;
   virtual double target_declination() = 0;
   virtual int set_target_declination(double) = 0;
+  virtual double target_right_ascension() = 0;
+  virtual int set_target_right_ascension(double) = 0;
+
   virtual bool tracking() = 0;
   virtual int set_tracking(bool) = 0;
   virtual drive_rate_enum tracking_rate() = 0;
-  virtual int tracking_rate(drive_rate_enum) = 0;
+  virtual int set_tracking_rate(drive_rate_enum) = 0;
   virtual std::vector<drive_rate_enum> tracking_rates() = 0;
   virtual std::string utc_time() = 0;
   virtual int set_utc_time(std::string &) = 0;
