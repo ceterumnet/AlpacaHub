@@ -76,81 +76,15 @@ std::vector<std::string> qhy_alpaca_camera::get_connected_cameras() {
 // End camera collection related functions
 
 // Helper function:
-int qhy_alpaca_camera::get_is_qhy_control_available(CONTROL_ID control_id) {
+int is_qhy_control_available(qhyccd_handle *_cam_handle,
+                             CONTROL_ID control_id) {
   uint32_t qhy_res = QHYCCD_ERROR;
   qhy_res = IsQHYCCDControlAvailable(_cam_handle, control_id);
   return qhy_res;
 }
 
-void qhy_alpaca_camera::initialize_camera_by_camera_id(std::string &camera_id) {
+void qhy_alpaca_camera::init_filterwheel() {
   uint32_t qhy_res = QHYCCD_ERROR;
-
-  _cam_handle = OpenQHYCCD(&camera_id[0]);
-
-  if (_cam_handle == 0) {
-    throw alpaca_exception(
-        alpaca_exception::DRIVER_ERROR,
-        fmt::format("OpenQHYCCD failed for camera_id {0}", camera_id));
-  }
-
-  _qhy_model_name.resize(1024);
-  // Set Model name
-  qhy_res = GetQHYCCDModel(&camera_id[0], &_qhy_model_name[0]);
-  if (qhy_res == QHYCCD_SUCCESS) {
-    _qhy_model_name.resize(std::strlen(_qhy_model_name.c_str()));
-    spdlog::debug("CCDModel Name: {0}", _qhy_model_name);
-  } else {
-    spdlog::error("GetQHYCCDModel returned error code: {0}", qhy_res);
-    _qhy_model_name = "Generic QHY Camera";
-  }
-
-  // This happens once before calling the init
-  qhy_res = GetQHYCCDNumberOfReadModes(_cam_handle, &_num_modes);
-  if (qhy_res != QHYCCD_SUCCESS) {
-    spdlog::error("GetQHYCCDNumberOfReadModes failed with return code: {0}",
-                  qhy_res);
-    throw alpaca_exception(
-        alpaca_exception::DRIVER_ERROR,
-        fmt::format("GetQHYCCDNumberOfReadModes failed for camera_id: {0}",
-                    camera_id[0]));
-  }
-
-  qhy_res = QHYCCD_ERROR;
-
-  qhy_res = SetQHYCCDReadMode(_cam_handle, 0);
-  if (qhy_res != QHYCCD_SUCCESS)
-    spdlog::error("SetQHYCCDReadMode failed with return code: {0}", qhy_res);
-
-  // Let's push the mode names to our private instance variable
-  for (int x = 0; x < _num_modes; x++) {
-    std::string mode_name;
-    // TODO: This is probably too large of a buffer...
-    mode_name.resize(1024);
-    // TODO: I really should handle any errors that might occur
-    GetQHYCCDReadModeName(_cam_handle, x, &mode_name[0]);
-    spdlog::debug("GetQHYCCDReadModeName: {0}", mode_name);
-    mode_name.resize(std::strlen(mode_name.c_str()));
-    _read_mode_names.push_back(mode_name);
-  }
-
-  // Chip info
-  qhy_res = GetQHYCCDChipInfo(_cam_handle, &_chip_w, &_chip_h, &_image_w,
-                              &_image_h, &_pixel_w, &_pixel_h, &_bpp);
-  if (qhy_res == QHYCCD_SUCCESS) {
-    spdlog::debug("Chip info:");
-    spdlog::debug("  chip width:   {0}", _chip_w);
-    spdlog::debug("  chip height:  {0}", _chip_h);
-    spdlog::debug("  image width:  {0}", _image_w);
-    spdlog::debug("  image height: {0}", _image_h);
-    spdlog::debug("  pixel width:  {0}", _pixel_w);
-    spdlog::debug("  pixel height: {0}", _pixel_h);
-    spdlog::debug("  bpp:          {0}", _bpp);
-  } else {
-    spdlog::error(
-        "Failed to successfully call GetQHYCCDChipInfo, SDK returned: {0}",
-        qhy_res);
-  }
-
   qhy_res = QHYCCD_ERROR;
   qhy_res = IsQHYCCDCFWPlugged(_cam_handle);
 
@@ -190,11 +124,30 @@ void qhy_alpaca_camera::initialize_camera_by_camera_id(std::string &camera_id) {
   } else {
     spdlog::debug("No filterwheel detected");
   }
+}
 
-  uint32_t qhy_ccd_type = 0;
-  qhy_ccd_type = GetQHYCCDType(_cam_handle);
-  spdlog::trace("CCDType: {0}", GetQHYCCDType(_cam_handle));
+void qhy_alpaca_camera::chip_info() {
+  uint32_t qhy_res = QHYCCD_ERROR;
 
+  qhy_res = GetQHYCCDChipInfo(_cam_handle, &_chip_w, &_chip_h, &_image_w,
+                              &_image_h, &_pixel_w, &_pixel_h, &_bpp);
+
+  if (qhy_res == QHYCCD_SUCCESS) {
+    spdlog::debug("Chip info:");
+    spdlog::debug("  chip width:      {0}", _chip_w);
+    spdlog::debug("  chip height:     {0}", _chip_h);
+    spdlog::debug("  image width:     {0}", _image_w);
+    spdlog::debug("  image height:    {0}", _image_h);
+    spdlog::debug("  pixel width:     {0}", _pixel_w);
+    spdlog::debug("  pixel height:    {0}", _pixel_h);
+    spdlog::debug("  bpp:             {0}", _bpp);
+  } else {
+    spdlog::error(
+        "Failed to successfully call GetQHYCCDChipInfo, SDK returned: {0}",
+        qhy_res);
+  }
+
+  SetQHYCCDParam(_cam_handle, CONTROL_ID::CONTROL_TRANSFERBIT, _bpp);
   // Initialize subframe width and height to the values returned for the chip
   _num_x = _image_w;
   _num_y = _image_h;
@@ -206,29 +159,46 @@ void qhy_alpaca_camera::initialize_camera_by_camera_id(std::string &camera_id) {
   _effective_num_x = _image_w;
   _effective_num_y = _image_h;
 
+  spdlog::debug("  num_x:           {0}", _num_x);
+  spdlog::debug("  num_y:           {0}", _num_y);
+  spdlog::debug("  max_num_x:       {0}", _max_num_x);
+  spdlog::debug("  max_num_y:       {0}", _max_num_y);
+  spdlog::debug("  effective_num_x: {0}", _effective_num_x);
+  spdlog::debug("  effective_num_y: {0}", _effective_num_y);
+
   if (!_include_overscan) {
     spdlog::debug(
         "We are not including the overscan, calculating effective dimensions.");
     qhy_res = QHYCCD_ERROR;
-    qhy_res = GetQHYCCDEffectiveArea(_cam_handle, &_effective_start_x,
-                                     &_effective_start_y, &_effective_num_x,
-                                     &_effective_num_y);
 
-    if (_effective_num_x != 0) {
+    uint32_t eff_start_x = 0;
+    uint32_t eff_start_y = 0;
+    uint32_t eff_num_x = 0;
+    uint32_t eff_num_y = 0;
+
+    qhy_res = GetQHYCCDEffectiveArea(_cam_handle, &eff_start_x, &eff_start_y,
+                                     &eff_num_x, &eff_num_y);
+
+    if (eff_num_x != 0) {
+      _effective_num_x = eff_num_x;
+      _effective_num_y = eff_num_y;
+      _effective_start_x = eff_start_x;
+      _effective_start_y = eff_start_y;
+
       // Set the max width and height based on the effective values
-      _max_num_x = _effective_num_x;
-      _max_num_y = _effective_num_y;
+      _max_num_x = eff_num_x;
+      _max_num_y = eff_num_y;
 
       // Initialize the image width and height to the effective values
       _image_w = _max_num_x;
       _image_h = _max_num_y;
 
       // Initialize the start x and y based on the effective values
-      _start_x = _effective_start_x;
-      _start_y = _effective_start_y;
+      _start_x = eff_start_x;
+      _start_y = eff_start_y;
 
-      _num_x = _effective_num_x;
-      _num_y = _effective_num_y;
+      _num_x = eff_num_x;
+      _num_y = eff_num_y;
 
       spdlog::debug("Returned from GetQHYCCDEffectiveArea: ");
       spdlog::debug("  _effective_start_x: {0}", _effective_start_x);
@@ -242,25 +212,121 @@ void qhy_alpaca_camera::initialize_camera_by_camera_id(std::string &camera_id) {
       _effective_start_y = 0;
     }
   }
+}
+
+void qhy_alpaca_camera::initialize() {
+  uint32_t qhy_res = QHYCCD_ERROR;
+  spdlog::debug("Calling SetQHYCCDReadMode with {}", _readout_mode);
+  qhy_res = SetQHYCCDReadMode(_cam_handle, _readout_mode);
+  if (qhy_res != QHYCCD_SUCCESS) {
+    spdlog::error("SetQHYCCDReadMode failed with return code: {0}", qhy_res);
+    throw alpaca_exception(alpaca_exception::DRIVER_ERROR,
+                           "SetQHYCCDReadMode failed");
+  }
+
   using namespace std::chrono_literals;
   std::this_thread::sleep_for(200ms);
   // This gets the effective area if there is overscan
+  qhy_res = QHYCCD_ERROR;
+  qhy_res = SetQHYCCDStreamMode(_cam_handle, 0);
+  if (qhy_res != QHYCCD_SUCCESS)
+    spdlog::error("failed to set QHYCCD stream mode: {0}", qhy_res);
 
   // Initialize Camera
   // Probably need to return here or do some kind of invariant for
   // a failed initialization of camera?
-  uint32_t initialization_result = QHYCCD_ERROR;
-  initialization_result = InitQHYCCD(_cam_handle);
-  if (initialization_result == QHYCCD_SUCCESS) {
-    spdlog::debug("Successfully initialized camera");
+  qhy_res = QHYCCD_ERROR;
+  qhy_res = InitQHYCCD(_cam_handle);
+  if (qhy_res == QHYCCD_SUCCESS) {
+    spdlog::debug("InitQHYCCD successful");
   } else {
-    spdlog::error("Error initializing camera, err code: {0}",
-                  initialization_result);
+    spdlog::error("InitQHYCCD failed, err code: {0}", qhy_res);
     throw alpaca_exception(
         alpaca_exception::DRIVER_ERROR,
-        fmt::format("Error initializing camera, err code: {0}",
-                    initialization_result));
+        fmt::format("InitQHYCCD failed, err code: {0}", qhy_res));
   }
+
+  set_gain(_gain);
+  set_offset(_offset);
+  _force_bin = true;
+  set_bin_x(_bin_x);
+  _force_bin = false;
+  // Let's do this when we reset binning
+  // uint32_t read_width = 0;
+  // uint32_t read_height = 0;
+  // qhy_res = QHYCCD_ERROR;
+  // qhy_res =
+  //     GetQHYCCDReadModeResolution(_cam_handle, 0, &read_width, &read_height);
+
+  if (IsQHYCCDControlAvailable(_cam_handle, CONTROL_ID::CONTROL_USBTRAFFIC) ==
+      QHYCCD_SUCCESS) {
+    spdlog::trace("CONTROL_USBTRAFFIC is available");
+    double u_min = 0;
+    double u_max = 0;
+    double u_step = 0;
+    GetQHYCCDParamMinMaxStep(_cam_handle, CONTROL_ID::CONTROL_USBTRAFFIC,
+                             &u_min, &u_max, &u_step);
+    spdlog::trace("USB Traffic Settings - min:{0} max:{1} step:{2}", u_min,
+                  u_max, u_step);
+    SetQHYCCDParam(_cam_handle, CONTROL_USBTRAFFIC, _usb_traffic);
+
+  } else {
+    spdlog::trace("CONTROL_USBTRAFFIC is not available");
+  }
+}
+
+void qhy_alpaca_camera::initialize_camera_by_camera_id(std::string &camera_id) {
+  uint32_t qhy_res = QHYCCD_ERROR;
+
+  _cam_handle = OpenQHYCCD(&camera_id[0]);
+
+  if (_cam_handle == 0) {
+    throw alpaca_exception(
+        alpaca_exception::DRIVER_ERROR,
+        fmt::format("OpenQHYCCD failed for camera_id {0}", camera_id));
+  }
+
+  _qhy_model_name.resize(1024);
+  // Set Model name
+  qhy_res = GetQHYCCDModel(&camera_id[0], &_qhy_model_name[0]);
+  if (qhy_res == QHYCCD_SUCCESS) {
+    _qhy_model_name.resize(std::strlen(_qhy_model_name.c_str()));
+    spdlog::debug("CCDModel Name: {0}", _qhy_model_name);
+  } else {
+    spdlog::error("GetQHYCCDModel returned error code: {0}", qhy_res);
+    _qhy_model_name = "Generic QHY Camera";
+  }
+
+  // This happens once before calling the init
+  qhy_res = GetQHYCCDNumberOfReadModes(_cam_handle, &_num_modes);
+  if (qhy_res != QHYCCD_SUCCESS) {
+    spdlog::error("GetQHYCCDNumberOfReadModes failed with return code: {0}",
+                  qhy_res);
+    throw alpaca_exception(
+        alpaca_exception::DRIVER_ERROR,
+        fmt::format("GetQHYCCDNumberOfReadModes failed for camera_id: {0}",
+                    camera_id[0]));
+  }
+
+  qhy_res = QHYCCD_ERROR;
+
+  // Let's push the mode names to our private instance variable
+  for (int x = 0; x < _num_modes; x++) {
+    std::string mode_name;
+    // TODO: This is probably too large of a buffer...
+    mode_name.resize(1024);
+    // TODO: I really should handle any errors that might occur
+    GetQHYCCDReadModeName(_cam_handle, x, &mode_name[0]);
+    spdlog::debug("GetQHYCCDReadModeName: {0}", mode_name);
+    mode_name.resize(std::strlen(mode_name.c_str()));
+    _read_mode_names.push_back(mode_name);
+  }
+
+  init_filterwheel();
+
+  uint32_t qhy_ccd_type = 0;
+  qhy_ccd_type = GetQHYCCDType(_cam_handle);
+  spdlog::trace("CCDType: {0}", GetQHYCCDType(_cam_handle));
 
   // Get and Set Model name from SDK
   _qhy_model_name.resize(1024);
@@ -286,7 +352,7 @@ void qhy_alpaca_camera::initialize_camera_by_camera_id(std::string &camera_id) {
     _sensor_name = "Generic CCD";
   }
 
-  if (get_is_qhy_control_available(CONTROL_ID::CONTROL_COOLER) ==
+  if (is_qhy_control_available(_cam_handle, CONTROL_ID::CONTROL_COOLER) ==
       QHYCCD_SUCCESS) {
     _can_control_cooler_power = true;
 
@@ -331,8 +397,7 @@ void qhy_alpaca_camera::initialize_camera_by_camera_id(std::string &camera_id) {
   }
 
   _gain = GetQHYCCDParam(_cam_handle, CONTROL_ID::CONTROL_GAIN);
-  spdlog::trace("Gain: {0}", _gain);
-  set_gain(_gain);
+  spdlog::trace("Initial Gain Value fetched from camera: {0}", _gain);
 
   // TODO: I really should handle any error that might occur
   GetQHYCCDParamMinMaxStep(_cam_handle, CONTROL_ID::CONTROL_EXPOSURE,
@@ -353,67 +418,54 @@ void qhy_alpaca_camera::initialize_camera_by_camera_id(std::string &camera_id) {
     // I don't love the c style cast here, but it should be pretty safe
     _offsets.push_back(std::to_string((int)_offset_min + i));
   }
-  _offset = _offset_min;
-  spdlog::trace("Trying to set offset: {0}",
-                SetQHYCCDParam(_cam_handle, CONTROL_OFFSET, _offset_min));
 
-  // Camera Status
-  uint8_t cam_status_buf[4] = {};
-  // TODO: I really should handle any error that might occur
-  GetQHYCCDCameraStatus(_cam_handle, cam_status_buf);
-  spdlog::trace("Camera Status: {0:#x}, {1:#x}, {2:#x}, {3:#x}",
-                cam_status_buf[0], cam_status_buf[1], cam_status_buf[3],
-                cam_status_buf[3]);
+  _offset = GetQHYCCDParam(_cam_handle, CONTROL_ID::CONTROL_OFFSET);
+  spdlog::trace("Initial Offset Value fetched from camera: {0}", _offset);
 
-  uint32_t read_width = 0;
-  uint32_t read_height = 0;
-
-  uint32_t res_result = QHYCCD_ERROR;
-  res_result =
-      GetQHYCCDReadModeResolution(_cam_handle, 0, &read_width, &read_height);
-  if (res_result == QHYCCD_SUCCESS) {
-    spdlog::trace("Successfully fetched read mode resolution: ");
-    spdlog::trace("  values: read_width: {0}, read_height: {1}", read_width,
-                  read_height);
-  } else {
-    spdlog::error("failed to get read mode resolution");
-  }
-  // This is spurious I think?
-  set_bin_x(_bin_x);
-
-  // Set the resolution here, but I believe we must set it before each exposure
-  set_resolution(_effective_start_x, _effective_start_y, _effective_num_x,
-                 _effective_num_y);
-
-  // SetQHYCCDParam(_cam_handle, CONTROL_USBTRAFFIC, 30);
-  uint32_t stream_mode_set_res = SetQHYCCDStreamMode(_cam_handle, 0);
-  if (stream_mode_set_res != QHYCCD_SUCCESS)
-    spdlog::error("failed to set QHYCCD stream mode: {0}", stream_mode_set_res);
+  // uint32_t stream_mode_set_res = SetQHYCCDStreamMode(_cam_handle, 0);
+  // if (stream_mode_set_res != QHYCCD_SUCCESS)
+  //   spdlog::error("failed to set QHYCCD stream mode: {0}",
+  //   stream_mode_set_res);
   // SetQHYCCDParam(_cam_handle, CONTROL_GAIN, 14);
 
-  if (IsQHYCCDControlAvailable(_cam_handle, CONTROL_ID::CONTROL_USBTRAFFIC)) {
-    spdlog::trace("CONTROL_USBTRAFFIC is available");
-    double u_min = 0;
-    double u_max = 0;
-    double u_step = 0;
-    GetQHYCCDParamMinMaxStep(_cam_handle, CONTROL_USBTRAFFIC, &u_min, &u_max,
-                             &u_step);
-    spdlog::trace("USB Traffic Settings - min:{0} max:{1} step:{2}", u_min,
-                  u_max, u_step);
+  // if (IsQHYCCDControlAvailable(_cam_handle, CONTROL_ID::CONTROL_USBTRAFFIC)
+  // ==
+  //     QHYCCD_SUCCESS) {
+  //   spdlog::trace("CONTROL_USBTRAFFIC is available");
+  //   double u_min = 0;
+  //   double u_max = 0;
+  //   double u_step = 0;
+  //   GetQHYCCDParamMinMaxStep(_cam_handle, CONTROL_ID::CONTROL_USBTRAFFIC,
+  //                            &u_min, &u_max, &u_step);
+  //   spdlog::trace("USB Traffic Settings - min:{0} max:{1} step:{2}", u_min,
+  //                 u_max, u_step);
+  //   SetQHYCCDParam(_cam_handle, CONTROL_USBTRAFFIC, 0);
 
-  } else {
-    spdlog::trace("CONTROL_USBTRAFFIC is not available");
-  }
+  // } else {
+  //   spdlog::trace("CONTROL_USBTRAFFIC is not available");
+  // }
 
-  if (IsQHYCCDControlAvailable(_cam_handle, CONTROL_ID::CONTROL_SPEED)) {
-    spdlog::trace("CONTROL_SPEED Available");
-    spdlog::trace("Trying to set usb control speed: {0}",
-                  SetQHYCCDParam(_cam_handle, CONTROL_ID::CONTROL_SPEED, 2));
-  }
+  // if (IsQHYCCDControlAvailable(_cam_handle, CONTROL_ID::CONTROL_DDR) ==
+  //     QHYCCD_SUCCESS) {
+  //   spdlog::trace("CONTROL_DDR is available");
+  //   double u_min = 0;
+  //   double u_max = 0;
+  //   double u_step = 0;
+  //   GetQHYCCDParamMinMaxStep(_cam_handle, CONTROL_ID::CONTROL_DDR, &u_min,
+  //                            &u_max, &u_step);
+  //   spdlog::trace("DDR Settings - min:{0} max:{1} step:{2}", u_min, u_max,
+  //                 u_step);
 
-  spdlog::trace(
-      "Can enter single frame mode?: {0}",
-      IsQHYCCDControlAvailable(_cam_handle, CONTROL_ID::CAM_SINGLEFRAMEMODE));
+  //   SetQHYCCDParam(_cam_handle, CONTROL_ID::CONTROL_DDR, 1.0);
+  // } else {
+  //   spdlog::trace("CONTROL_DDR is not available");
+  // }
+
+  // spdlog::trace(
+  //     "Can enter single frame mode?: {0}",
+  //     IsQHYCCDControlAvailable(_cam_handle, CONTROL_ID::CAM_SINGLEFRAMEMODE)
+  //     ==
+  //         QHYCCD_SUCCESS);
   spdlog::trace("Determining max binning");
   _max_bin = 1;
 
@@ -425,15 +477,35 @@ void qhy_alpaca_camera::initialize_camera_by_camera_id(std::string &camera_id) {
     _max_bin = 4;
   if (IsQHYCCDControlAvailable(_cam_handle, CAM_BIN2X2MODE) == QHYCCD_SUCCESS)
     _max_bin = 2;
-
+  spdlog::trace("     max bin: {}", _max_bin);
   _has_shutter = false;
-  _has_shutter =
-      IsQHYCCDControlAvailable(_cam_handle, CONTROL_ID::CAM_MECHANICALSHUTTER);
+  _has_shutter = IsQHYCCDControlAvailable(_cam_handle,
+                                          CONTROL_ID::CAM_MECHANICALSHUTTER) ==
+                 QHYCCD_SUCCESS;
 
   if (_has_shutter)
     spdlog::debug("CAM_MECHANICALSHUTTER is available");
   else
     spdlog::debug("CAM_MECHANICALSHUTTER control is not available");
+
+  if (IsQHYCCDControlAvailable(_cam_handle, CONTROL_ID::CONTROL_SPEED) ==
+      QHYCCD_SUCCESS) {
+    spdlog::debug("CONTROL_SPEED Available");
+    double speed_min = 0;
+    double speed_max = 0;
+    double speed_step = 0;
+    GetQHYCCDParamMinMaxStep(_cam_handle, CONTROL_USBTRAFFIC, &speed_min,
+                             &speed_max, &speed_step);
+    spdlog::debug("USB Speed Settings - min:{0} max:{1} step:{2}", speed_min,
+                  speed_max, speed_step);
+
+    spdlog::debug(
+        "Trying to set usb control speed: {0}",
+        SetQHYCCDParam(_cam_handle, CONTROL_ID::CONTROL_SPEED, speed_max - 1));
+
+    spdlog::debug("Speed after setting: {0}",
+                  GetQHYCCDParam(_cam_handle, CONTROL_ID::CONTROL_SPEED));
+  }
 }
 
 // TODO: I need to move a lot of the code in the CTOR to an initialization
@@ -451,7 +523,8 @@ qhy_alpaca_camera::qhy_alpaca_camera(std::string &camera_id)
       _include_overscan(false), _max_num_x(0), _max_num_y(0),
       _percent_complete(100), _set_cooler_power(0),
       _can_control_ccd_temp(false), _run_cooler_thread(false),
-      _has_filter_wheel(false) {
+      _has_filter_wheel(false), _last_camera_temp(0), _last_cooler_power(0),
+      _usb_traffic(20), _force_bin(false) {
   initialize_camera_by_camera_id(camera_id);
 };
 
@@ -474,8 +547,10 @@ std::string qhy_alpaca_camera::driver_version() { return "v0.1"; }
 bool qhy_alpaca_camera::connected() { return this->_connected; };
 
 int qhy_alpaca_camera::set_connected(bool connected) {
-  std::lock_guard lock(_cam_mutex);
+  // std::lock_guard lock(_cam_mutex);
   _connected = connected;
+  if (_connected)
+    initialize();
   return 0;
 }
 
@@ -487,14 +562,18 @@ int qhy_alpaca_camera::set_bin_x(short x) {
   spdlog::debug("setting bin: {0}", x);
 
   // no op if binning is already set
-  if (x == _bin_x)
+  if (x == _bin_x && !_force_bin)
     return 0;
 
   std::lock_guard lock(_cam_mutex);
 
   if (x > _max_bin || x < 1)
     return -1;
+
+  chip_info();
+
   if (SetQHYCCDBinMode(_cam_handle, x, x) == QHYCCD_SUCCESS) {
+
     _bin_x = x;
     _bin_y = x;
 
@@ -507,21 +586,33 @@ int qhy_alpaca_camera::set_bin_x(short x) {
 
     return 0;
   } else {
+    spdlog::error("SetQHYCCDBinMode failed");
     return -1;
   }
 }
 
-int qhy_alpaca_camera::set_bin_y(short y) { return set_bin_x(y); }
+int qhy_alpaca_camera::set_bin_y(short y) {
+  // Making this a no-op for debug purpose
+  return 0;
+  // return set_bin_x(y);
+}
 
 qhy_alpaca_camera::camera_state_enum qhy_alpaca_camera::camera_state() {
-  std::lock_guard lock(_cam_mutex);
+  // std::lock_guard lock(_cam_mutex);
   return _camera_state;
 };
 
 // width in unbinned pixels
 // excludes overscan pixels unless inclusion is enabled
-long qhy_alpaca_camera::camera_x_size() { return _max_num_x; };
-long qhy_alpaca_camera::camera_y_size() { return _max_num_y; };
+long qhy_alpaca_camera::camera_x_size() {
+  spdlog::debug("camera_x_size called returning {}", _max_num_x);
+  return _max_num_x;
+};
+
+long qhy_alpaca_camera::camera_y_size() {
+  spdlog::debug("camera_y_size called returning {}", _max_num_y);
+  return _max_num_y;
+};
 
 // All QHY Cameras support this according to the SDK
 bool qhy_alpaca_camera::can_abort_exposure() { return true; };
@@ -550,15 +641,25 @@ bool qhy_alpaca_camera::can_set_ccd_temperature() {
 bool qhy_alpaca_camera::can_stop_exposure() { return true; };
 
 double qhy_alpaca_camera::ccd_temperature() {
-  if (!_can_control_cooler_power)
-    throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED,
-                           "CCD temp not supported on this camera");
-  spdlog::trace("ccd_temperature() invoked");
-  std::lock_guard lock(_cam_mutex);
-  double current_temp = 0;
-  current_temp = GetQHYCCDParam(_cam_handle, CONTROL_ID::CONTROL_CURTEMP);
-  spdlog::trace("ccd_temperature: {0}", current_temp);
-  return current_temp;
+  // if (!_can_control_cooler_power)
+  //   throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED,
+  //                          "CCD temp not supported on this camera");
+
+  // spdlog::trace("ccd_temperature() invoked");
+
+  // Let's not try to read the temp while downloading
+  if (_camera_state != camera_state_enum::CAMERA_READING) {
+    // Need to figure out if I should actually get a lock here or
+    // just check if the program is reading...
+    std::lock_guard lock(_cam_mutex);
+    _last_camera_temp =
+        GetQHYCCDParam(_cam_handle, CONTROL_ID::CONTROL_CURTEMP);
+  } else {
+    spdlog::trace(
+        "skipping get temp since camera we are downloading from camera");
+  }
+
+  return _last_camera_temp;
 };
 
 // I'm just basically checking if the cur pwm or manual pwm is set
@@ -566,7 +667,7 @@ double qhy_alpaca_camera::ccd_temperature() {
 // not sure it's necessary
 bool qhy_alpaca_camera::cooler_on() {
   spdlog::trace("cooler_on() invoked");
-  std::lock_guard lock(_cam_mutex);
+  // std::lock_guard lock(_cam_mutex);
   if (!_can_control_cooler_power) {
     throw alpaca_exception(
         alpaca_exception::NOT_IMPLEMENTED,
@@ -584,9 +685,12 @@ bool qhy_alpaca_camera::should_run_cooler_proc() {
 void qhy_alpaca_camera::ensure_temp_is_set() {
   std::lock_guard lock(_cam_mutex);
   spdlog::trace("ensuring temp is set");
-  SetQHYCCDParam(_cam_handle, CONTROL_ID::CONTROL_COOLER, _current_set_temp);
-  spdlog::trace("current temp is {0}",
-                GetQHYCCDParam(_cam_handle, CONTROL_ID::CONTROL_CURTEMP));
+  // According to QHY docs we should not run temp loop during download
+  if (_camera_state != camera_state_enum::CAMERA_READING) {
+    SetQHYCCDParam(_cam_handle, CONTROL_ID::CONTROL_COOLER, _current_set_temp);
+    spdlog::trace("current temp is {0}",
+                  GetQHYCCDParam(_cam_handle, CONTROL_ID::CONTROL_CURTEMP));
+  }
 }
 
 void qhy_alpaca_camera::cooler_proc() {
@@ -639,11 +743,16 @@ double qhy_alpaca_camera::cooler_power() {
   if (!_can_control_cooler_power)
     throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED,
                            "Cooler Power Setting not available on this camera");
-  std::lock_guard lock(_cam_mutex);
-  auto curpwm = GetQHYCCDParam(_cam_handle, CONTROL_CURPWM) / 255.0 * 100.0;
-  spdlog::trace("cooler_power() invoked and returning {0}%", curpwm);
 
-  return curpwm;
+  if (_camera_state != camera_state_enum::CAMERA_READING) {
+    std::lock_guard lock(_cam_mutex);
+    _last_cooler_power =
+        GetQHYCCDParam(_cam_handle, CONTROL_CURPWM) / 255.0 * 100.0;
+    spdlog::trace("cooler_power() invoked and returning {0}%",
+                  _last_cooler_power);
+  }
+
+  return _last_cooler_power;
 };
 
 // TODO: This is one of those weird ones...not sure
@@ -657,7 +766,7 @@ double qhy_alpaca_camera::electrons_per_adu() {
 // TODO: This is an implementation that I'm not sure is right or not yet.
 // I need to test this.
 double qhy_alpaca_camera::full_well_capacity() {
-  std::lock_guard lock(_cam_mutex);
+  // std::lock_guard lock(_cam_mutex);
   double fullwell = pow(2, _bpp) - 1;
   // QHYCCD_curveFullWell(_cam_handle, _gain, &fullwell);
   return fullwell;
@@ -751,12 +860,11 @@ void qhy_alpaca_camera::read_image_from_camera() {
   img_size = GetQHYCCDMemLength(_cam_handle);
   spdlog::trace("Image size: {0}", img_size);
   _img_data.resize(img_size);
-
-  spdlog::trace("Calling GetQHYCCDSingleFrame and fetching img_data", img_size);
-
   // Adding this per the SDK spec so that nothing else should happen while
   // reading from the camera
+
   std::lock_guard lock(_cam_mutex);
+  spdlog::trace("Calling GetQHYCCDSingleFrame and fetching img_data", img_size);
   uint32_t r =
       GetQHYCCDSingleFrame(_cam_handle, &w, &h, &bpp, &channels, &_img_data[0]);
 
@@ -777,7 +885,7 @@ void qhy_alpaca_camera::read_image_from_camera() {
 
 // TODO: This isn't quite right yet
 bool qhy_alpaca_camera::image_ready() {
-  std::lock_guard lock(_cam_mutex);
+  // std::lock_guard lock(_cam_mutex);
 
   if (_camera_state == camera_state_enum::CAMERA_IDLE &&
       _last_exposure_duration > 0) {
@@ -816,30 +924,36 @@ short qhy_alpaca_camera::max_bin_x() { return _max_bin; }
 short qhy_alpaca_camera::max_bin_y() { return max_bin_x(); }
 
 long qhy_alpaca_camera::num_x() {
-  std::lock_guard lock(_cam_mutex);
-  uint32_t startX = 0;
-  uint32_t startY = 0;
-  uint32_t sizeX = 0;
-  uint32_t sizeY = 0;
-  uint32_t r =
-      GetQHYCCDCurrentROI(_cam_handle, &startX, &startY, &sizeX, &sizeY);
-  return sizeX;
+  // std::lock_guard lock(_cam_mutex);
+  // uint32_t startX = 0;
+  // uint32_t startY = 0;
+  // uint32_t sizeX = 0;
+  // uint32_t sizeY = 0;
+  // uint32_t r =
+  //     GetQHYCCDCurrentROI(_cam_handle, &startX, &startY, &sizeX, &sizeY);
+
+  spdlog::debug("num_x() invoked and returning: {}", _num_x);
+  return _num_x;
 }
 
 long qhy_alpaca_camera::num_y() {
-  std::lock_guard lock(_cam_mutex);
-  uint32_t startX = 0;
-  uint32_t startY = 0;
-  uint32_t sizeX = 0;
-  uint32_t sizeY = 0;
+  // std::lock_guard lock(_cam_mutex);
+  // uint32_t startX = 0;
+  // uint32_t startY = 0;
+  // uint32_t sizeX = 0;
+  // uint32_t sizeY = 0;
 
-  uint32_t r =
-      GetQHYCCDCurrentROI(_cam_handle, &startX, &startY, &sizeX, &sizeY);
-  return sizeY;
+  // uint32_t r =
+  //     GetQHYCCDCurrentROI(_cam_handle, &startX, &startY, &sizeX, &sizeY);
+  // return sizeY;
+  spdlog::debug("num_y() invoked and returning: {}", _num_y);
+  return _num_y;
 }
 
 // TODO: refactor this code as it is a common call to the SetQHYCCDResolution
 int qhy_alpaca_camera::set_num_x(long num_x) {
+  spdlog::debug("set_num_x called with: {}", num_x);
+  std::lock_guard lock(_cam_mutex);
   if (num_x > _max_num_x)
     throw alpaca_exception(
         alpaca_exception::INVALID_VALUE,
@@ -858,6 +972,8 @@ int qhy_alpaca_camera::set_num_x(long num_x) {
 }
 
 int qhy_alpaca_camera::set_num_y(long num_y) {
+  spdlog::debug("set_num_y called with: {}", num_y);
+  std::lock_guard lock(_cam_mutex);
   if (num_y > _max_num_y)
     throw alpaca_exception(
         alpaca_exception::INVALID_VALUE,
@@ -891,7 +1007,7 @@ double qhy_alpaca_camera::get_set_ccd_temperature() {
   // throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED,
   //                        "This is an open loop cooler. PWM can be controlled,
   //                        " "but temp can not be set directly. ");
-  std::lock_guard lock(_cam_mutex);
+  // std::lock_guard lock(_cam_mutex);
   return _current_set_temp;
   // throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED,
   //                        "automatic temperature control not implemented");
@@ -901,8 +1017,9 @@ double qhy_alpaca_camera::get_set_ccd_temperature() {
 long qhy_alpaca_camera::start_x() { return _start_x; }
 
 int qhy_alpaca_camera::set_start_x(long start_x) {
+  std::lock_guard lock(_cam_mutex);
   spdlog::debug("set_start_x: {0}", start_x);
-  if (start_x > _effective_num_x)
+  if (start_x > (_effective_num_x / _bin_x))
     throw alpaca_exception(
         alpaca_exception::INVALID_VALUE,
         fmt::format("Attempted to set sub-frame start position x: {0}, which "
@@ -913,11 +1030,12 @@ int qhy_alpaca_camera::set_start_x(long start_x) {
 }
 
 // Subframe start y coordinate
-long qhy_alpaca_camera::start_y() { return _start_y; };
+long qhy_alpaca_camera::start_y() { return _start_y; }
 
 int qhy_alpaca_camera::set_start_y(long start_y) {
+  std::lock_guard lock(_cam_mutex);
   spdlog::debug("set_start_y: {0}", start_y);
-  if (start_y > _effective_num_y)
+  if (start_y > (_effective_num_y / _bin_y))
     throw alpaca_exception(
         alpaca_exception::INVALID_VALUE,
         fmt::format("Attempted to set sub-frame start position y: {0}, which "
@@ -954,7 +1072,7 @@ int qhy_alpaca_camera::start_exposure_proc() {
   _io.reset();
   uint32_t r = 0;
   spdlog::trace("start_exposure_proc() invoked");
-  spdlog::trace("Invoking ExpQHYCCDSingleFrame");
+  spdlog::debug("Invoking ExpQHYCCDSingleFrame");
 
   auto time_stamp = std::chrono::system_clock::now();
 
@@ -967,14 +1085,14 @@ int qhy_alpaca_camera::start_exposure_proc() {
   if (remaining > 100)
     wait_time = remaining / 1000000;
 
-  spdlog::trace("ExpQHYCCDSingleFrame returned and {0}s remaining", wait_time);
+  spdlog::debug("ExpQHYCCDSingleFrame returned and {0}s remaining", wait_time);
   if (r == QHYCCD_SUCCESS || r == QHYCCD_READ_DIRECTLY) {
     asio::steady_timer __t(_io, asio::chrono::seconds(wait_time));
     // I may need to have the __t as a member so that I can control the expiry
     // of the timer when an exposure is canceled and the image must be read out
     __t.async_wait(std::bind(&qhy_alpaca_camera::read_image_from_camera, this));
     _io.run();
-    spdlog::trace("start_exposure_proc ended");
+    spdlog::debug("start_exposure_proc ended");
     return 0;
   }
   spdlog::error("Failed to start exposing frame: {0}", r);
@@ -993,16 +1111,18 @@ int qhy_alpaca_camera::start_exposure(double duration_seconds, bool is_light) {
   spdlog::debug("Setting Exposure to: {0} seconds", duration_seconds);
 
   // _bpp = 16;
-  uint32_t set_bits_res = SetQHYCCDBitsMode(_cam_handle, _bpp);
-  if (set_bits_res == QHYCCD_SUCCESS) {
-    spdlog::trace("Successfully set bits mode");
-  } else {
+  // uint32_t set_bits_res = SetQHYCCDBitsMode(_cam_handle, _bpp);
+  // uint32_t set_bits_res = SetQHYCCDParam(_cam_handle,
+  // CONTROL_ID::CONTROL_TRANSFERBIT, _bpp); if (set_bits_res == QHYCCD_SUCCESS)
+  // {
+  //   spdlog::trace("Successfully set bits mode");
+  // } else {
 
-    spdlog::error("Failed to set bits mode: {0}", set_bits_res);
-    // throw alpaca_exception(
-    //     alpaca_exception::DRIVER_ERROR,
-    //     fmt::format("Failed to set bits mode: {0}", set_bits_res));
-  }
+  //   spdlog::error("Failed to set bits mode: {0}", set_bits_res);
+  //   // throw alpaca_exception(
+  //   //     alpaca_exception::DRIVER_ERROR,
+  //   //     fmt::format("Failed to set bits mode: {0}", set_bits_res));
+  // }
 
   _last_exposure_duration = duration_seconds;
 
@@ -1011,7 +1131,7 @@ int qhy_alpaca_camera::start_exposure(double duration_seconds, bool is_light) {
   uint32_t r = 0;
 
   // r = SetQHYCCDParam(_cam_handle, CONTROL_ID::CONTROL_USBTRAFFIC, 30);
-  r = SetQHYCCDParam(_cam_handle, CONTROL_ID::CONTROL_TRANSFERBIT, _bpp);
+  // r = SetQHYCCDParam(_cam_handle, CONTROL_ID::CONTROL_TRANSFERBIT, _bpp);
   r = SetQHYCCDParam(_cam_handle, CONTROL_ID::CONTROL_EXPOSURE, u_seconds);
 
   if (r == QHYCCD_SUCCESS) {
@@ -1019,8 +1139,12 @@ int qhy_alpaca_camera::start_exposure(double duration_seconds, bool is_light) {
     // TODO: I think this thread is getting orphaned potentially which
     // probably creates the memory leak / memory violation I'm seeing in
     // valgrind
+    spdlog::debug("creating thread");
     std::thread t(std::bind(&qhy_alpaca_camera::start_exposure_proc, this));
+    spdlog::debug("thread created");
     t.detach();
+    spdlog::debug("thread detached");
+    spdlog::debug("start_exposure() exiting after starting thread");
     return 0;
   }
   spdlog::error("Failed to set exposure duration. {0}", r);
@@ -1141,8 +1265,9 @@ uint32_t qhy_alpaca_camera::gain_min() { return _gain_min; };
 
 // TODO: need to decide if I'm going to support gains vs min max
 std::vector<std::string> qhy_alpaca_camera::gains() {
-  throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED, "can't get gains");
-  return std::vector<std::string>();
+  // throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED, "can't get
+  // gains"); return std::vector<std::string>();
+  return _gains;
 };
 
 int qhy_alpaca_camera::set_gain(uint32_t gain) {
@@ -1189,18 +1314,50 @@ std::vector<std::string> qhy_alpaca_camera::offsets() {
 int qhy_alpaca_camera::readout_mode() { return _readout_mode; }
 
 int qhy_alpaca_camera::set_readout_mode(int idx) {
-  std::lock_guard lock(_cam_mutex);
-  try {
-    spdlog::trace("Setting read mode to {0}", _read_mode_names.at(idx));
-    uint32_t r = SetQHYCCDReadMode(_cam_handle, idx);
-    if (r == QHYCCD_SUCCESS) {
-      _readout_mode = idx;
-      return 0;
-    }
-  } catch (std::exception ex) {
-    spdlog::error("Problem setting read mode {0}", idx);
+  spdlog::debug("set_readout_mode called with {}", idx);
+  spdlog::debug("_read_mode_names.size() {}", _read_mode_names.size());
+  if (idx < _read_mode_names.size()) {
+    _readout_mode = idx;
+    initialize();
+  } else {
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "Readout mode not valid");
   }
-  return -1;
+
+  // std::lock_guard lock(_cam_mutex);
+  // try {
+  //   spdlog::debug("Setting readout mode to {0}", _read_mode_names.at(idx));
+
+  //   uint32_t r = QHYCCD_ERROR;
+  //   r = SetQHYCCDReadMode(_cam_handle, idx);
+
+  //   if (r == QHYCCD_SUCCESS) {
+  //     _readout_mode = idx;
+  //   } else {
+  //     spdlog::error("SetQHYCCDReadMode failed {}", r);
+  //     return -1;
+  //   }
+
+  //   r = QHYCCD_ERROR;
+  //   r = GetQHYCCDReadModeResolution(_cam_handle, idx, &_effective_num_x,
+  //   &_effective_num_y); _max_num_x = _effective_num_x; _max_num_y =
+  //   _effective_num_y;
+
+  //   r = QHYCCD_ERROR;
+  //   r = InitQHYCCD(_cam_handle);
+
+  //   if (r == QHYCCD_SUCCESS) {
+  //     set_bin_x(_bin_x);
+  //     // set_resolution(_start_x, _start_x, _num_x, _num_y);
+  //   } else {
+  //     spdlog::error("InitQHYCCD failed ");
+  //     return -1;
+  //   }
+
+  // } catch (std::exception ex) {
+  //   spdlog::error("Problem setting read mode {0}", idx);
+  // }
+  return 0;
 }
 
 std::vector<std::string> qhy_alpaca_camera::readout_modes() {

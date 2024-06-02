@@ -76,9 +76,13 @@ restinio::request_handling_status_t api_v1_handler::on_get_device_common(
     auto d = device_map[device_type].at(device_num);
   } catch (const std::exception &ex) {
     spdlog::warn("Exception: {0}", ex.what());
-
-    std::string err_msg = fmt::format("There is no {0} at {1}\nDetails: [{2}]",
-                                      device_type, device_num, ex.what());
+    spdlog::warn("size of device_map[{}]: {}", device_type,
+                 device_map["camera"].size());
+    spdlog::trace("Address of device_map from server {}",
+                  fmt::ptr(&alpaca_hub_server::device_map));
+    std::string err_msg =
+        fmt::format("There is no {0} at {1}\nDetails: [{2}]", device_type,
+                    device_num, ex.what());
     return init_resp(req->create_response(restinio::status_bad_request()))
         .set_body(err_msg)
         .done();
@@ -217,8 +221,6 @@ api_v1_handler::device_handler(const device_request_handle_t &req,
                                std::string hint) {
   std::shared_ptr<Device_T> the_device =
       std::dynamic_pointer_cast<Device_T>(req->extra_data().device);
-
-  spdlog::debug("device ptr: {0}", fmt::ptr(the_device.get()));
 
   if (!the_device) {
     spdlog::error("device pointer is null. aborting request");

@@ -64,8 +64,11 @@ template <typename RESP> RESP init_resp_html(RESP resp);
 // private:
 // };
 
-static std::map<std::string, std::vector<std::shared_ptr<i_alpaca_device>>>
+// Declaring this inline to ensure only one copy since it is accessed across
+// other object files
+inline std::map<std::string, std::vector<std::shared_ptr<i_alpaca_device>>>
     device_map;
+
 static std::mutex server_tx_mtx;
 static uint32_t server_transaction_number = 1;
 

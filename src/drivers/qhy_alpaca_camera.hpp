@@ -168,7 +168,10 @@ public:
 
 private:
   void initialize_camera_by_camera_id(std::string &camera_id);
-  int get_is_qhy_control_available(CONTROL_ID);
+  void initialize();
+  void init_filterwheel();
+  void chip_info();
+  // int get_is_qhy_control_available(CONTROL_ID);
   std::string _camera_id;
   std::string _unique_id;
   bool _connected;
@@ -251,6 +254,9 @@ private:
   bool _can_control_ccd_temp;
   bool _can_control_cooler_power;
   short _max_bin;
+  double _set_cooler_power;
+  double _last_camera_temp;
+  double _last_cooler_power;
 
   std::string _last_cam_error;
   int _percent_complete;
@@ -258,11 +264,11 @@ private:
   int _bayer_offset_x;
   int _bayer_offset_y;
 
-  double _set_cooler_power;
-
+  int _usb_traffic;
   bool _has_filter_wheel;
   std::shared_ptr<qhy_alpaca_filterwheel> _filter_wheel;
 
+  bool _force_bin;
 };
 
 #endif
