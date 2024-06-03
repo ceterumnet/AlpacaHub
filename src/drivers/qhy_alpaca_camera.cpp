@@ -251,12 +251,6 @@ void qhy_alpaca_camera::initialize() {
   _force_bin = true;
   set_bin_x(_bin_x);
   _force_bin = false;
-  // Let's do this when we reset binning
-  // uint32_t read_width = 0;
-  // uint32_t read_height = 0;
-  // qhy_res = QHYCCD_ERROR;
-  // qhy_res =
-  //     GetQHYCCDReadModeResolution(_cam_handle, 0, &read_width, &read_height);
 
   if (IsQHYCCDControlAvailable(_cam_handle, CONTROL_ID::CONTROL_USBTRAFFIC) ==
       QHYCCD_SUCCESS) {
@@ -421,51 +415,6 @@ void qhy_alpaca_camera::initialize_camera_by_camera_id(std::string &camera_id) {
 
   _offset = GetQHYCCDParam(_cam_handle, CONTROL_ID::CONTROL_OFFSET);
   spdlog::trace("Initial Offset Value fetched from camera: {0}", _offset);
-
-  // uint32_t stream_mode_set_res = SetQHYCCDStreamMode(_cam_handle, 0);
-  // if (stream_mode_set_res != QHYCCD_SUCCESS)
-  //   spdlog::error("failed to set QHYCCD stream mode: {0}",
-  //   stream_mode_set_res);
-  // SetQHYCCDParam(_cam_handle, CONTROL_GAIN, 14);
-
-  // if (IsQHYCCDControlAvailable(_cam_handle, CONTROL_ID::CONTROL_USBTRAFFIC)
-  // ==
-  //     QHYCCD_SUCCESS) {
-  //   spdlog::trace("CONTROL_USBTRAFFIC is available");
-  //   double u_min = 0;
-  //   double u_max = 0;
-  //   double u_step = 0;
-  //   GetQHYCCDParamMinMaxStep(_cam_handle, CONTROL_ID::CONTROL_USBTRAFFIC,
-  //                            &u_min, &u_max, &u_step);
-  //   spdlog::trace("USB Traffic Settings - min:{0} max:{1} step:{2}", u_min,
-  //                 u_max, u_step);
-  //   SetQHYCCDParam(_cam_handle, CONTROL_USBTRAFFIC, 0);
-
-  // } else {
-  //   spdlog::trace("CONTROL_USBTRAFFIC is not available");
-  // }
-
-  // if (IsQHYCCDControlAvailable(_cam_handle, CONTROL_ID::CONTROL_DDR) ==
-  //     QHYCCD_SUCCESS) {
-  //   spdlog::trace("CONTROL_DDR is available");
-  //   double u_min = 0;
-  //   double u_max = 0;
-  //   double u_step = 0;
-  //   GetQHYCCDParamMinMaxStep(_cam_handle, CONTROL_ID::CONTROL_DDR, &u_min,
-  //                            &u_max, &u_step);
-  //   spdlog::trace("DDR Settings - min:{0} max:{1} step:{2}", u_min, u_max,
-  //                 u_step);
-
-  //   SetQHYCCDParam(_cam_handle, CONTROL_ID::CONTROL_DDR, 1.0);
-  // } else {
-  //   spdlog::trace("CONTROL_DDR is not available");
-  // }
-
-  // spdlog::trace(
-  //     "Can enter single frame mode?: {0}",
-  //     IsQHYCCDControlAvailable(_cam_handle, CONTROL_ID::CAM_SINGLEFRAMEMODE)
-  //     ==
-  //         QHYCCD_SUCCESS);
   spdlog::trace("Determining max binning");
   _max_bin = 1;
 
@@ -524,7 +473,7 @@ qhy_alpaca_camera::qhy_alpaca_camera(std::string &camera_id)
       _percent_complete(100), _set_cooler_power(0),
       _can_control_ccd_temp(false), _run_cooler_thread(false),
       _has_filter_wheel(false), _last_camera_temp(0), _last_cooler_power(0),
-      _usb_traffic(20), _force_bin(false) {
+      _usb_traffic(20), _force_bin(false), _bpp(16) {
   initialize_camera_by_camera_id(camera_id);
 };
 
