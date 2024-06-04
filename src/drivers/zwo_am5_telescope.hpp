@@ -107,7 +107,7 @@ public:
   int set_serial_device(const std::string &);
   std::string get_serial_device_path();
 
-  std::string send_command_to_mount(const std::string &cmd, bool read_response = true);
+  std::string send_command_to_mount(const std::string &cmd, bool read_response = true, bool read_single_char = false);
 
 private:
   std::string _serial_device_path;

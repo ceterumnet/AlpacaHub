@@ -10,6 +10,8 @@ u_int32_t qhy_alpaca_camera::_num_of_connected_cameras = 0;
 std::map<std::string, int> qhy_alpaca_camera::_camera_map =
     std::map<std::string, int>();
 
+
+// TODO: handle dynamic camera management
 void qhy_alpaca_camera::on_camera_unplugged(char *id) {
   std::string unplugged_msg(id);
   spdlog::trace("Camera unplugged");
@@ -17,6 +19,7 @@ void qhy_alpaca_camera::on_camera_unplugged(char *id) {
   qhy_alpaca_camera::_num_of_connected_cameras = ScanQHYCCD();
 }
 
+// TODO: handle dynamic camera management
 void qhy_alpaca_camera::on_camera_plugged(char *id) {
   std::string unplugged_msg(id);
   spdlog::trace("Camera plugged in");

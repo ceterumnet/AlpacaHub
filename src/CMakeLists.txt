@@ -52,19 +52,37 @@ add_subdirectory("${3rd_Party_ROOT}/json-3.11.3")
 
 add_subdirectory("${3rd_Party_ROOT}/Catch2-3.6.0")
 
+# add_subdirectory("${3rd_Party_ROOT}/date-3.0.1")
+
+# Including date header library:
+set(USE_SYSTEM_TZ_DB ON)
+set(BUILD_TZ_LIB ON)
+include( FetchContent )
+FetchContent_Declare( date_src
+  GIT_REPOSITORY https://github.com/HowardHinnant/date.git
+  GIT_TAG        v3.0.1  # adjust tag/branch/commit as needed
+)
+FetchContent_MakeAvailable(date_src)
+
+message(STATUS "Date src: ${date_src_SOURCE_DIR}")
+
+add_library(tz_lib ${date_src_SOURCE_DIR}/src/tz.cpp)
+target_link_libraries(tz_lib PUBLIC date::date)
+
 add_subdirectory(common)
 add_subdirectory(drivers)
 add_subdirectory(server)
 
 add_executable(AlpacaHub main.cpp)
 
-# target_include_directories(AlpacaHub ${driver_HEADERS})
+target_include_directories(AlpacaHub PUBLIC ${date_src_SOURCE_DIR}/include)
 
 message(STATUS "asio_INCLUDE_DIRS: ${asio_INCLUDE_DIRS}")
 
-target_link_libraries(AlpacaHub PUBLIC restinio qhyccd spdlog nlohmann_json uuid Catch2 drivers common server)
+target_link_libraries(AlpacaHub PUBLIC restinio qhyccd spdlog nlohmann_json uuid Catch2 drivers common server PRIVATE date::date tz_lib curl)
 
 add_executable(AlpacaHubTests drivers/zwo_am5_telescope.cpp)
-target_link_libraries(AlpacaHubTests PRIVATE Catch2::Catch2WithMain common server drivers restinio qhyccd spdlog nlohmann_json uuid)
-
+target_link_libraries(AlpacaHubTests PRIVATE Catch2::Catch2WithMain common server drivers restinio qhyccd spdlog nlohmann_json uuid date::date tz_lib curl)
+# target_include_directories(AlpacaHubTests PUBLIC ${3rd_Party_ROOT}/date-3.0.1)
+target_include_directories(AlpacaHubTests PUBLIC ${date_src_SOURCE_DIR}/include)
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/html DESTINATION ${CMAKE_CURRENT_BINARY_DIR} )

@@ -2,6 +2,9 @@
 #include "asio/io_context.hpp"
 #include "common/alpaca_exception.hpp"
 #include "common/alpaca_hub_serial.hpp"
+#include "date/date.h"
+#include "date/tz.h"
+#include "fmt/chrono.h"
 #include "spdlog/fmt/bundled/format.h"
 #include "spdlog/spdlog.h"
 #include <asio/steady_timer.hpp>
@@ -19,6 +22,40 @@
 
 auto format_as(pier_side_enum s) { return fmt::underlying(s); }
 auto format_as(drive_rate_enum s) { return fmt::underlying(s); }
+
+template <typename Duration>
+inline auto a_localtime(date::local_time<Duration> time) -> std::tm {
+  return fmt::localtime(
+      std::chrono::system_clock::to_time_t(date::current_zone()->to_sys(time)));
+}
+
+template <typename Char, typename Duration>
+struct fmt::formatter<date::local_time<Duration>, Char>
+    : formatter<std::tm, Char> {
+  FMT_CONSTEXPR formatter() {
+    this->format_str_ = detail::string_literal<Char, '%', 'F', ' ', '%', 'T'>{};
+  }
+
+  template <typename FormatContext>
+  auto format(date::local_time<Duration> val, FormatContext &ctx) const
+      -> decltype(ctx.out()) {
+    using period = typename Duration::period;
+    if (period::num != 1 || period::den != 1 ||
+        std::is_floating_point<typename Duration::rep>::value) {
+      const auto epoch = val.time_since_epoch();
+      const auto subsecs = std::chrono::duration_cast<Duration>(
+          epoch - std::chrono::duration_cast<std::chrono::seconds>(epoch));
+
+      return formatter<std::tm, Char>::do_format(
+          a_localtime(std::chrono::time_point_cast<std::chrono::seconds>(val)),
+          ctx, &subsecs);
+    }
+
+    return formatter<std::tm, Char>::format(
+        a_localtime(std::chrono::time_point_cast<std::chrono::seconds>(val)),
+        ctx);
+  }
+};
 
 namespace zwo_commands {
 
@@ -1379,7 +1416,8 @@ void zwo_am5_telescope::throw_if_not_connected() {
 }
 
 std::string zwo_am5_telescope::send_command_to_mount(const std::string &cmd,
-                                                     bool read_response) {
+                                                     bool read_response,
+                                                     bool read_single_char) {
   char buf[512] = {0};
   _serial_port.write_some(asio::buffer(cmd));
 
@@ -1393,7 +1431,7 @@ std::string zwo_am5_telescope::send_command_to_mount(const std::string &cmd,
     char c;
     while (reader.read_char(c)) {
       rsp += c;
-      if (c == '#') {
+      if (c == '#' || read_single_char) {
         break;
       }
     }
@@ -1951,33 +1989,24 @@ std::vector<drive_rate_enum> zwo_am5_telescope::tracking_rates() {
 std::string zwo_am5_telescope::utc_time() {
   throw_if_not_connected();
 
+  using namespace std::chrono_literals;
   auto tz_resp = send_command_to_mount(zwoc::cmd_get_timezone());
-  spdlog::trace("tz_resp: {0}", tz_resp);
   zwor::shh_mm tz_data = zwor::parse_shh_mm_response(tz_resp);
 
   auto dst_resp = send_command_to_mount(zwoc::cmd_get_daylight_savings());
-  spdlog::trace("dst_resp: {0}", dst_resp);
   int d_savings = zwor::parse_standard_response(dst_resp);
 
   auto date_resp = send_command_to_mount(zwoc::cmd_get_date());
-  spdlog::trace("date_resp: {0}", date_resp);
   zwor::mm_dd_yy date_data = zwor::parse_mm_dd_yy_response(date_resp);
 
   auto time_resp = send_command_to_mount(zwoc::cmd_get_time());
-  spdlog::trace("time_resp: {0}", time_resp);
   zwor::hh_mm_ss time_data = zwor::parse_hh_mm_ss_response(time_resp);
 
   // auto t = std::time(nullptr);
+  // auto t_l_time = std::asctime(std::localtime(&t));
 
-  // auto l_time = std::asctime(std::localtime(&t));
-  // spdlog::debug("local time: {}", l_time);
+  std::tm tm{}; // Zero initialise
 
-  // auto g_t = std::gmtime(&t);
-  // auto gm_time = std::asctime(g_t);
-
-  // spdlog::debug("gmt time: {}", l_time);
-
-  std::tm tm{};             // Zero initialise
   tm.tm_year = date_data.yy + 100;
   tm.tm_mon = date_data.mm - 1;
   tm.tm_mday = date_data.dd;
@@ -1986,39 +2015,152 @@ std::string zwo_am5_telescope::utc_time() {
   tm.tm_sec = time_data.ss;
   tm.tm_isdst = d_savings;
 
-  if(tz_data.plus_or_minus == '-')
+  if (tz_data.plus_or_minus == '-')
     tm.tm_gmtoff = -1 * (tz_data.hh * 3600) + (tz_data.mm * 60);
   else
     tm.tm_gmtoff = (tz_data.hh * 3600) + (tz_data.mm * 60);
 
   std::time_t tt = std::mktime(&tm);
 
-  auto l_time = std::asctime(std::localtime(&tt));
-  spdlog::debug("local time: {}", l_time);
+  // spdlog::debug("raw value of tt: {}", tt);
+  // auto l_time = std::asctime(std::localtime(&tt));
+  // spdlog::debug("local time: {}", l_time);
 
+  spdlog::debug("local mount time: {0:%F} {0:%T} {0:%Z}", tm);
   auto g_t = std::gmtime(&tt);
+  auto g_tt = std::mktime(g_t);
   auto gm_time = std::asctime(g_t);
-  spdlog::debug("gmt time: {}", gm_time);
+  // spdlog::debug("gmt time: {}", gm_time);
+  spdlog::debug("utc mount time: {0:%F} {0:%T} UTC", *g_t);
 
-
-  return "";
+  //  2016-03-04T17:45:31.1234567Z
+  return fmt::format("{0:%F}T{0:%T}.000000Z", *g_t);
+  // return "";
 }
 
-TEST_CASE("Test get UTC", "[utc_time]") {
+TEST_CASE("Test set and get UTC", "[get_and_set_utc_time]") {
   spdlog::set_level(spdlog::level::trace);
+  using namespace std::chrono_literals;
+  auto cur_tz = date::current_zone();
+  spdlog::trace("cur_tz name {}", cur_tz->name());
+
+  date::sys_info sys_info;
+
+  // Chrono System Clock
+  auto tp = std::chrono::system_clock::now();
+  spdlog::trace("tp raw: {}", tp.time_since_epoch());
+  spdlog::trace("tp:     {:%F %T %Z} ", tp);
+
+  auto tp_zoned_time = date::make_zoned(cur_tz, tp);
+  spdlog::trace("tp_zoned_time: {} ",
+                tp_zoned_time.get_local_time().time_since_epoch());
+  spdlog::trace("tp_zoned_time: {:%F %T %Z}", tp_zoned_time.get_local_time());
+
+  auto l_tp = date::floor<std::chrono::seconds>(cur_tz->to_local(tp));
+  spdlog::trace("l_tp:            {} ", l_tp.time_since_epoch());
+
+  auto l_tp_zoned_time = date::make_zoned(cur_tz, l_tp);
+  spdlog::trace("l_tp_zoned_time: {} ",
+                l_tp_zoned_time.get_local_time().time_since_epoch());
+  spdlog::trace("l_tp_zoned_time: {:%F %T %Z}",
+                l_tp_zoned_time.get_local_time());
+
+  // Date UTC Clock
+  auto u_tp = date::utc_clock::now();
+  auto u_tp_cast = date::clock_cast<date::utc_clock>(u_tp);
+
+  spdlog::trace("u_tp raw:  {}", u_tp.time_since_epoch());
+  spdlog::trace("u_tp_cast: {:%F %T %Z}",
+                fmt::gmtime(date::utc_clock::to_sys(u_tp_cast)));
+
+  auto zoned_time = date::make_zoned(cur_tz, tp);
+  auto info = zoned_time.get_info();
+  spdlog::debug("info.offset: {}", info.offset);
+  spdlog::debug("info.save: {}", info.save);
+  if (info.save > 0min)
+    spdlog::debug("daylight savings in effect!");
+
   zwo_am5_telescope telescope;
   telescope.set_serial_device("/dev/ttyACM0");
   telescope.set_connected(true);
+  spdlog::trace("grabbing system's current timezone");
 
-  using namespace std::chrono_literals;
-  // Wait for the mount to home...
+  auto tz_set_resp = telescope.send_command_to_mount(
+      zwoc::cmd_set_timezone('-', 5), true, true);
+  spdlog::trace("tz_set_resp: {0}", tz_set_resp);
+
+  auto tz_resp = telescope.send_command_to_mount(zwoc::cmd_get_timezone());
+  spdlog::trace("tz_resp after tz_set: {0}", tz_resp);
+  auto tz_data = zwor::parse_shh_mm_response(tz_resp);
+
+  auto utc_time_str = telescope.utc_time();
   spdlog::info("TIME ********* ");
-  telescope.utc_time();
+  spdlog::info(utc_time_str);
   spdlog::info("TIME ********* ");
-  // REQUIRE(telescope.at_home() == true);
+
+  auto set_utc_time_str = fmt::format("{0:%F}T{0:%T}.0000000Z", tp);
+  telescope.set_utc_time(set_utc_time_str);
 }
 
-int zwo_am5_telescope::set_utc_time(std::string &) { return 0; }
+// Expects format like:
+//  2016-03-04T17:45:31.1234567Z
+int zwo_am5_telescope::set_utc_time(std::string &utc_time_str) {
+  throw_if_not_connected();
+  using namespace std::chrono_literals;
+  std::istringstream stream{utc_time_str};
+  date::sys_time<std::chrono::milliseconds> t;
+  stream >> date::parse("%FT%T%Z", t);
+  spdlog::debug("Parsed date: {0:%F} {0:%T} {0:%Z}", t);
+
+  auto cur_tz = date::current_zone();
+  auto zoned_time = date::make_zoned(cur_tz, t);
+  spdlog::debug("Local date: {0:%F} {0:%T} {0:%Z}",
+                zoned_time.get_local_time());
+
+  auto offset_minutes = date::floor<std::chrono::minutes>(
+      zoned_time.get_local_time().time_since_epoch() - t.time_since_epoch());
+
+  spdlog::debug("calculated offset_seconds: {}", offset_minutes);
+
+  int date_mm = std::atoi(&fmt::format("{:%m}", zoned_time.get_local_time())[0]);
+  int date_dd = std::atoi(&fmt::format("{:%d}", zoned_time.get_local_time())[0]);
+  int date_yy = std::atoi(&fmt::format("{:%y}", zoned_time.get_local_time())[0]);
+
+  int time_hh = std::atoi(&fmt::format("{:%H}", zoned_time.get_local_time())[0]);
+  int time_mm = std::atoi(&fmt::format("{:%M}", zoned_time.get_local_time())[0]);
+  int time_ss = std::atoi(&fmt::format("{:%S}", zoned_time.get_local_time())[0]);
+
+  char plus_or_minus_tz = '+';
+  if (offset_minutes < 0min)
+    plus_or_minus_tz = '-';
+
+  int tz_hh = std::abs(offset_minutes / 60min);
+  int tz_mm = 0;
+  if (offset_minutes % 60 == 30min)
+    tz_mm = 30;
+
+  auto resp = send_command_to_mount(zwoc::cmd_set_date_time_and_tz(
+      date_mm, date_dd, date_yy, time_hh, time_mm, time_ss, plus_or_minus_tz,
+      tz_hh, tz_mm), true, true);
+
+  auto info = zoned_time.get_info();
+  int daylight_savings = 0;
+  if (info.save > 0min)
+    daylight_savings = 1;
+
+  // zwor::parse_standard_response()
+  if (resp != "1")
+    throw alpaca_exception(alpaca_exception::DRIVER_ERROR,
+                           "Problem setting time with driver");
+
+  resp = send_command_to_mount(zwoc::cmd_set_daylight_savings(daylight_savings), true, true);
+  if (resp != "1")
+    throw alpaca_exception(alpaca_exception::DRIVER_ERROR,
+                           "Problem setting daylight savings with driver");
+
+  spdlog::debug("successfully set date, time and time zone on mount");
+  return 0;
+}
 
 TEST_CASE("Test mount get time", "[get_time]") {
   spdlog::set_level(spdlog::level::trace);
