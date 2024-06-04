@@ -1537,6 +1537,12 @@ server_handler() {
           router, "findhome");
 
   // PUT declinationrate
+  router->http_put(
+      "/api/v1/telescope/:device_number/declinationrate",
+      api_handler
+          ->create_put_handler<double, i_alpaca_telescope,
+                               &i_alpaca_telescope::set_declination_rate>(
+              "declinationrate"));
 
   // PUT doesrefraction
   router->http_put(
