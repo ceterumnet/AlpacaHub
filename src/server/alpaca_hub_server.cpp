@@ -256,7 +256,7 @@ api_v1_handler::create_put_handler(std::string parameter_key,
   return [parameter_key, validate_True_False](auto req, auto) {
     auto &response_map = req->extra_data().response_map;
     const auto qp = restinio::parse_query(req->body());
-    std::variant<bool, std::string, int, uint32_t, double> input_variant;
+    std::variant<drive_rate_enum, pier_side_enum, bool, std::string, int, uint32_t, double> input_variant;
 
     if (validate_True_False) {
       try {
@@ -1450,9 +1450,9 @@ server_handler() {
       router, "rightascensionrate");
 
   // GET sideofpier
-  // api_handler->add_route_to_router<i_alpaca_telescope,
-  //                                  &i_alpaca_telescope::side_of_pier>(
-  //     router, "sideofpier");
+  api_handler->add_route_to_router<i_alpaca_telescope,
+                                   &i_alpaca_telescope::side_of_pier>(
+      router, "sideofpier");
 
   // GET siderealtime
   api_handler->add_route_to_router<i_alpaca_telescope,
@@ -1505,15 +1505,16 @@ server_handler() {
       router, "trackingrate");
 
   // GET trackingrates
-  // api_handler->add_route_to_router<i_alpaca_telescope,
-  //                                  &i_alpaca_telescope::tracking_rates>(
-  //     router, "trackingrates");
+  api_handler->add_route_to_router<i_alpaca_telescope,
+                                   &i_alpaca_telescope::tracking_rates>(
+      router, "trackingrates");
 
   // GET utctime
   api_handler
       ->add_route_to_router<i_alpaca_telescope, &i_alpaca_telescope::utc_time>(
           router, "utctime");
 
+  // This has a specific parameter that needs to be pulled out
   // GET axisrates
   // api_handler->add_route_to_router<i_alpaca_telescope,
   //                                  &i_alpaca_telescope::axis_rates>(
@@ -1570,40 +1571,100 @@ server_handler() {
               "rightascensionrate"));
 
   // PUT sideofpier
-  // router->http_put(
-  //     "/api/v1/telescope/:device_number/sideofpier",
-  //     api_handler
-  //         ->create_put_handler<int, i_alpaca_telescope,
-  //                              &i_alpaca_telescope::set_side_of_pier>(
-  //             "sideofpier"));
+  router->http_put(
+      "/api/v1/telescope/:device_number/sideofpier",
+      api_handler
+          ->create_put_handler<pier_side_enum, i_alpaca_telescope,
+                               &i_alpaca_telescope::set_side_of_pier>(
+              "sideofpier"));
 
   // PUT siteelevation
+  router->http_put(
+      "/api/v1/telescope/:device_number/siteelevation",
+      api_handler->create_put_handler<double, i_alpaca_telescope,
+                                      &i_alpaca_telescope::set_site_elevation>(
+          "siteelevation"));
 
   // PUT sitelatitude
+  router->http_put(
+      "/api/v1/telescope/:device_number/sitelatitude",
+      api_handler->create_put_handler<double, i_alpaca_telescope,
+                                      &i_alpaca_telescope::set_site_latitude>(
+          "sitelatitude"));
 
   // PUT sitelongitude
+  router->http_put(
+      "/api/v1/telescope/:device_number/sitelongitude",
+      api_handler->create_put_handler<double, i_alpaca_telescope,
+                                      &i_alpaca_telescope::set_site_longitude>(
+          "sitelongitude"));
 
   // PUT slewsettletime
+  router->http_put(
+      "/api/v1/telescope/:device_number/slewsettletime",
+      api_handler->create_put_handler<double, i_alpaca_telescope,
+                                      &i_alpaca_telescope::set_slew_settle_time>(
+          "slewsettletime"));
 
   // PUT targetdeclination
+  router->http_put(
+      "/api/v1/telescope/:device_number/targetdeclination",
+      api_handler
+          ->create_put_handler<double, i_alpaca_telescope,
+                               &i_alpaca_telescope::set_target_declination>(
+              "targetdeclination"));
 
   // PUT targetrightascension
+  router->http_put(
+      "/api/v1/telescope/:device_number/targetrightascension",
+      api_handler
+          ->create_put_handler<double, i_alpaca_telescope,
+                               &i_alpaca_telescope::set_target_right_ascension>(
+              "targetrightascension"));
 
   // PUT tracking
+  router->http_put(
+      "/api/v1/telescope/:device_number/tracking",
+      api_handler
+          ->create_put_handler<bool, i_alpaca_telescope,
+                               &i_alpaca_telescope::set_tracking>(
+                                 "targetrightascension", true));
 
   // PUT trackingrate
+  router->http_put(
+      "/api/v1/telescope/:device_number/trackingrate",
+      api_handler->create_put_handler<drive_rate_enum, i_alpaca_telescope,
+                                      &i_alpaca_telescope::set_tracking_rate>(
+          "trackingrate"));
 
   // PUT utctime
+  router->http_put(
+      "/api/v1/telescope/:device_number/utctime",
+      api_handler->create_put_handler<std::string, i_alpaca_telescope,
+                                      &i_alpaca_telescope::set_utc_time>(
+          "utctime"));
 
   // PUT abortslew
+  router->http_put(
+      "/api/v1/telescope/:device_number/abortslew",
+      api_handler->create_put_handler<void, i_alpaca_telescope,
+                                      &i_alpaca_telescope::abort_slew>());
 
   // PUT moveaxis
 
   // PUT park
+  router->http_put(
+      "/api/v1/telescope/:device_number/park",
+      api_handler->create_put_handler<void, i_alpaca_telescope,
+                                      &i_alpaca_telescope::park>());
 
   // PUT pulseguide
 
   // PUT setpark
+  router->http_put(
+      "/api/v1/telescope/:device_number/setpark",
+      api_handler->create_put_handler<void, i_alpaca_telescope,
+                                      &i_alpaca_telescope::set_park>());
 
   // PUT slewtoaltaz
 
@@ -1612,14 +1673,27 @@ server_handler() {
   // PUT slewtocoordinates
 
   // PUT slewtotarget
+  router->http_put(
+      "/api/v1/telescope/:device_number/slewtotarget",
+      api_handler->create_put_handler<void, i_alpaca_telescope,
+                                      &i_alpaca_telescope::slew_to_target>());
 
   // PUT slewtotargetasync
+  router->http_put(
+      "/api/v1/telescope/:device_number/slewtotargetasync",
+      api_handler->create_put_handler<void, i_alpaca_telescope,
+                                      &i_alpaca_telescope::slew_to_target_async>());
 
   // PUT synctoaltaz
 
   // PUT synctocoordinates
 
   // PUT synctotarget
+  router->http_put(
+      "/api/v1/telescope/:device_number/synctotarget",
+      api_handler
+          ->create_put_handler<void, i_alpaca_telescope,
+                               &i_alpaca_telescope::sync_to_target>());
 
   // END telescope routes
 
