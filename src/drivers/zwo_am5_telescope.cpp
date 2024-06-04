@@ -1306,8 +1306,17 @@ TEST_CASE("Degrees, hours, minutes, seconds conversions",
   REQUIRE(data.as_decimal() > -81.509);
 }
 
+std::vector<std::string> zwo_am5_telescope::serial_devices() {
+  std::vector<std::string> serial_devices{
+      "/dev/serial/by-id/usb-ZWO_Systems_ZWO_Device_123456-if00"};
+
+  return serial_devices;
+}
+
 // TODO: Need to figure out how to have a unique identifier for this
-std::string zwo_am5_telescope::unique_id() { return ""; }
+std::string zwo_am5_telescope::unique_id() {
+  return "usb-ZWO_Systems_ZWO_Device_123456-if00";
+}
 
 bool zwo_am5_telescope::connected() { return _connected; }
 
@@ -1453,7 +1462,7 @@ TEST_CASE("Test get version", "[cmd_get_version]") {
 // AM5, it seems that the mount must be rebooted when the mode is switched.
 // Given that the use case for this is imaging - alt / az mode doesn't really
 // sense.
-zwo_am5_telescope::alignment_mode_enum zwo_am5_telescope::alignment_mode() {
+alignment_mode_enum zwo_am5_telescope::alignment_mode() {
   return alignment_mode_enum::polar;
 }
 
@@ -1472,6 +1481,12 @@ int zwo_am5_telescope::set_aperture_diameter(const double &diameter) {
   _aperture_diameter = diameter;
   return 0;
 };
+
+double zwo_am5_telescope::aperture_area() {
+  throw_if_not_connected();
+  throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED, "Aperture area not available");
+  return 0;
+}
 
 bool zwo_am5_telescope::slewing() {
   auto resp = send_command_to_mount(zwoc::cmd_get_status());
@@ -1621,6 +1636,11 @@ bool zwo_am5_telescope::can_slew() {
   return true;
 }
 
+bool zwo_am5_telescope::can_slew_async() {
+  throw_if_not_connected();
+  return true;
+}
+
 // TODO: decide whether or not I'm gonna implement alt az mode
 bool zwo_am5_telescope::can_slew_alt_az() {
   throw_if_not_connected();
@@ -1697,8 +1717,7 @@ int zwo_am5_telescope::set_does_refraction(bool) {
   return 0;
 }
 
-zwo_am5_telescope::equatorial_system_enum
-zwo_am5_telescope::equatorial_system() {
+equatorial_system_enum zwo_am5_telescope::equatorial_system() {
   throw_if_not_connected();
   return equatorial_system_enum::j2000;
 }
@@ -1765,7 +1784,7 @@ TEST_CASE("Test get right_ascension", "[right_ascension]") {
 // separte RA rate
 double zwo_am5_telescope::right_ascension_rate() { return 0; }
 
-int zwo_am5_telescope::set_right_ascension_rate() {
+int zwo_am5_telescope::set_right_ascension_rate(const double &) {
   throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED,
                          "Setting a RA rate is not supported on this mount");
   return 0;

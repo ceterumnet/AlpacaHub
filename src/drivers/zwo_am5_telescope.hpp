@@ -27,6 +27,7 @@
 
 class zwo_am5_telescope : public i_alpaca_telescope {
 public:
+  static std::vector<std::string> serial_devices();
   bool connected();
   int set_connected(bool);
   zwo_am5_telescope();
@@ -42,6 +43,7 @@ public:
   alignment_mode_enum alignment_mode();
   double altitude();
   double aperture_diameter();
+  double aperture_area();
   int set_aperture_diameter(const double &);
   bool at_home();
   bool at_park();
@@ -56,6 +58,7 @@ public:
   bool can_set_right_ascension_rate();
   bool can_set_tracking();
   bool can_slew();
+  bool can_slew_async();
   bool can_slew_alt_az();
   bool can_slew_alt_az_async();
   bool can_sync();
@@ -76,7 +79,7 @@ public:
   bool is_pulse_guiding();
   double right_ascension();
   double right_ascension_rate();
-  int set_right_ascension_rate();
+  int set_right_ascension_rate(const double &);
   pier_side_enum side_of_pier();
   int set_side_of_pier(const pier_side_enum &);
   double sidereal_time();

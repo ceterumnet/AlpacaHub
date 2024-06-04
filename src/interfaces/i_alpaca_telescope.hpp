@@ -22,46 +22,46 @@ enum guide_direction_enum : int {
 
 enum drive_rate_enum : int { sidereal = 0, lunar = 1, solar = 2, king = 3 };
 
+enum alignment_mode_enum : int { alt_az = 0, polar = 1, german_polar = 2 };
+
+enum equatorial_system_enum : int {
+  // Custom or unknown equinox and/or reference frame.
+  other = 0,
+
+  // Topocentric coordinates. Coordinates of the object at the current
+  // date having allowed for annual aberration, precession and
+  // nutation. This is the most common coordinate type for amateur
+  // telescopes.
+  topocentric = 1,
+
+  // J2000 equator/equinox. Coordinates of the object at mid-day on 1st
+  // January
+  // 2000, ICRS reference frame.
+  j2000 = 2,
+
+  // J2050 equator/equinox, ICRS reference frame.
+  j2050 = 3,
+
+  // B1950 equinox, FK4 reference frame.
+  b1950 = 4,
+
+  // Obsolete. Please use equTopocentric instead - see Astronomical
+  // Coordinates
+  // for an explanation.
+  local_topocentric = 1
+};
+
+enum telescope_axes_enum : int { primary = 0, secondary = 1, tertiary = 2 };
+
 class i_alpaca_telescope : public i_alpaca_device {
 public:
-  enum alignment_mode_enum : int { alt_az = 0, polar = 1, german_polar = 2 };
-
-  enum equatorial_system_enum : int {
-    // Custom or unknown equinox and/or reference frame.
-    other = 0,
-
-    // Topocentric coordinates. Coordinates of the object at the current
-    // date having allowed for annual aberration, precession and
-    // nutation. This is the most common coordinate type for amateur
-    // telescopes.
-    topocentric = 1,
-
-    // J2000 equator/equinox. Coordinates of the object at mid-day on 1st
-    // January
-    // 2000, ICRS reference frame.
-    j2000 = 2,
-
-    // J2050 equator/equinox, ICRS reference frame.
-    j2050 = 3,
-
-    // B1950 equinox, FK4 reference frame.
-    b1950 = 4,
-
-    // Obsolete. Please use equTopocentric instead - see Astronomical
-    // Coordinates
-    // for an explanation.
-    local_topocentric = 1
-  };
-
-
-
-  enum telescope_axes_enum : int { primary = 0, secondary = 1, tertiary = 2 };
 
 
   virtual ~i_alpaca_telescope(){};
   virtual alignment_mode_enum alignment_mode() = 0;
   virtual double altitude() = 0;
   virtual double aperture_diameter() = 0;
+  virtual double aperture_area() = 0;
   virtual int set_aperture_diameter(const double &) = 0;
   virtual bool at_home() = 0;
   virtual bool at_park() = 0;
@@ -76,6 +76,7 @@ public:
   virtual bool can_set_right_ascension_rate() = 0;
   virtual bool can_set_tracking() = 0;
   virtual bool can_slew() = 0;
+  virtual bool can_slew_async() = 0;
   virtual bool can_slew_alt_az() = 0;
   virtual bool can_slew_alt_az_async() = 0;
   virtual bool can_sync() = 0;
@@ -95,7 +96,7 @@ public:
   virtual bool is_pulse_guiding() = 0;
   virtual double right_ascension() = 0;
   virtual double right_ascension_rate() = 0;
-  virtual int set_right_ascension_rate() = 0;
+  virtual int set_right_ascension_rate(const double &) = 0;
   virtual pier_side_enum side_of_pier() = 0;
   virtual int set_side_of_pier(const pier_side_enum &) = 0;
   virtual double sidereal_time() = 0;

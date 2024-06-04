@@ -1,4 +1,5 @@
 #include "alpaca_hub_server.hpp"
+#include "interfaces/i_alpaca_telescope.hpp"
 #include "restinio/request_handler.hpp"
 #include "restinio/router/express.hpp"
 
@@ -80,9 +81,8 @@ restinio::request_handling_status_t api_v1_handler::on_get_device_common(
                  device_map["camera"].size());
     spdlog::trace("Address of device_map from server {}",
                   fmt::ptr(&alpaca_hub_server::device_map));
-    std::string err_msg =
-        fmt::format("There is no {0} at {1}\nDetails: [{2}]", device_type,
-                    device_num, ex.what());
+    std::string err_msg = fmt::format("There is no {0} at {1}\nDetails: [{2}]",
+                                      device_type, device_num, ex.what());
     return init_resp(req->create_response(restinio::status_bad_request()))
         .set_body(err_msg)
         .done();
@@ -380,6 +380,10 @@ void api_v1_handler::add_route_to_router(
 
   if (std::is_same<T, i_alpaca_filterwheel>::value) {
     device_type_regex = "filterwheel";
+  }
+
+  if (std::is_same<T, i_alpaca_telescope>::value) {
+    device_type_regex = "telescope";
   }
 
   if (std::is_same<T, i_alpaca_device>::value) {
@@ -1277,6 +1281,348 @@ server_handler() {
           "Position"));
 
   // END focuser routes
+
+  // BEGIN telescope routes
+
+  // GET alignmentmode
+  api_handler->add_route_to_router<i_alpaca_telescope,
+                                   &i_alpaca_telescope::alignment_mode>(
+      router, "alignmentmode");
+
+  // GET altitude
+  api_handler
+      ->add_route_to_router<i_alpaca_telescope, &i_alpaca_telescope::altitude>(
+          router, "altitude");
+
+  // GET aperturearea
+  api_handler->add_route_to_router<i_alpaca_telescope,
+                                   &i_alpaca_telescope::aperture_area>(
+      router, "aperturearea");
+
+  // GET aperturediameter
+  api_handler->add_route_to_router<i_alpaca_telescope,
+                                   &i_alpaca_telescope::aperture_diameter>(
+      router, "aperturediameter");
+
+  // GET athome
+  api_handler
+      ->add_route_to_router<i_alpaca_telescope, &i_alpaca_telescope::at_home>(
+          router, "athome");
+
+  // GET atpark
+  api_handler
+      ->add_route_to_router<i_alpaca_telescope, &i_alpaca_telescope::at_park>(
+          router, "atpark");
+
+  // GET azimuth
+  api_handler
+      ->add_route_to_router<i_alpaca_telescope, &i_alpaca_telescope::azimuth>(
+          router, "azimuth");
+
+  // GET canfindhome
+  api_handler->add_route_to_router<i_alpaca_telescope,
+                                   &i_alpaca_telescope::can_find_home>(
+      router, "canfindhome");
+
+  // GET canpark
+  api_handler
+      ->add_route_to_router<i_alpaca_telescope, &i_alpaca_telescope::can_park>(
+          router, "canpark");
+
+  // GET canpulseguide
+  api_handler->add_route_to_router<i_alpaca_telescope,
+                                   &i_alpaca_telescope::can_pulse_guide>(
+      router, "canpulseguide");
+
+  // GET cansetdeclinationrate
+  api_handler->add_route_to_router<
+      i_alpaca_telescope, &i_alpaca_telescope::can_set_declination_rate>(
+      router, "cansetdeclinationrate");
+
+  // GET cansetguiderates
+  api_handler->add_route_to_router<i_alpaca_telescope,
+                                   &i_alpaca_telescope::can_set_guide_rates>(
+      router, "cansetguiderates");
+
+  // GET cansetpark
+  api_handler->add_route_to_router<i_alpaca_telescope,
+                                   &i_alpaca_telescope::can_set_park>(
+      router, "cansetpark");
+
+  // GET cansetpierside
+  api_handler->add_route_to_router<i_alpaca_telescope,
+                                   &i_alpaca_telescope::can_set_pier_side>(
+      router, "cansetpierside");
+
+  // GET cansetrightascensionrate
+  api_handler->add_route_to_router<
+      i_alpaca_telescope, &i_alpaca_telescope::can_set_right_ascension_rate>(
+      router, "cansetrightascensionrate");
+
+  // GET cansettracking
+  api_handler->add_route_to_router<i_alpaca_telescope,
+                                   &i_alpaca_telescope::can_set_tracking>(
+      router, "cansettracking");
+
+  // GET canslew
+  api_handler
+      ->add_route_to_router<i_alpaca_telescope, &i_alpaca_telescope::can_slew>(
+          router, "canslew");
+
+  // GET canslewasync
+  api_handler->add_route_to_router<i_alpaca_telescope,
+                                   &i_alpaca_telescope::can_slew_async>(
+      router, "canslewasync");
+
+  // GET canslewaltaz
+  api_handler->add_route_to_router<i_alpaca_telescope,
+                                   &i_alpaca_telescope::can_slew_alt_az>(
+      router, "canslewaltaz");
+
+  // GET canslewaltazasync
+  api_handler->add_route_to_router<i_alpaca_telescope,
+                                   &i_alpaca_telescope::can_slew_alt_az_async>(
+      router, "canslewaltazasync");
+
+  // GET cansync
+  api_handler
+      ->add_route_to_router<i_alpaca_telescope, &i_alpaca_telescope::can_sync>(
+          router, "cansync");
+
+  // GET cansyncaltaz
+  api_handler->add_route_to_router<i_alpaca_telescope,
+                                   &i_alpaca_telescope::can_sync_alt_az>(
+      router, "cansyncaltaz");
+
+  // GET canunpark
+  api_handler->add_route_to_router<i_alpaca_telescope,
+                                   &i_alpaca_telescope::can_unpark>(
+      router, "canunpark");
+
+  // GET declination
+  api_handler->add_route_to_router<i_alpaca_telescope,
+                                   &i_alpaca_telescope::declination>(
+      router, "declination");
+
+  // GET declinationrate
+  api_handler->add_route_to_router<i_alpaca_telescope,
+                                   &i_alpaca_telescope::declination_rate>(
+      router, "declinationrate");
+
+  // GET doesrefraction
+  api_handler->add_route_to_router<i_alpaca_telescope,
+                                   &i_alpaca_telescope::does_refraction>(
+      router, "doesrefraction");
+
+  // GET equatorialsystem
+  api_handler->add_route_to_router<i_alpaca_telescope,
+                                   &i_alpaca_telescope::equatorial_system>(
+      router, "equatorialsystem");
+
+  // GET focallength
+  api_handler->add_route_to_router<i_alpaca_telescope,
+                                   &i_alpaca_telescope::focal_length>(
+      router, "focallength");
+
+  // GET guideratedeclination
+  api_handler->add_route_to_router<i_alpaca_telescope,
+                                   &i_alpaca_telescope::guide_rate_declination>(
+      router, "guideratedeclination");
+
+  // GET guiderateascension
+  api_handler->add_route_to_router<i_alpaca_telescope,
+                                   &i_alpaca_telescope::guide_rate_ascension>(
+      router, "guiderateascension");
+
+  // GET ispulseguiding
+  api_handler->add_route_to_router<i_alpaca_telescope,
+                                   &i_alpaca_telescope::is_pulse_guiding>(
+      router, "ispulseguiding");
+
+  // GET rightascension
+  api_handler->add_route_to_router<i_alpaca_telescope,
+                                   &i_alpaca_telescope::right_ascension>(
+      router, "rightascension");
+
+  // GET rightascensionrate
+  api_handler->add_route_to_router<i_alpaca_telescope,
+                                   &i_alpaca_telescope::right_ascension_rate>(
+      router, "rightascensionrate");
+
+  // GET sideofpier
+  // api_handler->add_route_to_router<i_alpaca_telescope,
+  //                                  &i_alpaca_telescope::side_of_pier>(
+  //     router, "sideofpier");
+
+  // GET siderealtime
+  api_handler->add_route_to_router<i_alpaca_telescope,
+                                   &i_alpaca_telescope::sidereal_time>(
+      router, "siderealtime");
+
+  // GET siteelevation
+  api_handler->add_route_to_router<i_alpaca_telescope,
+                                   &i_alpaca_telescope::site_elevation>(
+      router, "siteelevation");
+
+  // GET sitelatitude
+  api_handler->add_route_to_router<i_alpaca_telescope,
+                                   &i_alpaca_telescope::site_latitude>(
+      router, "sitelatitude");
+
+  // GET sitelongitude
+  api_handler->add_route_to_router<i_alpaca_telescope,
+                                   &i_alpaca_telescope::site_longitude>(
+      router, "sitelongitude");
+
+  // GET slewing
+  api_handler
+      ->add_route_to_router<i_alpaca_telescope, &i_alpaca_telescope::slewing>(
+          router, "slewing");
+
+  // GET slewsettletime
+  api_handler->add_route_to_router<i_alpaca_telescope,
+                                   &i_alpaca_telescope::slew_settle_time>(
+      router, "slewsettletime");
+
+  // GET targetdeclination
+  api_handler->add_route_to_router<i_alpaca_telescope,
+                                   &i_alpaca_telescope::target_declination>(
+      router, "targetdeclination");
+
+  // GET targetrightascension
+  api_handler->add_route_to_router<i_alpaca_telescope,
+                                   &i_alpaca_telescope::target_right_ascension>(
+      router, "targetrightascension");
+
+  // GET tracking
+  api_handler
+      ->add_route_to_router<i_alpaca_telescope, &i_alpaca_telescope::tracking>(
+          router, "tracking");
+
+  // GET trackingrate
+  api_handler->add_route_to_router<i_alpaca_telescope,
+                                   &i_alpaca_telescope::tracking_rate>(
+      router, "trackingrate");
+
+  // GET trackingrates
+  // api_handler->add_route_to_router<i_alpaca_telescope,
+  //                                  &i_alpaca_telescope::tracking_rates>(
+  //     router, "trackingrates");
+
+  // GET utctime
+  api_handler
+      ->add_route_to_router<i_alpaca_telescope, &i_alpaca_telescope::utc_time>(
+          router, "utctime");
+
+  // GET axisrates
+  // api_handler->add_route_to_router<i_alpaca_telescope,
+  //                                  &i_alpaca_telescope::axis_rates>(
+  //     router, "axisrates");
+
+  // GET canmoveaxis
+  // api_handler->add_route_to_router<i_alpaca_telescope,
+  //                                  &i_alpaca_telescope::can_move_axis>(
+  //     router, "canmoveaxis");
+
+  // TODO: this is a multiparameter GET so I'll need to hand code this one
+  // GET destinationsideofpier
+  // api_handler->add_route_to_router<i_alpaca_telescope,
+  //                                  &i_alpaca_telescope::destination_side_of_pier>(
+  //     router, "destinationsideofpier");
+
+  // GET findhome
+  api_handler
+      ->add_route_to_router<i_alpaca_telescope, &i_alpaca_telescope::find_home>(
+          router, "findhome");
+
+  // PUT declinationrate
+
+  // PUT doesrefraction
+  router->http_put(
+      "/api/v1/telescope/:device_number/doesrefraction",
+      api_handler->create_put_handler<bool, i_alpaca_telescope,
+                                      &i_alpaca_telescope::set_does_refraction>(
+          "DoesRefraction", true));
+
+  // PUT guideratedeclination
+  router->http_put(
+      "/api/v1/telescope/:device_number/guideratedeclination",
+      api_handler
+          ->create_put_handler<double, i_alpaca_telescope,
+                               &i_alpaca_telescope::set_guide_rate_declination>(
+              "guideratedeclination"));
+
+
+  // PUT guiderateascension
+  router->http_put(
+      "/api/v1/telescope/:device_number/guiderateascension",
+      api_handler
+          ->create_put_handler<double, i_alpaca_telescope,
+                               &i_alpaca_telescope::set_guide_rate_ascension>(
+              "guiderateascension"));
+
+  // PUT rightascensionrate
+  router->http_put(
+      "/api/v1/telescope/:device_number/rightascensionrate",
+      api_handler
+          ->create_put_handler<double, i_alpaca_telescope,
+                               &i_alpaca_telescope::set_right_ascension_rate>(
+              "rightascensionrate"));
+
+  // PUT sideofpier
+  // router->http_put(
+  //     "/api/v1/telescope/:device_number/sideofpier",
+  //     api_handler
+  //         ->create_put_handler<int, i_alpaca_telescope,
+  //                              &i_alpaca_telescope::set_side_of_pier>(
+  //             "sideofpier"));
+
+  // PUT siteelevation
+
+  // PUT sitelatitude
+
+  // PUT sitelongitude
+
+  // PUT slewsettletime
+
+  // PUT targetdeclination
+
+  // PUT targetrightascension
+
+  // PUT tracking
+
+  // PUT trackingrate
+
+  // PUT utctime
+
+  // PUT abortslew
+
+  // PUT moveaxis
+
+  // PUT park
+
+  // PUT pulseguide
+
+  // PUT setpark
+
+  // PUT slewtoaltaz
+
+  // PUT slewtoaltazasync
+
+  // PUT slewtocoordinates
+
+  // PUT slewtotarget
+
+  // PUT slewtotargetasync
+
+  // PUT synctoaltaz
+
+  // PUT synctocoordinates
+
+  // PUT synctotarget
+
+  // END telescope routes
+
   router->non_matched_request_handler([](auto req) {
     return req->create_response(restinio::status_not_found())
         .append_header_date_field()
@@ -1288,7 +1634,7 @@ server_handler() {
   return
       [_handler = std::move(router)](
           const restinio::generic_request_handle_t<device_data_factory::data_t>
-          &req) { return (*_handler)(req); };
+              &req) { return (*_handler)(req); };
 }
 
 }; // namespace alpaca_hub_server

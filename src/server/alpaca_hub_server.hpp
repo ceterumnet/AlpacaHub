@@ -92,8 +92,9 @@ using device_mgmt_list_entry_t =
 
 using device_param_t = std::map<
     std::string,
-    std::variant<bool, uint8_t, uint16_t, uint32_t, int, long, double,
-                 std::string, std::vector<std::string>, std::vector<int>,
+  std::variant<equatorial_system_enum, alignment_mode_enum, guide_direction_enum, drive_rate_enum, pier_side_enum, bool, uint8_t, uint16_t,
+                 uint32_t, int, long, double, std::string,
+                 std::vector<std::string>, std::vector<int>,
                  std::vector<std::vector<uint32_t>>,
                  std::vector<alpaca_hub_server::device_mgmt_list_entry_t>,
                  std::map<std::string, std::string>>>;

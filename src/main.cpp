@@ -1,3 +1,4 @@
+#include "drivers/zwo_am5_telescope.hpp"
 #include "server/alpaca_hub_server.hpp"
 
 // We need these for 2 reasons:
@@ -62,7 +63,7 @@ void discovery_thread_proc() {
     socket.io_control(command);
     std::size_t bytes_readable = command.get();
 
-    if(bytes_readable > 0) {
+    if (bytes_readable > 0) {
       socket.receive_from(asio::buffer(recv_str), client);
       std::string msg_received(recv_str);
       spdlog::trace("received {0}", msg_received);
@@ -75,7 +76,6 @@ void discovery_thread_proc() {
       }
     }
     std::this_thread::sleep_for(1000ms);
-
   }
   spdlog::debug("exiting discovery_thread_proc");
 }
@@ -92,14 +92,14 @@ int main(int argc, char **argv) {
     }
   }
 
-  // auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-  // auto http_logger = std::make_shared<spdlog::logger>("HTTP", console_sink);
-  // auto core_logger = std::make_shared<spdlog::logger>("CORE", console_sink);
+  // auto console_sink =
+  // std::make_shared<spdlog::sinks::stdout_color_sink_mt>(); auto http_logger =
+  // std::make_shared<spdlog::logger>("HTTP", console_sink); auto core_logger =
+  // std::make_shared<spdlog::logger>("CORE", console_sink);
 
   // I may try to get some good formatting in place later. I think
   // this is the default format:
   // spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%n] [%l] %v");
-
 
   auto cli_map_iter = cli_args.find("-l");
 
@@ -134,9 +134,21 @@ int main(int argc, char **argv) {
   }
 
   spdlog::info("Starting AlpacaHub");
-  alpaca_hub_server::device_map["camera"] = std::vector<std::shared_ptr<i_alpaca_device>>();
+  alpaca_hub_server::device_map["camera"] =
+      std::vector<std::shared_ptr<i_alpaca_device>>();
   alpaca_hub_server::device_map["filterwheel"] =
       std::vector<std::shared_ptr<i_alpaca_device>>();
+  alpaca_hub_server::device_map["telescope"] =
+      std::vector<std::shared_ptr<i_alpaca_device>>();
+  alpaca_hub_server::device_map["focuser"] =
+      std::vector<std::shared_ptr<i_alpaca_device>>();
+
+  for(auto iter : zwo_am5_telescope::serial_devices()) {
+    auto telescope_ptr = std::make_shared<zwo_am5_telescope>();
+    telescope_ptr->set_serial_device(iter);
+    spdlog::info("Adding ZWO mount at {}", iter);
+    alpaca_hub_server::device_map["telescope"].push_back(telescope_ptr);
+  }
 
   try {
     using namespace std::chrono;
@@ -165,8 +177,9 @@ int main(int argc, char **argv) {
         spdlog::info("filterwheel added");
         alpaca_hub_server::device_map["filterwheel"].push_back(fw_ptr);
         spdlog::debug("attempting to invoke connected...");
-        spdlog::debug("                     connected:{0}",
-                      alpaca_hub_server::device_map["filterwheel"][0]->connected());
+        spdlog::debug(
+            "                     connected:{0}",
+            alpaca_hub_server::device_map["filterwheel"][0]->connected());
       }
     }
 
@@ -178,10 +191,12 @@ int main(int argc, char **argv) {
       spdlog::info("Starting web server in multithreaded mode with {0} threads",
                    thread_pool_size);
       restinio::run(
-        restinio::on_thread_pool<alpaca_hub_server::chained_device_traits_t>(thread_pool_size)
+          restinio::on_thread_pool<alpaca_hub_server::chained_device_traits_t>(
+              thread_pool_size)
               .logger(http_logger)
               .address("0.0.0.0")
-        .request_handler(alpaca_hub_server::create_device_api_handler(), alpaca_hub_server::server_handler())
+              .request_handler(alpaca_hub_server::create_device_api_handler(),
+                               alpaca_hub_server::server_handler())
               .read_next_http_message_timelimit(100s)
               .write_http_response_timelimit(30s)
               .handle_request_timeout(30s));
@@ -190,10 +205,12 @@ int main(int argc, char **argv) {
       spdlog::info("Starting web server in singlethreaded mode",
                    thread_pool_size);
       restinio::run(
-        restinio::on_this_thread<alpaca_hub_server::chained_device_traits_t>() // single
+          restinio::on_this_thread<
+              alpaca_hub_server::chained_device_traits_t>() // single
               .logger(http_logger)
               .address("0.0.0.0")
-        .request_handler(alpaca_hub_server::create_device_api_handler(), alpaca_hub_server::server_handler())
+              .request_handler(alpaca_hub_server::create_device_api_handler(),
+                               alpaca_hub_server::server_handler())
               .read_next_http_message_timelimit(100s)
               .write_http_response_timelimit(30s)
               .handle_request_timeout(30s));
