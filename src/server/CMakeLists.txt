@@ -7,4 +7,4 @@ file(GLOB all_HEADERS "*.hpp" "*.h")
 
 add_library(server ${all_SOURCES})
 target_link_libraries(server nlohmann_json spdlog Catch2 restinio)
-target_include_directories(server PUBLIC ${CMAKE_CURRENT_LIST_DIR}/.. ${asio_INCLUDE_DIRS})
+target_include_directories(server PUBLIC ${CMAKE_CURRENT_LIST_DIR}/.. ${asio_INCLUDE_DIRS} ${llhttp_src_SOURCE_DIR}/include)
