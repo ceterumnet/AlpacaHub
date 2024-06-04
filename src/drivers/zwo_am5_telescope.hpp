@@ -4,13 +4,29 @@
 #include "asio/io_context.hpp"
 #include "asio/io_service.hpp"
 #include "asio/serial_port.hpp"
+#include "common/alpaca_exception.hpp"
+#include "common/alpaca_hub_serial.hpp"
+#include "date/date.h"
+#include "date/tz.h"
+#include "fmt/chrono.h"
 #include "interfaces/i_alpaca_telescope.hpp"
+#include "spdlog/fmt/bundled/format.h"
+#include "spdlog/spdlog.h"
+#include <asio/steady_timer.hpp>
+#include <catch2/catch_test_macros.hpp>
+#include <chrono>
+#include <cstdlib>
+#include <ctime>
+#include <functional>
+#include <initializer_list>
 #include <memory>
-#include "asio/steady_timer.hpp"
+#include <regex>
+#include <stdexcept>
+#include <thread>
+#include <vector>
 
 class zwo_am5_telescope : public i_alpaca_telescope {
 public:
-
   bool connected();
   int set_connected(bool);
   zwo_am5_telescope();
@@ -88,26 +104,29 @@ public:
   int abort_slew();
   std::vector<axis_rate> axis_rates(const telescope_axes_enum &);
   bool can_move_axis(const telescope_axes_enum &);
-  pier_side_enum destination_side_of_pier(const double & ra, const double & dec);
+  pier_side_enum destination_side_of_pier(const double &ra, const double &dec);
   int find_home();
   int move_axis(const telescope_axes_enum &, const double &);
   int park();
-  int pulse_guide(const guide_direction_enum & direction, const uint32_t & duration_ms);
+  int pulse_guide(const guide_direction_enum &direction,
+                  const uint32_t &duration_ms);
   int set_park();
-  int slew_to_alt_az(const double & alt, const double & az);
-  int slew_to_alt_az_async(const double & alt, const double & az);
-  int slew_to_coordinates(const double & ra, const double & dec);
+  int slew_to_alt_az(const double &alt, const double &az);
+  int slew_to_alt_az_async(const double &alt, const double &az);
+  int slew_to_coordinates(const double &ra, const double &dec);
   int slew_to_target();
   int slew_to_target_async();
-  int sync_to_alt_az(const double & alt, const double & az);
-  int sync_to_coordinates(const double & ra, const double & dec);
+  int sync_to_alt_az(const double &alt, const double &az);
+  int sync_to_coordinates(const double &ra, const double &dec);
   int sync_to_target();
   int unpark();
 
   int set_serial_device(const std::string &);
   std::string get_serial_device_path();
 
-  std::string send_command_to_mount(const std::string &cmd, bool read_response = true, bool read_single_char = false);
+  std::string send_command_to_mount(const std::string &cmd,
+                                    bool read_response = true,
+                                    bool read_single_char = false);
 
 private:
   std::string _serial_device_path;

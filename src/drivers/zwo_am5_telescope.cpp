@@ -1,24 +1,4 @@
 #include "zwo_am5_telescope.hpp"
-#include "asio/io_context.hpp"
-#include "common/alpaca_exception.hpp"
-#include "common/alpaca_hub_serial.hpp"
-#include "date/date.h"
-#include "date/tz.h"
-#include "fmt/chrono.h"
-#include "spdlog/fmt/bundled/format.h"
-#include "spdlog/spdlog.h"
-#include <asio/steady_timer.hpp>
-#include <catch2/catch_test_macros.hpp>
-#include <chrono>
-#include <cstdlib>
-#include <ctime>
-#include <functional>
-#include <initializer_list>
-#include <memory>
-#include <regex>
-#include <stdexcept>
-#include <thread>
-#include <vector>
 
 auto format_as(pier_side_enum s) { return fmt::underlying(s); }
 auto format_as(drive_rate_enum s) { return fmt::underlying(s); }
