@@ -6,7 +6,7 @@
 
 namespace nlohmann {
 void to_json(nlohmann::json &j, const axis_rate &p) {
-  j = nlohmann::json{{"Max", p.Max}, {"Min", p.Min}};
+  j = nlohmann::json{{"Maximum", p.Max}, {"Minimum", p.Min}};
 };
 } // namespace nlohmann
 
@@ -48,7 +48,7 @@ std::basic_string<T> lowercase(const std::basic_string<T> &s) {
 restinio::request_handling_status_t api_v1_handler::on_get_device_common(
     const device_request_handle_t &req, std::string device_type,
     device_num_t device_num, std::string rest_of_path) {
-  spdlog::trace("hitting common GET device handler");
+  spdlog::trace("hitting common GET device handler {}", rest_of_path);
 
   auto device_data = req->extra_data();
 
@@ -148,7 +148,7 @@ restinio::request_handling_status_t api_v1_handler::on_get_device_common(
 restinio::request_handling_status_t api_v1_handler::on_put_device_common(
     const device_request_handle_t &req, std::string device_type,
     device_num_t device_num, std::string rest_of_path) {
-  spdlog::trace("hitting common PUT device handler");
+  spdlog::trace("hitting common PUT device handler {}", rest_of_path);
 
   if (device_type != "camera" && device_type != "telescope" &&
       device_type != "focuser" && device_type != "filterwheel") {
@@ -494,7 +494,7 @@ server_handler() {
       response_map["ClientTransactionID"] =
           restinio::cast_to<uint32_t>(qp["clienttransactionid"]);
     } catch (std::exception &ex) {
-      spdlog::warn("problem with request: {0}", ex.what());
+      spdlog::warn("problem with request: {} {}", req->header().query(), ex.what());
     }
 
     return init_resp(req->create_response())
@@ -1438,10 +1438,10 @@ server_handler() {
                                    &i_alpaca_telescope::guide_rate_declination>(
       router, "guideratedeclination");
 
-  // GET guiderateascension
+  // GET guideraterightascension
   api_handler->add_route_to_router<i_alpaca_telescope,
                                    &i_alpaca_telescope::guide_rate_ascension>(
-      router, "guiderateascension");
+      router, "guideraterightascension");
 
   // GET ispulseguiding
   api_handler->add_route_to_router<i_alpaca_telescope,
@@ -1518,10 +1518,10 @@ server_handler() {
                                    &i_alpaca_telescope::tracking_rates>(
       router, "trackingrates");
 
-  // GET utctime
+  // GET utcdate
   api_handler
-      ->add_route_to_router<i_alpaca_telescope, &i_alpaca_telescope::utc_time>(
-          router, "utctime");
+      ->add_route_to_router<i_alpaca_telescope, &i_alpaca_telescope::utc_date>(
+          router, "utcdate");
 
   // This has a specific parameter that needs to be pulled out so our
   // add_route_to_router doesn't work in its current form
@@ -1650,10 +1650,11 @@ server_handler() {
             .done();
       });
 
-  // GET findhome
-  api_handler
-      ->add_route_to_router<i_alpaca_telescope, &i_alpaca_telescope::find_home>(
-          router, "findhome");
+  // PUT findhome
+  router->http_put(
+      "/api/v1/telescope/:device_number/findhome",
+      api_handler->create_put_handler<void, i_alpaca_telescope,
+                                      &i_alpaca_telescope::find_home>());
 
   // PUT declinationrate
   router->http_put(
@@ -1661,7 +1662,7 @@ server_handler() {
       api_handler
           ->create_put_handler<double, i_alpaca_telescope,
                                &i_alpaca_telescope::set_declination_rate>(
-              "declinationrate"));
+              "DeclinationRate"));
 
   // PUT doesrefraction
   router->http_put(
@@ -1676,15 +1677,15 @@ server_handler() {
       api_handler
           ->create_put_handler<double, i_alpaca_telescope,
                                &i_alpaca_telescope::set_guide_rate_declination>(
-              "guideratedeclination"));
+              "GuideRateDeclination"));
 
   // PUT guiderateascension
   router->http_put(
-      "/api/v1/telescope/:device_number/guiderateascension",
+      "/api/v1/telescope/:device_number/guideraterightascension",
       api_handler
           ->create_put_handler<double, i_alpaca_telescope,
                                &i_alpaca_telescope::set_guide_rate_ascension>(
-              "guiderateascension"));
+              "GuideRateRightAscension"));
 
   // PUT rightascensionrate
   router->http_put(
@@ -1692,43 +1693,43 @@ server_handler() {
       api_handler
           ->create_put_handler<double, i_alpaca_telescope,
                                &i_alpaca_telescope::set_right_ascension_rate>(
-              "rightascensionrate"));
+              "RightAscensionRate"));
 
   // PUT sideofpier
   router->http_put(
       "/api/v1/telescope/:device_number/sideofpier",
       api_handler->create_put_handler<pier_side_enum, i_alpaca_telescope,
                                       &i_alpaca_telescope::set_side_of_pier>(
-          "sideofpier"));
+          "SideOfPier"));
 
   // PUT siteelevation
   router->http_put(
       "/api/v1/telescope/:device_number/siteelevation",
       api_handler->create_put_handler<double, i_alpaca_telescope,
                                       &i_alpaca_telescope::set_site_elevation>(
-          "siteelevation"));
+          "SiteElevation"));
 
   // PUT sitelatitude
   router->http_put(
       "/api/v1/telescope/:device_number/sitelatitude",
       api_handler->create_put_handler<double, i_alpaca_telescope,
                                       &i_alpaca_telescope::set_site_latitude>(
-          "sitelatitude"));
+          "SiteLatitude"));
 
   // PUT sitelongitude
   router->http_put(
       "/api/v1/telescope/:device_number/sitelongitude",
       api_handler->create_put_handler<double, i_alpaca_telescope,
                                       &i_alpaca_telescope::set_site_longitude>(
-          "sitelongitude"));
+          "SiteLongitude"));
 
   // PUT slewsettletime
   router->http_put(
       "/api/v1/telescope/:device_number/slewsettletime",
       api_handler
-          ->create_put_handler<double, i_alpaca_telescope,
+          ->create_put_handler<int, i_alpaca_telescope,
                                &i_alpaca_telescope::set_slew_settle_time>(
-              "slewsettletime"));
+              "SlewSettleTime"));
 
   // PUT targetdeclination
   router->http_put(
@@ -1736,7 +1737,7 @@ server_handler() {
       api_handler
           ->create_put_handler<double, i_alpaca_telescope,
                                &i_alpaca_telescope::set_target_declination>(
-              "targetdeclination"));
+              "TargetDeclination"));
 
   // PUT targetrightascension
   router->http_put(
@@ -1751,21 +1752,21 @@ server_handler() {
       "/api/v1/telescope/:device_number/tracking",
       api_handler->create_put_handler<bool, i_alpaca_telescope,
                                       &i_alpaca_telescope::set_tracking>(
-          "targetrightascension", true));
+          "Tracking", true));
 
   // PUT trackingrate
   router->http_put(
       "/api/v1/telescope/:device_number/trackingrate",
       api_handler->create_put_handler<drive_rate_enum, i_alpaca_telescope,
                                       &i_alpaca_telescope::set_tracking_rate>(
-          "trackingrate"));
+          "TrackingRate"));
 
-  // PUT utctime
+  // PUT utcdate
   router->http_put(
-      "/api/v1/telescope/:device_number/utctime",
+      "/api/v1/telescope/:device_number/utcdate",
       api_handler->create_put_handler<std::string, i_alpaca_telescope,
-                                      &i_alpaca_telescope::set_utc_time>(
-          "utctime"));
+                                      &i_alpaca_telescope::set_utc_date>(
+          "UTCDate"));
 
   // PUT abortslew
   router->http_put(
@@ -2078,6 +2079,12 @@ server_handler() {
       "/api/v1/telescope/:device_number/synctotarget",
       api_handler->create_put_handler<void, i_alpaca_telescope,
                                       &i_alpaca_telescope::sync_to_target>());
+
+  // PUT unpark
+  router->http_put(
+      "/api/v1/telescope/:device_number/unpark",
+      api_handler->create_put_handler<void, i_alpaca_telescope,
+                                      &i_alpaca_telescope::unpark>());
 
   // END telescope routes
 

@@ -108,8 +108,8 @@ public:
   virtual double site_longitude() = 0;
   virtual int set_site_longitude(const double &) = 0;
   virtual bool slewing() = 0;
-  virtual double slew_settle_time() = 0;
-  virtual int set_slew_settle_time(const double &) = 0;
+  virtual int slew_settle_time() = 0;
+  virtual int set_slew_settle_time(const int &) = 0;
   virtual double target_declination() = 0;
   virtual int set_target_declination(const double &) = 0;
   virtual double target_right_ascension() = 0;
@@ -120,8 +120,8 @@ public:
   virtual drive_rate_enum tracking_rate() = 0;
   virtual int set_tracking_rate(const drive_rate_enum &) = 0;
   virtual std::vector<drive_rate_enum> tracking_rates() = 0;
-  virtual std::string utc_time() = 0;
-  virtual int set_utc_time(const std::string &) = 0;
+  virtual std::string utc_date() = 0;
+  virtual int set_utc_date(const std::string &) = 0;
   virtual int abort_slew() = 0;
   virtual std::vector<axis_rate> axis_rates(const telescope_axes_enum &) = 0;
   virtual bool can_move_axis(const telescope_axes_enum &) = 0;

@@ -90,8 +90,8 @@ public:
   double site_longitude();
   int set_site_longitude(const double &);
   bool slewing();
-  double slew_settle_time();
-  int set_slew_settle_time(const double &);
+  int slew_settle_time();
+  int set_slew_settle_time(const int &);
   double target_declination();
   int set_target_declination(const double &);
   double target_right_ascension();
@@ -102,8 +102,8 @@ public:
   drive_rate_enum tracking_rate();
   int set_tracking_rate(const drive_rate_enum &);
   std::vector<drive_rate_enum> tracking_rates();
-  std::string utc_time();
-  int set_utc_time(const std::string &);
+  std::string utc_date();
+  int set_utc_date(const std::string &);
   int abort_slew();
   std::vector<axis_rate> axis_rates(const telescope_axes_enum &);
   bool can_move_axis(const telescope_axes_enum &);
@@ -132,6 +132,7 @@ public:
                                     bool read_single_char = false);
 
 private:
+  std::mutex _telescope_mtx;
   std::string _serial_device_path;
   // std::unique_ptr<asio::serial_port> _serial_port;
   // std::unique_ptr<asio::io_service> _io_service;
@@ -141,6 +142,7 @@ private:
   double _aperture_diameter;
   double _focal_length;
   void throw_if_not_connected();
+  void throw_if_parked();
   void block_while_moving();
   double _site_elevation;
   double _site_latitude;
