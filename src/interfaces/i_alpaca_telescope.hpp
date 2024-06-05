@@ -11,6 +11,7 @@ struct axis_rate {
   double Max;
   double Min;
   axis_rate(const double &max_, const double &min_) : Max(max_), Min(min_){};
+
 };
 
 enum guide_direction_enum : int {

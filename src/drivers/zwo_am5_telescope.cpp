@@ -1,7 +1,9 @@
 #include "zwo_am5_telescope.hpp"
+#include "interfaces/i_alpaca_telescope.hpp"
 
 auto format_as(pier_side_enum s) { return fmt::underlying(s); }
 auto format_as(drive_rate_enum s) { return fmt::underlying(s); }
+auto format_as(telescope_axes_enum s) { return fmt::underlying(s); }
 
 template <typename Duration>
 inline auto a_localtime(date::local_time<Duration> time) -> std::tm {
@@ -1484,7 +1486,8 @@ int zwo_am5_telescope::set_aperture_diameter(const double &diameter) {
 
 double zwo_am5_telescope::aperture_area() {
   throw_if_not_connected();
-  throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED, "Aperture area not available");
+  throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED,
+                         "Aperture area not available");
   return 0;
 }
 
@@ -2103,13 +2106,19 @@ int zwo_am5_telescope::set_utc_time(const std::string &utc_time_str) {
 
   spdlog::debug("calculated offset_seconds: {}", offset_minutes);
 
-  int date_mm = std::atoi(&fmt::format("{:%m}", zoned_time.get_local_time())[0]);
-  int date_dd = std::atoi(&fmt::format("{:%d}", zoned_time.get_local_time())[0]);
-  int date_yy = std::atoi(&fmt::format("{:%y}", zoned_time.get_local_time())[0]);
+  int date_mm =
+      std::atoi(&fmt::format("{:%m}", zoned_time.get_local_time())[0]);
+  int date_dd =
+      std::atoi(&fmt::format("{:%d}", zoned_time.get_local_time())[0]);
+  int date_yy =
+      std::atoi(&fmt::format("{:%y}", zoned_time.get_local_time())[0]);
 
-  int time_hh = std::atoi(&fmt::format("{:%H}", zoned_time.get_local_time())[0]);
-  int time_mm = std::atoi(&fmt::format("{:%M}", zoned_time.get_local_time())[0]);
-  int time_ss = std::atoi(&fmt::format("{:%S}", zoned_time.get_local_time())[0]);
+  int time_hh =
+      std::atoi(&fmt::format("{:%H}", zoned_time.get_local_time())[0]);
+  int time_mm =
+      std::atoi(&fmt::format("{:%M}", zoned_time.get_local_time())[0]);
+  int time_ss =
+      std::atoi(&fmt::format("{:%S}", zoned_time.get_local_time())[0]);
 
   char plus_or_minus_tz = '+';
   if (offset_minutes < 0min)
@@ -2120,9 +2129,11 @@ int zwo_am5_telescope::set_utc_time(const std::string &utc_time_str) {
   if (offset_minutes % 60 == 30min)
     tz_mm = 30;
 
-  auto resp = send_command_to_mount(zwoc::cmd_set_date_time_and_tz(
-      date_mm, date_dd, date_yy, time_hh, time_mm, time_ss, plus_or_minus_tz,
-      tz_hh, tz_mm), true, true);
+  auto resp =
+      send_command_to_mount(zwoc::cmd_set_date_time_and_tz(
+                                date_mm, date_dd, date_yy, time_hh, time_mm,
+                                time_ss, plus_or_minus_tz, tz_hh, tz_mm),
+                            true, true);
 
   auto info = zoned_time.get_info();
   int daylight_savings = 0;
@@ -2134,7 +2145,8 @@ int zwo_am5_telescope::set_utc_time(const std::string &utc_time_str) {
     throw alpaca_exception(alpaca_exception::DRIVER_ERROR,
                            "Problem setting time with driver");
 
-  resp = send_command_to_mount(zwoc::cmd_set_daylight_savings(daylight_savings), true, true);
+  resp = send_command_to_mount(zwoc::cmd_set_daylight_savings(daylight_savings),
+                               true, true);
   if (resp != "1")
     throw alpaca_exception(alpaca_exception::DRIVER_ERROR,
                            "Problem setting daylight savings with driver");
@@ -2160,14 +2172,20 @@ int zwo_am5_telescope::abort_slew() {
   return 0;
 }
 
-std::vector<axis_rate> zwo_am5_telescope::axis_rates(const telescope_axes_enum & axis) {
+std::vector<axis_rate>
+zwo_am5_telescope::axis_rates(const telescope_axes_enum &axis) {
   throw_if_not_connected();
   // We are just returning one value with a min and max which is degrees per
   // second
-  return std::vector<axis_rate>{axis_rate(0.0042 * .25, 0.0042 * 1440.0)};
+  if (axis == telescope_axes_enum::primary ||
+      axis == telescope_axes_enum::secondary)
+    return std::vector<axis_rate>{axis_rate(0.0042 * .25, 0.0042 * 1440.0)};
+  else
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           fmt::format("{} is not a valid axis", axis));
 }
 
-bool zwo_am5_telescope::can_move_axis(const telescope_axes_enum & axis) {
+bool zwo_am5_telescope::can_move_axis(const telescope_axes_enum &axis) {
   throw_if_not_connected();
   if (axis == telescope_axes_enum::primary)
     return true;
@@ -2244,7 +2262,8 @@ int zwo_am5_telescope::find_home() {
 }
 
 // I'm making an assumption that east/west is mapped to RA...need to test
-int zwo_am5_telescope::move_axis(const telescope_axes_enum &axis, const double &rate) {
+int zwo_am5_telescope::move_axis(const telescope_axes_enum &axis,
+                                 const double &rate) {
   switch (axis) {
   // RA
   case telescope_axes_enum::primary:
@@ -2342,7 +2361,8 @@ int zwo_am5_telescope::slew_to_alt_az(const double &alt, const double &az) {
   return 0;
 }
 
-int zwo_am5_telescope::slew_to_alt_az_async(const double &alt, const double &az) {
+int zwo_am5_telescope::slew_to_alt_az_async(const double &alt,
+                                            const double &az) {
   throw_if_not_connected();
   throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED,
                          "Alt Az support is not fully implemented yet.");
@@ -2350,7 +2370,8 @@ int zwo_am5_telescope::slew_to_alt_az_async(const double &alt, const double &az)
 }
 
 // TODO: implement
-int zwo_am5_telescope::slew_to_coordinates(const double &ra, const double &dec) {
+int zwo_am5_telescope::slew_to_coordinates(const double &ra,
+                                           const double &dec) {
   throw_if_not_connected();
   zwor::hh_mm_ss converted_ra(ra);
   zwor::sdd_mm_ss converted_dec(dec);
@@ -2400,7 +2421,10 @@ int zwo_am5_telescope::sync_to_alt_az(const double &alt, const double &az) {
   return 0;
 }
 
-int zwo_am5_telescope::sync_to_coordinates(const double &ra, const double &dec) { return 0; }
+int zwo_am5_telescope::sync_to_coordinates(const double &ra,
+                                           const double &dec) {
+  return 0;
+}
 
 // TODO: test this properly
 int zwo_am5_telescope::sync_to_target() {
