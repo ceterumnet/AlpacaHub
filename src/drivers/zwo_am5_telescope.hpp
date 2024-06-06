@@ -117,6 +117,8 @@ public:
   int slew_to_alt_az(const double &alt, const double &az);
   int slew_to_alt_az_async(const double &alt, const double &az);
   int slew_to_coordinates(const double &ra, const double &dec);
+  int slew_to_coordinates_async(const double &ra, const double &dec);
+
   int slew_to_target();
   int slew_to_target_async();
   int sync_to_alt_az(const double &alt, const double &az);
@@ -131,8 +133,11 @@ public:
                                     bool read_response = true,
                                     bool read_single_char = false);
 
+  std::string get_serial_number();
 private:
+  asio::io_context _io_ctx;
   std::mutex _telescope_mtx;
+  std::mutex _moving_mtx;
   std::string _serial_device_path;
   // std::unique_ptr<asio::serial_port> _serial_port;
   // std::unique_ptr<asio::io_service> _io_service;
@@ -144,12 +149,15 @@ private:
   void throw_if_not_connected();
   void throw_if_parked();
   void block_while_moving();
+  void set_is_moving(bool);
   double _site_elevation;
   double _site_latitude;
   double _site_longitude;
   double _guide_rate;
   double _slew_settle_time;
   bool _parked;
+  bool _moving;
+  bool _is_pulse_guiding;
 };
 
 #endif

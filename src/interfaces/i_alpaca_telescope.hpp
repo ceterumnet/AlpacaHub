@@ -135,6 +135,7 @@ public:
   virtual int slew_to_alt_az(const double &alt, const double &az) = 0;
   virtual int slew_to_alt_az_async(const double &alt, const double &az) = 0;
   virtual int slew_to_coordinates(const double &ra, const double &dec) = 0;
+  virtual int slew_to_coordinates_async(const double &ra, const double &dec) = 0;
   virtual int slew_to_target() = 0;
   virtual int slew_to_target_async() = 0;
   virtual int sync_to_alt_az(const double &alt, const double &az) = 0;

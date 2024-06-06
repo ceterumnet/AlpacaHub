@@ -1,5 +1,5 @@
 #include "zwo_am5_telescope.hpp"
-#include "interfaces/i_alpaca_telescope.hpp"
+#include <chrono>
 #include <mutex>
 #include <thread>
 
@@ -140,7 +140,7 @@ const std::string cmd_set_latitude(const char &plus_or_minus, const int &dd,
                      ss);
 }
 
-// Response should be "sDD*MM#"
+// Response should be "sDD*MM:SS#"
 const std::string cmd_get_latitude() { return ":Gt#"; }
 
 // Response should be 1 for success and 0 for failure
@@ -958,6 +958,57 @@ sdd_mm_ss parse_sdd_mm_ss_response(const std::string &resp) {
   return data;
 }
 
+struct sddd_mm_ss {
+  char plus_or_minus;
+  int ddd;
+  int mm;
+  int ss;
+  double as_decimal() {
+    double value = ddd + (mm / 60.0) + (ss / 3600.0);
+    if (plus_or_minus == '-')
+      value = value * -1;
+    return value;
+  }
+
+  sddd_mm_ss() : plus_or_minus('+'), ddd(0), mm(0), ss(0){};
+  // sdd_mm_ss(std::initializer_list<sdd_mm_ss>) {};
+  // CTOR to support easy initialization
+  sddd_mm_ss(const double &val) {
+    double abs_val = std::abs(val);
+    ddd = abs_val;
+    mm = (abs_val - ddd) * 60.0;
+    ss = (abs_val - ddd - (mm / 60.0)) * 3600.0;
+    plus_or_minus = '+';
+    if (val < 0) {
+      plus_or_minus = '-';
+    }
+  }
+};
+
+// -098*00:00#
+sddd_mm_ss parse_sddd_mm_ss_response(const std::string &resp) {
+  sddd_mm_ss data;
+  std::string response = resp;
+  auto expression = R"(^([+-])([0-9]{3})\*([0-9]{2}):([0-9]{2})#)";
+  spdlog::debug("matching with ({})", expression);
+  std::regex resp_regex(expression);
+  std::match_results<std::string::iterator> res;
+  auto is_matched =
+      std::regex_search(response.begin(), response.end(), res, resp_regex);
+  if (!is_matched)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           fmt::format("problem parsing response {0}", resp));
+  std::string s_matched_str = res[1].str();
+  data.plus_or_minus = s_matched_str.c_str()[0];
+  std::string ddd_matched_str = res[2].str();
+  data.ddd = atoi(ddd_matched_str.c_str());
+  std::string mm_matched_str = res[3].str();
+  data.mm = atoi(mm_matched_str.c_str());
+  std::string ss_matched_str = res[4].str();
+  data.ss = atoi(ss_matched_str.c_str());
+  return data;
+}
+
 struct mm_dd_yy {
   int mm;
   int dd;
@@ -1014,6 +1065,26 @@ struct sdd_mm {
   char plus_or_minus;
   int dd;
   int mm;
+
+  double as_decimal() {
+    double value = dd + (mm / 60.0);
+    if (plus_or_minus == '-')
+      value = value * -1;
+    return value;
+  }
+
+  sdd_mm() : plus_or_minus('+'), dd(0), mm(0){};
+  // sdd_mm_ss(std::initializer_list<sdd_mm_ss>) {};
+  // CTOR to support easy initialization
+  sdd_mm(const double &val) {
+    double abs_val = std::abs(val);
+    dd = abs_val;
+    mm = (abs_val - dd) * 60.0;
+    plus_or_minus = '+';
+    if (val < 0) {
+      plus_or_minus = '-';
+    }
+  }
 };
 
 sdd_mm parse_sdd_mm_response(const std::string &resp) {
@@ -1040,6 +1111,26 @@ struct sddd_mm {
   char plus_or_minus;
   int ddd;
   int mm;
+
+  double as_decimal() {
+    double value = ddd + (mm / 60.0);
+    if (plus_or_minus == '-')
+      value = value * -1;
+    return value;
+  }
+
+  sddd_mm() : plus_or_minus('+'), ddd(0), mm(0){};
+  // sdd_mm_ss(std::initializer_list<sdd_mm_ss>) {};
+  // CTOR to support easy initialization
+  sddd_mm(const double &val) {
+    double abs_val = std::abs(val);
+    ddd = abs_val;
+    mm = (abs_val - ddd) * 60.0;
+    plus_or_minus = '+';
+    if (val < 0) {
+      plus_or_minus = '-';
+    }
+  }
 };
 
 sddd_mm parse_sddd_mm_response(const std::string &resp) {
@@ -1400,7 +1491,8 @@ TEST_CASE("Serial connection attempt", "[set_connected]") {
 zwo_am5_telescope::zwo_am5_telescope()
     : _parked(false), _connected(false), _guide_rate(.5), _site_longitude(0),
       _site_latitude(0), _site_elevation(0), _aperture_diameter(0),
-      _io_context(1), _serial_port(_io_context){};
+      _moving(false), _io_context(1), _serial_port(_io_context),
+      _is_pulse_guiding(false){};
 
 zwo_am5_telescope::~zwo_am5_telescope() {
   spdlog::debug("Closing serial connection");
@@ -1422,6 +1514,7 @@ void zwo_am5_telescope::throw_if_parked() {
 std::string zwo_am5_telescope::send_command_to_mount(const std::string &cmd,
                                                      bool read_response,
                                                      bool read_single_char) {
+  spdlog::trace("sending: {} to mount", cmd);
   std::lock_guard lock(_telescope_mtx);
   char buf[512] = {0};
   _serial_port.write_some(asio::buffer(cmd));
@@ -1442,6 +1535,7 @@ std::string zwo_am5_telescope::send_command_to_mount(const std::string &cmd,
     }
   }
 
+  spdlog::trace("mount returned: {}", rsp);
   return rsp;
 }
 
@@ -1505,7 +1599,11 @@ double zwo_am5_telescope::aperture_area() {
   return 0;
 }
 
+// I'm wondering if I need to implement a state machine
+// to store / set states around movement...
 bool zwo_am5_telescope::slewing() {
+  if (_moving)
+    return true;
   auto resp = send_command_to_mount(zwoc::cmd_get_status());
   auto last_2_chars = resp.substr(resp.size() - 2, resp.size());
   // 4 is moving status
@@ -1694,6 +1792,9 @@ double zwo_am5_telescope::declination() {
   std::string resp = send_command_to_mount(zwoc::cmd_get_current_dec());
   spdlog::trace("declination returned: {0}", resp);
   auto parsed_resp = zwor::parse_sdd_mm_ss_response(resp);
+  // The ASCOM driver does this every time it calls :GD#
+  send_command_to_mount(":GFD1#");
+
   return parsed_resp.as_decimal();
 }
 
@@ -1738,7 +1839,7 @@ int zwo_am5_telescope::set_does_refraction(bool) {
 
 equatorial_system_enum zwo_am5_telescope::equatorial_system() {
   throw_if_not_connected();
-  return equatorial_system_enum::j2000;
+  return equatorial_system_enum::topocentric;
 }
 
 double zwo_am5_telescope::focal_length() {
@@ -1785,6 +1886,8 @@ double zwo_am5_telescope::right_ascension() {
   std::string resp = send_command_to_mount(zwoc::cmd_get_current_ra());
   spdlog::trace("ra returned: {0}", resp);
   auto parsed_resp = zwor::parse_hh_mm_ss_response(resp);
+  // The ASCOM driver does this every time it calls :GR#
+  send_command_to_mount(":GFR1#");
   return parsed_resp.as_decimal();
 }
 
@@ -1867,7 +1970,7 @@ double zwo_am5_telescope::sidereal_time() {
 
   // if (ds_data == 1)
   //   sidereal_data.hh = sidereal_data.hh + 1;
-
+  spdlog::trace("sidereal time data returned from scope: {}", sidereal_data);
   return sidereal_data.as_decimal();
 }
 
@@ -1888,7 +1991,9 @@ int zwo_am5_telescope::set_site_elevation(const double &site_elevation) {
 
 double zwo_am5_telescope::site_latitude() {
   throw_if_not_connected();
-  return _site_latitude;
+  auto resp = send_command_to_mount(zwoc::cmd_get_latitude());
+  auto parsed_resp = zwor::parse_sdd_mm_ss_response(resp);
+  return parsed_resp.as_decimal();
 }
 
 // TODO: add some validation
@@ -1896,13 +2001,27 @@ int zwo_am5_telescope::set_site_latitude(const double &site_latitude) {
   throw_if_not_connected();
   if (site_latitude < -90 || site_latitude > 90)
     throw alpaca_exception(alpaca_exception::INVALID_VALUE, "Latitude invalid");
+  zwor::sdd_mm_ss latitude_s(site_latitude);
+
+  auto resp = send_command_to_mount(
+      zwoc::cmd_set_latitude(latitude_s.plus_or_minus, latitude_s.dd,
+                             latitude_s.mm, latitude_s.ss),
+      true, true);
   _site_latitude = site_latitude;
   return 0;
 }
 
 double zwo_am5_telescope::site_longitude() {
   throw_if_not_connected();
-  return _site_longitude;
+  auto resp = send_command_to_mount(zwoc::cmd_get_longitude());
+  auto parsed_resp = zwor::parse_sddd_mm_ss_response(resp);
+
+  // This is a weird behavior from the ASCOM driver I'm mimicking
+  if(parsed_resp.plus_or_minus == '+')
+    parsed_resp.plus_or_minus = '-';
+  else
+    parsed_resp.plus_or_minus = '+';
+  return parsed_resp.as_decimal();
 }
 
 // TODO: add some validation
@@ -1911,6 +2030,18 @@ int zwo_am5_telescope::set_site_longitude(const double &site_longitude) {
   if (site_longitude < -180 || site_longitude > 180)
     throw alpaca_exception(alpaca_exception::INVALID_VALUE,
                            "Longitude invalid");
+  zwor::sddd_mm_ss longitude_s(site_longitude);
+
+  // This is a weird behavior from the ASCOM driver I'm mimicking
+  if( longitude_s.plus_or_minus == '+')
+    longitude_s.plus_or_minus = '-';
+  else
+    longitude_s.plus_or_minus = '+';
+  auto resp = send_command_to_mount(
+    zwoc::cmd_set_longitude(longitude_s.plus_or_minus, longitude_s.ddd,
+                            longitude_s.mm, longitude_s.ss),
+    true, true);
+
   _site_longitude = site_longitude;
   return 0;
 }
@@ -2045,6 +2176,12 @@ std::string zwo_am5_telescope::utc_date() {
   auto tz_resp = send_command_to_mount(zwoc::cmd_get_timezone());
   zwor::shh_mm tz_data = zwor::parse_shh_mm_response(tz_resp);
 
+  // This is recreating a strange behavior that the ASCOM driver does
+  if(tz_data.plus_or_minus == '+')
+    tz_data.plus_or_minus = '-';
+  else
+    tz_data.plus_or_minus = '+';
+
   auto dst_resp = send_command_to_mount(zwoc::cmd_get_daylight_savings());
   int d_savings = zwor::parse_standard_response(dst_resp);
 
@@ -2055,6 +2192,8 @@ std::string zwo_am5_telescope::utc_date() {
   auto time_resp = send_command_to_mount(zwoc::cmd_get_time());
   zwor::hh_mm_ss time_data = zwor::parse_hh_mm_ss_response(time_resp);
 
+  // This particular section is using the older time / date stuff
+  // I think this should be refactored to use the date stuff
   std::tm tm{}; // Zero initialise
 
   tm.tm_year = date_data.yy + 100;
@@ -2063,21 +2202,14 @@ std::string zwo_am5_telescope::utc_date() {
   tm.tm_hour = time_data.hh;
   tm.tm_min = time_data.mm;
   tm.tm_sec = time_data.ss;
-  tm.tm_isdst = -1*d_savings;
 
-  spdlog::trace("tz_data.hh - d_savings: {}", tz_data.hh - d_savings);
-
-  // if (tz_data.plus_or_minus == '-')
-  //   tm.tm_gmtoff =
-  //     -1 * (((tz_data.hh - d_savings) * 3600) + (tz_data.mm * 60));
-  // else
-  //   tm.tm_gmtoff = ((tz_data.hh - d_savings) * 3600) + (tz_data.mm * 60);
   spdlog::trace("tm.tm_gmtoff: {}", tm.tm_gmtoff);
 
   std::time_t tt = std::mktime(&tm);
 
   spdlog::trace("local mount time: {0:%F} {0:%T} {0:%Z}", tm);
   spdlog::trace("tm.tm_gmtoff: {}", tm.tm_gmtoff);
+
   auto g_t = std::gmtime(&tt);
   // auto g_tt = std::mktime(g_t);
   auto gm_time = std::asctime(g_t);
@@ -2088,8 +2220,6 @@ std::string zwo_am5_telescope::utc_date() {
 }
 
 TEST_CASE("Test set and get UTC", "[get_and_set_utc_time]") {
-
-
   spdlog::set_level(spdlog::level::trace);
   using namespace std::chrono_literals;
   auto cur_tz = date::current_zone();
@@ -2128,15 +2258,8 @@ TEST_CASE("Test set and get UTC", "[get_and_set_utc_time]") {
   telescope.set_serial_device("/dev/ttyACM0");
   telescope.set_connected(true);
 
-  // spdlog::trace("grabbing system's current timezone");
-
-  // auto tz_set_resp = telescope.send_command_to_mount(
-  //     zwoc::cmd_set_timezone('-', 6), true, true);
-  // spdlog::trace("tz_set_resp: {0}", tz_set_resp);
-
-  // auto tz_resp = telescope.send_command_to_mount(zwoc::cmd_get_timezone());
-  // spdlog::trace("tz_resp: {0}", tz_resp);
-  // auto tz_data = zwor::parse_shh_mm_response(tz_resp);
+  telescope.set_site_latitude(30.33333333333);
+  telescope.set_site_longitude(-98.0);
 
   auto utc_date_str = telescope.utc_date();
   spdlog::debug("TIME ********* ");
@@ -2146,6 +2269,16 @@ TEST_CASE("Test set and get UTC", "[get_and_set_utc_time]") {
   auto set_utc_date_str = fmt::format("{0:%F}T{0:%T}.0000000Z", tp);
   spdlog::debug("calling set_utc_date with: {}", set_utc_date_str);
   telescope.set_utc_date(set_utc_date_str);
+
+  utc_date_str = telescope.utc_date();
+  spdlog::debug("TIME ********* ");
+  spdlog::debug(utc_date_str);
+  spdlog::debug("TIME ********* ");
+
+  spdlog::debug("SIDEREAL TIME ********* ");
+  auto sidereal_tm = telescope.sidereal_time();
+  spdlog::debug("sidereal_tm: {}", sidereal_tm);
+  spdlog::debug("SIDEREAL TIME ********* ");
 }
 
 // Expects format like:
@@ -2171,15 +2304,20 @@ int zwo_am5_telescope::set_utc_date(const std::string &utc_date_str) {
     daylight_savings = 1;
 
   auto offset_minutes = date::floor<std::chrono::minutes>(
-    zoned_time.get_local_time().time_since_epoch() - t.time_since_epoch());
+      zoned_time.get_local_time().time_since_epoch() - t.time_since_epoch());
 
-  if(daylight_savings == 1) {
+  if (daylight_savings == 1) {
     offset_minutes -= 60min;
   }
 
+  // Set DST to 0
+  send_command_to_mount(zwoc::cmd_set_daylight_savings(0), true, true);
+
   spdlog::debug("calculated offset: {}", offset_minutes);
 
-  if( daylight_savings == 1)
+  // I believe that ZWO wants the time set as the time without DST
+  // and then wants the daylight savings flag set accordingly
+  if (daylight_savings == 1)
     zoned_time = date::make_zoned(cur_tz, t - 1h);
 
   spdlog::debug("Local date after adjusting for ZWO: {0:%F} {0:%T} {0:%Z}",
@@ -2201,7 +2339,9 @@ int zwo_am5_telescope::set_utc_date(const std::string &utc_date_str) {
       std::atoi(&fmt::format("{:%S}", zoned_time.get_local_time())[0]);
 
   char plus_or_minus_tz = '+';
-  if (offset_minutes < 0min)
+  // Yes...this is backwards...but it is how the ASCOM driver does it
+  // in order for the Sidereal time to be calculated correctly.
+  if (offset_minutes > 0min)
     plus_or_minus_tz = '-';
 
   int tz_hh = std::abs(offset_minutes / 60min);
@@ -2209,32 +2349,29 @@ int zwo_am5_telescope::set_utc_date(const std::string &utc_date_str) {
   if (offset_minutes % 60 == 30min)
     tz_mm = 30;
 
-  auto cmd = zwoc::cmd_set_date_time_and_tz(date_mm, date_dd, date_yy, time_hh,
-                                            time_mm, time_ss, plus_or_minus_tz,
-                                            tz_hh, tz_mm);
+  auto resp = send_command_to_mount(
+    zwoc::cmd_set_timezone(plus_or_minus_tz, tz_hh), true, true);
+  if (resp != "1")
+    throw alpaca_exception(alpaca_exception::DRIVER_ERROR,
+                           "Problem setting date with driver");
 
-  spdlog::trace("cmd to set date_time_and_tz: {}", cmd);
+  resp = send_command_to_mount(zwoc::cmd_set_date(date_mm, date_dd, date_yy), true, true);
+  if (resp != "1")
+    throw alpaca_exception(alpaca_exception::DRIVER_ERROR,
+                           "Problem setting date with driver");
 
-  auto resp =
-      send_command_to_mount(zwoc::cmd_set_date_time_and_tz(
-                                date_mm, date_dd, date_yy, time_hh, time_mm,
-                                time_ss, plus_or_minus_tz, tz_hh, tz_mm),
-                            true, true);
-
-  // zwor::parse_standard_response()
+  resp = send_command_to_mount(
+      zwoc::cmd_set_time(time_hh, time_mm, time_ss), true, true);
   if (resp != "1")
     throw alpaca_exception(alpaca_exception::DRIVER_ERROR,
                            "Problem setting time with driver");
 
-  resp = send_command_to_mount(zwoc::cmd_set_daylight_savings(daylight_savings),
-                               true, true);
-  if (resp != "1")
-    throw alpaca_exception(alpaca_exception::DRIVER_ERROR,
-                           "Problem setting daylight savings with driver");
-
   spdlog::debug("successfully set date, time and time zone on mount");
+  spdlog::trace("raw date from mount: {}",
+                send_command_to_mount(zwoc::cmd_get_date_and_time_and_tz()));
+  spdlog::trace("sidereal time from mount: {}",
+                send_command_to_mount(zwoc::cmd_get_sidereal_time()));
 
-  spdlog::debug("raw date from mount: {}", send_command_to_mount(zwoc::cmd_get_date_and_time_and_tz()));
   return 0;
 }
 
@@ -2247,6 +2384,50 @@ TEST_CASE("Test mount get time", "[get_time]") {
   std::string status_str =
       telescope.send_command_to_mount(zwoc::cmd_get_time());
   spdlog::debug("cmd_get_time() status_str: {0}", status_str);
+
+}
+
+TEST_CASE("Test mount get sidereal time", "[get_sidereal_time]") {
+  spdlog::set_level(spdlog::level::trace);
+  zwo_am5_telescope telescope;
+  telescope.set_serial_device("/dev/ttyACM0");
+  telescope.set_connected(true);
+  spdlog::trace("sending cmd_get_sidereal_time()");
+  std::string status_str =
+      telescope.send_command_to_mount(zwoc::cmd_get_sidereal_time());
+  spdlog::trace("sending cmd_get_timezone()");
+  status_str = telescope.send_command_to_mount(zwoc::cmd_get_timezone());
+  spdlog::trace("sending cmd_get_date()");
+  status_str = telescope.send_command_to_mount(zwoc::cmd_get_date());
+  spdlog::trace("sending cmd_get_time()");
+  status_str = telescope.send_command_to_mount(zwoc::cmd_get_time());
+  spdlog::trace("sending cmd_get_daylight_savings()");
+  status_str =
+      telescope.send_command_to_mount(zwoc::cmd_get_daylight_savings());
+  spdlog::trace("sending cmd_get_lat_and_long()");
+  status_str =
+      telescope.send_command_to_mount(zwoc::cmd_get_lat_and_long());
+
+  // spdlog::trace("sending cmd_set_timezone()");
+  // status_str = telescope.send_command_to_mount(
+  //   zwoc::cmd_set_timezone('-', 6), true, true);
+
+  spdlog::trace("fetching sidereal time");
+  telescope.send_command_to_mount(zwoc::cmd_get_sidereal_time());
+
+  // telescope.set_site_longitude(-98.0);
+  // telescope.set_site_latitude(30.33);
+
+  spdlog::trace("fetching sidereal time");
+  telescope.send_command_to_mount(zwoc::cmd_get_sidereal_time());
+
+  spdlog::trace("fetching longitude");
+  telescope.send_command_to_mount(zwoc::cmd_get_longitude());
+
+  // status_str = telescope.utc_date();
+  // spdlog::debug("UTC returned from scope: {}", status_str);
+  // telescope.set_utc_date()
+  //spdlog::debug("cmd_get_sidereal_time() status_str: {0}", status_str);
 }
 
 int zwo_am5_telescope::abort_slew() {
@@ -2346,33 +2527,50 @@ int zwo_am5_telescope::find_home() {
   return 0;
 }
 
+void zwo_am5_telescope::set_is_moving(bool is_moving) {
+  std::lock_guard lock(_moving_mtx);
+  _moving = is_moving;
+};
+
 // I'm making an assumption that east/west is mapped to RA...need to test
 int zwo_am5_telescope::move_axis(const telescope_axes_enum &axis,
                                  const double &rate) {
+
   throw_if_not_connected();
   throw_if_parked();
+
+  if ((std::abs(rate) < .0042 * .25 || std::abs(rate) > .0042 * 1440) &&
+      rate != 0.0)
+    throw alpaca_exception(
+        alpaca_exception::INVALID_VALUE,
+        fmt::format("Rate: {} is not within acceptable range", rate));
   switch (axis) {
   // RA
   case telescope_axes_enum::primary:
-    send_command_to_mount(zwoc::cmd_set_moving_speed_precise(std::abs(rate)/.0042),
-                          false);
+    set_is_moving(true);
+    send_command_to_mount(
+        zwoc::cmd_set_moving_speed_precise(std::abs(rate) / .0042), false);
     if (rate > 0)
       send_command_to_mount(zwoc::cmd_move_towards_east(), false);
     else if (rate < 0)
       send_command_to_mount(zwoc::cmd_move_towards_west(), false);
     else {
+      set_is_moving(false);
       send_command_to_mount(zwoc::cmd_stop_moving_towards_east(), false);
       send_command_to_mount(zwoc::cmd_stop_moving_towards_west(), false);
     }
     break;
   // Dec
   case telescope_axes_enum::secondary:
-    send_command_to_mount(zwoc::cmd_set_moving_speed_precise(std::abs(rate)/.0042));
+    set_is_moving(true);
+    send_command_to_mount(
+        zwoc::cmd_set_moving_speed_precise(std::abs(rate) / .0042));
     if (rate > 0)
       send_command_to_mount(zwoc::cmd_move_towards_north(), false);
     else if (rate < 0)
       send_command_to_mount(zwoc::cmd_move_towards_south(), false);
     else {
+      set_is_moving(false);
       send_command_to_mount(zwoc::cmd_stop_moving_towards_south(), false);
       send_command_to_mount(zwoc::cmd_stop_moving_towards_north(), false);
     }
@@ -2436,6 +2634,13 @@ int zwo_am5_telescope::pulse_guide(const guide_direction_enum &direction,
   }
   send_command_to_mount(zwoc::cmd_guide(cardinal_direction, _guide_rate),
                         false);
+  _is_pulse_guiding = true;
+  using namespace std::chrono_literals;
+  // Need to fire off a timer that sets pulse guiding to false after the
+  // duration
+  std::this_thread::sleep_for(std::chrono::milliseconds(duration_ms));
+
+  _is_pulse_guiding = false;
   return 0;
 }
 
@@ -2480,6 +2685,28 @@ int zwo_am5_telescope::slew_to_coordinates(const double &ra,
   auto mount_resp = zwor::parse_standard_response(resp);
   if (mount_resp == 1) {
     block_while_moving();
+    return 0;
+  } else
+    throw alpaca_exception(alpaca_exception::DRIVER_ERROR,
+                           fmt::format("mount returned {}", resp));
+  return -1;
+}
+
+int zwo_am5_telescope::slew_to_coordinates_async(const double &ra,
+                                                 const double &dec) {
+  throw_if_not_connected();
+  throw_if_parked();
+  zwor::hh_mm_ss converted_ra(ra);
+  zwor::sdd_mm_ss converted_dec(dec);
+
+  auto resp = send_command_to_mount(zwoc::cmd_set_target_ra_and_dec_and_goto(
+      converted_ra.hh, converted_ra.mm, converted_ra.ss,
+      converted_dec.plus_or_minus, converted_dec.dd, converted_dec.mm,
+      converted_dec.ss));
+
+  auto mount_resp = zwor::parse_standard_response(resp);
+  if (mount_resp == 1) {
+    // block_while_moving();
     return 0;
   } else
     throw alpaca_exception(alpaca_exception::DRIVER_ERROR,
@@ -2558,4 +2785,10 @@ int zwo_am5_telescope::set_serial_device(
 
 std::string zwo_am5_telescope::get_serial_device_path() {
   return _serial_device_path;
+}
+
+std::string zwo_am5_telescope::get_serial_number() {
+  throw_if_not_connected();
+  auto resp = send_command_to_mount(":GMA#");
+  return resp.substr(0, resp.size() - 1);
 }

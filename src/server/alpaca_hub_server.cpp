@@ -1874,8 +1874,8 @@ server_handler() {
     double alt = 0;
     double az = 0;
     try {
-      alt = restinio::cast_to<uint32_t>(qp["Altitude"]);
-      az = restinio::cast_to<uint32_t>(qp["Azimuth"]);
+      alt = restinio::cast_to<double>(qp["Altitude"]);
+      az = restinio::cast_to<double>(qp["Azimuth"]);
     } catch (std::exception &ex) {
       response_map["ErrorNumber"] = alpaca_exception::INVALID_VALUE;
       response_map["ErrorMessage"] =
@@ -1913,8 +1913,8 @@ server_handler() {
     double alt = 0;
     double az = 0;
     try {
-      alt = restinio::cast_to<uint32_t>(qp["Altitude"]);
-      az = restinio::cast_to<uint32_t>(qp["Azimuth"]);
+      alt = restinio::cast_to<double>(qp["Altitude"]);
+      az = restinio::cast_to<double>(qp["Azimuth"]);
     } catch (std::exception &ex) {
       response_map["ErrorNumber"] = alpaca_exception::INVALID_VALUE;
       response_map["ErrorMessage"] =
@@ -1952,8 +1952,8 @@ server_handler() {
     double ra = 0;
     double dec = 0;
     try {
-      ra = restinio::cast_to<uint32_t>(qp["RightAscension"]);
-      dec = restinio::cast_to<uint32_t>(qp["Declination"]);
+      ra = restinio::cast_to<double>(qp["RightAscension"]);
+      dec = restinio::cast_to<double>(qp["Declination"]);
     } catch (std::exception &ex) {
       response_map["ErrorNumber"] = alpaca_exception::INVALID_VALUE;
       response_map["ErrorMessage"] =
@@ -1968,6 +1968,45 @@ server_handler() {
 
     try {
       if (the_telescope->slew_to_coordinates(ra, dec) != 0) {
+        response_map["ErrorNumber"] = -1;
+        response_map["ErrorMessage"] = "Failed to slew";
+        return init_resp(req->create_response())
+            .set_body(nlohmann::json(response_map).dump())
+            .done();
+      }
+    } catch (alpaca_exception &ex) {
+      response_map["ErrorNumber"] = ex.error_code();
+      response_map["ErrorMessage"] = ex.what();
+    }
+    return init_resp(req->create_response())
+        .set_body(nlohmann::json(response_map).dump())
+        .done();
+  });
+
+  // PUT slewtocoordinatesasync
+  router->http_put("/api/v1/telescope/:device_number/slewtocoordinatesasync", [](auto req,
+                                                                   auto) {
+    auto &response_map = req->extra_data().response_map;
+    const auto qp = restinio::parse_query(req->body());
+    double ra = 0;
+    double dec = 0;
+    try {
+      ra = restinio::cast_to<double>(qp["RightAscension"]);
+      dec = restinio::cast_to<double>(qp["Declination"]);
+    } catch (std::exception &ex) {
+      response_map["ErrorNumber"] = alpaca_exception::INVALID_VALUE;
+      response_map["ErrorMessage"] =
+        fmt::format("Invalid Value passed {}", ex.what());
+      return init_resp(req->create_response(restinio::status_bad_request()))
+          .set_body(nlohmann::json(response_map).dump())
+          .done();
+    }
+
+    std::shared_ptr<i_alpaca_telescope> the_telescope =
+        std::dynamic_pointer_cast<i_alpaca_telescope>(req->extra_data().device);
+
+    try {
+      if (the_telescope->slew_to_coordinates_async(ra, dec) != 0) {
         response_map["ErrorNumber"] = -1;
         response_map["ErrorMessage"] = "Failed to slew";
         return init_resp(req->create_response())
