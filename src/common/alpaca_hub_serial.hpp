@@ -35,6 +35,7 @@ class blocking_reader {
   asio::steady_timer timer;
   bool read_error;
   asio::io_context &_io_ctx;
+  std::string _command;
 
   // Called when an async read completes or has been cancelled
   void read_complete(const asio::error_code &error, size_t bytes_transferred);
@@ -42,7 +43,7 @@ class blocking_reader {
   void time_out(const asio::error_code &error);
 
 public:
-  blocking_reader(asio::serial_port &port, size_t timeout,
+  blocking_reader(const std::string &command, asio::serial_port &port, size_t timeout,
                   asio::io_context &io_ctx);
   bool read_char(char &val);
 };

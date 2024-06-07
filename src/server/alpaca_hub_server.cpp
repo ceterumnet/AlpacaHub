@@ -244,9 +244,9 @@ api_v1_handler::device_handler(const device_request_handle_t &req,
   try {
     req->extra_data().response_map["Value"] = f();
   } catch (alpaca_exception &ex) {
-    spdlog::warn("Generic handler received alpaca_exception. error_code: {0} "
-                 "error_message: {1}",
-                 ex.error_code(), ex.what());
+    spdlog::warn("Generic handler for {} received alpaca_exception. error_code: {} "
+                 "error_message: {}",
+                 hint, ex.error_code(), ex.what());
     response_map["ErrorNumber"] = ex.error_code();
     response_map["ErrorMessage"] = ex.what();
   }
@@ -313,13 +313,13 @@ api_v1_handler::create_put_handler(std::string parameter_key,
 
         if (std::is_same<Input_T, pier_side_enum>::value) {
           auto raw_value = qp[parameter_key];
-          input_variant =
-              static_cast<pier_side_enum>(std::atoi(&raw_value[0]));
+          input_variant = static_cast<pier_side_enum>(std::atoi(&raw_value[0]));
         }
 
         if (std::is_same<Input_T, drive_rate_enum>::value) {
           auto raw_value = qp[parameter_key];
-          input_variant = static_cast<drive_rate_enum>(std::atoi(&raw_value[0]));
+          input_variant =
+              static_cast<drive_rate_enum>(std::atoi(&raw_value[0]));
         }
 
       } catch (std::exception &ex) {
@@ -505,7 +505,8 @@ server_handler() {
       response_map["ClientTransactionID"] =
           restinio::cast_to<uint32_t>(qp["clienttransactionid"]);
     } catch (std::exception &ex) {
-      spdlog::warn("problem with request: {} {}", req->header().query(), ex.what());
+      spdlog::warn("problem with request: {} {}", req->header().query(),
+                   ex.what());
     }
 
     return init_resp(req->create_response())
@@ -1737,10 +1738,9 @@ server_handler() {
   // PUT slewsettletime
   router->http_put(
       "/api/v1/telescope/:device_number/slewsettletime",
-      api_handler
-          ->create_put_handler<int, i_alpaca_telescope,
-                               &i_alpaca_telescope::set_slew_settle_time>(
-              "SlewSettleTime"));
+      api_handler->create_put_handler<
+          int, i_alpaca_telescope, &i_alpaca_telescope::set_slew_settle_time>(
+          "SlewSettleTime"));
 
   // PUT targetdeclination
   router->http_put(
@@ -1756,7 +1756,7 @@ server_handler() {
       api_handler
           ->create_put_handler<double, i_alpaca_telescope,
                                &i_alpaca_telescope::set_target_right_ascension>(
-              "targetrightascension"));
+              "TargetRightAscension"));
 
   // PUT tracking
   router->http_put(
@@ -1798,7 +1798,7 @@ server_handler() {
     } catch (std::exception &ex) {
       response_map["ErrorNumber"] = alpaca_exception::INVALID_VALUE;
       response_map["ErrorMessage"] =
-        fmt::format("Invalid Value passed {}", ex.what());
+          fmt::format("Invalid Value passed {}", ex.what());
       return init_resp(req->create_response(restinio::status_bad_request()))
           .set_body(nlohmann::json(response_map).dump())
           .done();
@@ -1833,7 +1833,7 @@ server_handler() {
 
   // PUT pulseguide
   router->http_put("/api/v1/telescope/:device_number/pulseguide", [](auto req,
-                                                                   auto) {
+                                                                     auto) {
     auto &response_map = req->extra_data().response_map;
     const auto qp = restinio::parse_query(req->body());
     uint32_t duration = 0;
@@ -1854,8 +1854,8 @@ server_handler() {
         std::dynamic_pointer_cast<i_alpaca_telescope>(req->extra_data().device);
 
     try {
-      if (the_telescope->pulse_guide(static_cast<guide_direction_enum>(direction),
-                                   duration) != 0) {
+      if (the_telescope->pulse_guide(
+              static_cast<guide_direction_enum>(direction), duration) != 0) {
         response_map["ErrorNumber"] = -1;
         response_map["ErrorMessage"] = fmt::format("Failed to move axis");
         return init_resp(req->create_response())
@@ -1879,7 +1879,7 @@ server_handler() {
 
   // PUT slewtoaltaz
   router->http_put("/api/v1/telescope/:device_number/slewtoaltaz", [](auto req,
-                                                                   auto) {
+                                                                      auto) {
     auto &response_map = req->extra_data().response_map;
     const auto qp = restinio::parse_query(req->body());
     double alt = 0;
@@ -1917,121 +1917,125 @@ server_handler() {
   });
 
   // PUT slewtoaltazasync
-  router->http_put("/api/v1/telescope/:device_number/slewtoaltazasync", [](auto req,
-                                                                   auto) {
-    auto &response_map = req->extra_data().response_map;
-    const auto qp = restinio::parse_query(req->body());
-    double alt = 0;
-    double az = 0;
-    try {
-      alt = restinio::cast_to<double>(qp["Altitude"]);
-      az = restinio::cast_to<double>(qp["Azimuth"]);
-    } catch (std::exception &ex) {
-      response_map["ErrorNumber"] = alpaca_exception::INVALID_VALUE;
-      response_map["ErrorMessage"] =
-          fmt::format("Invalid Value passed for duration");
-      return init_resp(req->create_response(restinio::status_bad_request()))
-          .set_body(nlohmann::json(response_map).dump())
-          .done();
-    }
+  router->http_put(
+      "/api/v1/telescope/:device_number/slewtoaltazasync", [](auto req, auto) {
+        auto &response_map = req->extra_data().response_map;
+        const auto qp = restinio::parse_query(req->body());
+        double alt = 0;
+        double az = 0;
+        try {
+          alt = restinio::cast_to<double>(qp["Altitude"]);
+          az = restinio::cast_to<double>(qp["Azimuth"]);
+        } catch (std::exception &ex) {
+          response_map["ErrorNumber"] = alpaca_exception::INVALID_VALUE;
+          response_map["ErrorMessage"] =
+              fmt::format("Invalid Value passed for duration");
+          return init_resp(req->create_response(restinio::status_bad_request()))
+              .set_body(nlohmann::json(response_map).dump())
+              .done();
+        }
 
-    std::shared_ptr<i_alpaca_telescope> the_telescope =
-        std::dynamic_pointer_cast<i_alpaca_telescope>(req->extra_data().device);
+        std::shared_ptr<i_alpaca_telescope> the_telescope =
+            std::dynamic_pointer_cast<i_alpaca_telescope>(
+                req->extra_data().device);
 
-    try {
-      if (the_telescope->slew_to_alt_az_async(alt, az) != 0) {
-        response_map["ErrorNumber"] = -1;
-        response_map["ErrorMessage"] = "Failed to slew";
+        try {
+          if (the_telescope->slew_to_alt_az_async(alt, az) != 0) {
+            response_map["ErrorNumber"] = -1;
+            response_map["ErrorMessage"] = "Failed to slew";
+            return init_resp(req->create_response())
+                .set_body(nlohmann::json(response_map).dump())
+                .done();
+          }
+        } catch (alpaca_exception &ex) {
+          response_map["ErrorNumber"] = ex.error_code();
+          response_map["ErrorMessage"] = ex.what();
+        }
         return init_resp(req->create_response())
             .set_body(nlohmann::json(response_map).dump())
             .done();
-      }
-    } catch (alpaca_exception &ex) {
-      response_map["ErrorNumber"] = ex.error_code();
-      response_map["ErrorMessage"] = ex.what();
-    }
-    return init_resp(req->create_response())
-        .set_body(nlohmann::json(response_map).dump())
-        .done();
-  });
+      });
 
   // PUT slewtocoordinates
-  router->http_put("/api/v1/telescope/:device_number/slewtocoordinates", [](auto req,
-                                                                   auto) {
-    auto &response_map = req->extra_data().response_map;
-    const auto qp = restinio::parse_query(req->body());
-    double ra = 0;
-    double dec = 0;
-    try {
-      ra = restinio::cast_to<double>(qp["RightAscension"]);
-      dec = restinio::cast_to<double>(qp["Declination"]);
-    } catch (std::exception &ex) {
-      response_map["ErrorNumber"] = alpaca_exception::INVALID_VALUE;
-      response_map["ErrorMessage"] =
-        fmt::format("Invalid Value passed {}", ex.what());
-      return init_resp(req->create_response(restinio::status_bad_request()))
-          .set_body(nlohmann::json(response_map).dump())
-          .done();
-    }
+  router->http_put(
+      "/api/v1/telescope/:device_number/slewtocoordinates", [](auto req, auto) {
+        auto &response_map = req->extra_data().response_map;
+        const auto qp = restinio::parse_query(req->body());
+        double ra = 0;
+        double dec = 0;
+        try {
+          ra = restinio::cast_to<double>(qp["RightAscension"]);
+          dec = restinio::cast_to<double>(qp["Declination"]);
+        } catch (std::exception &ex) {
+          response_map["ErrorNumber"] = alpaca_exception::INVALID_VALUE;
+          response_map["ErrorMessage"] =
+              fmt::format("Invalid Value passed {}", ex.what());
+          return init_resp(req->create_response(restinio::status_bad_request()))
+              .set_body(nlohmann::json(response_map).dump())
+              .done();
+        }
 
-    std::shared_ptr<i_alpaca_telescope> the_telescope =
-        std::dynamic_pointer_cast<i_alpaca_telescope>(req->extra_data().device);
+        std::shared_ptr<i_alpaca_telescope> the_telescope =
+            std::dynamic_pointer_cast<i_alpaca_telescope>(
+                req->extra_data().device);
 
-    try {
-      if (the_telescope->slew_to_coordinates(ra, dec) != 0) {
-        response_map["ErrorNumber"] = -1;
-        response_map["ErrorMessage"] = "Failed to slew";
+        try {
+          if (the_telescope->slew_to_coordinates(ra, dec) != 0) {
+            response_map["ErrorNumber"] = -1;
+            response_map["ErrorMessage"] = "Failed to slew";
+            return init_resp(req->create_response())
+                .set_body(nlohmann::json(response_map).dump())
+                .done();
+          }
+        } catch (alpaca_exception &ex) {
+          response_map["ErrorNumber"] = ex.error_code();
+          response_map["ErrorMessage"] = ex.what();
+        }
         return init_resp(req->create_response())
             .set_body(nlohmann::json(response_map).dump())
             .done();
-      }
-    } catch (alpaca_exception &ex) {
-      response_map["ErrorNumber"] = ex.error_code();
-      response_map["ErrorMessage"] = ex.what();
-    }
-    return init_resp(req->create_response())
-        .set_body(nlohmann::json(response_map).dump())
-        .done();
-  });
+      });
 
   // PUT slewtocoordinatesasync
-  router->http_put("/api/v1/telescope/:device_number/slewtocoordinatesasync", [](auto req,
-                                                                   auto) {
-    auto &response_map = req->extra_data().response_map;
-    const auto qp = restinio::parse_query(req->body());
-    double ra = 0;
-    double dec = 0;
-    try {
-      ra = restinio::cast_to<double>(qp["RightAscension"]);
-      dec = restinio::cast_to<double>(qp["Declination"]);
-    } catch (std::exception &ex) {
-      response_map["ErrorNumber"] = alpaca_exception::INVALID_VALUE;
-      response_map["ErrorMessage"] =
-        fmt::format("Invalid Value passed {}", ex.what());
-      return init_resp(req->create_response(restinio::status_bad_request()))
-          .set_body(nlohmann::json(response_map).dump())
-          .done();
-    }
+  router->http_put(
+      "/api/v1/telescope/:device_number/slewtocoordinatesasync",
+      [](auto req, auto) {
+        auto &response_map = req->extra_data().response_map;
+        const auto qp = restinio::parse_query(req->body());
+        double ra = 0;
+        double dec = 0;
+        try {
+          ra = restinio::cast_to<double>(qp["RightAscension"]);
+          dec = restinio::cast_to<double>(qp["Declination"]);
+        } catch (std::exception &ex) {
+          response_map["ErrorNumber"] = alpaca_exception::INVALID_VALUE;
+          response_map["ErrorMessage"] =
+              fmt::format("Invalid Value passed {}", ex.what());
+          return init_resp(req->create_response(restinio::status_bad_request()))
+              .set_body(nlohmann::json(response_map).dump())
+              .done();
+        }
 
-    std::shared_ptr<i_alpaca_telescope> the_telescope =
-        std::dynamic_pointer_cast<i_alpaca_telescope>(req->extra_data().device);
+        std::shared_ptr<i_alpaca_telescope> the_telescope =
+            std::dynamic_pointer_cast<i_alpaca_telescope>(
+                req->extra_data().device);
 
-    try {
-      if (the_telescope->slew_to_coordinates_async(ra, dec) != 0) {
-        response_map["ErrorNumber"] = -1;
-        response_map["ErrorMessage"] = "Failed to slew";
+        try {
+          if (the_telescope->slew_to_coordinates_async(ra, dec) != 0) {
+            response_map["ErrorNumber"] = -1;
+            response_map["ErrorMessage"] = "Failed to slew";
+            return init_resp(req->create_response())
+                .set_body(nlohmann::json(response_map).dump())
+                .done();
+          }
+        } catch (alpaca_exception &ex) {
+          response_map["ErrorNumber"] = ex.error_code();
+          response_map["ErrorMessage"] = ex.what();
+        }
         return init_resp(req->create_response())
             .set_body(nlohmann::json(response_map).dump())
             .done();
-      }
-    } catch (alpaca_exception &ex) {
-      response_map["ErrorNumber"] = ex.error_code();
-      response_map["ErrorMessage"] = ex.what();
-    }
-    return init_resp(req->create_response())
-        .set_body(nlohmann::json(response_map).dump())
-        .done();
-  });
+      });
 
   // PUT slewtotarget
   router->http_put(
@@ -2047,82 +2051,84 @@ server_handler() {
                                &i_alpaca_telescope::slew_to_target_async>());
 
   // PUT synctoaltaz
-  router->http_put("/api/v1/telescope/:device_number/slewtoaltazasync", [](auto req,
-                                                                   auto) {
-    auto &response_map = req->extra_data().response_map;
-    const auto qp = restinio::parse_query(req->body());
-    double alt = 0;
-    double az = 0;
-    try {
-      alt = restinio::cast_to<uint32_t>(qp["Altitude"]);
-      az = restinio::cast_to<uint32_t>(qp["Azimuth"]);
-    } catch (std::exception &ex) {
-      response_map["ErrorNumber"] = alpaca_exception::INVALID_VALUE;
-      response_map["ErrorMessage"] =
-          fmt::format("Invalid Value passed for duration");
-      return init_resp(req->create_response(restinio::status_bad_request()))
-          .set_body(nlohmann::json(response_map).dump())
-          .done();
-    }
+  router->http_put(
+      "/api/v1/telescope/:device_number/slewtoaltazasync", [](auto req, auto) {
+        auto &response_map = req->extra_data().response_map;
+        const auto qp = restinio::parse_query(req->body());
+        double alt = 0;
+        double az = 0;
+        try {
+          alt = restinio::cast_to<uint32_t>(qp["Altitude"]);
+          az = restinio::cast_to<uint32_t>(qp["Azimuth"]);
+        } catch (std::exception &ex) {
+          response_map["ErrorNumber"] = alpaca_exception::INVALID_VALUE;
+          response_map["ErrorMessage"] =
+              fmt::format("Invalid Value passed for duration");
+          return init_resp(req->create_response(restinio::status_bad_request()))
+              .set_body(nlohmann::json(response_map).dump())
+              .done();
+        }
 
-    std::shared_ptr<i_alpaca_telescope> the_telescope =
-        std::dynamic_pointer_cast<i_alpaca_telescope>(req->extra_data().device);
+        std::shared_ptr<i_alpaca_telescope> the_telescope =
+            std::dynamic_pointer_cast<i_alpaca_telescope>(
+                req->extra_data().device);
 
-    try {
-      if (the_telescope->sync_to_alt_az(alt, az) != 0) {
-        response_map["ErrorNumber"] = -1;
-        response_map["ErrorMessage"] = "Failed to sync";
+        try {
+          if (the_telescope->sync_to_alt_az(alt, az) != 0) {
+            response_map["ErrorNumber"] = -1;
+            response_map["ErrorMessage"] = "Failed to sync";
+            return init_resp(req->create_response())
+                .set_body(nlohmann::json(response_map).dump())
+                .done();
+          }
+        } catch (alpaca_exception &ex) {
+          response_map["ErrorNumber"] = ex.error_code();
+          response_map["ErrorMessage"] = ex.what();
+        }
         return init_resp(req->create_response())
             .set_body(nlohmann::json(response_map).dump())
             .done();
-      }
-    } catch (alpaca_exception &ex) {
-      response_map["ErrorNumber"] = ex.error_code();
-      response_map["ErrorMessage"] = ex.what();
-    }
-    return init_resp(req->create_response())
-        .set_body(nlohmann::json(response_map).dump())
-        .done();
-  });
+      });
 
   // PUT synctocoordinates
-  router->http_put("/api/v1/telescope/:device_number/synctocoordinates", [](auto req,
-                                                                   auto) {
-    auto &response_map = req->extra_data().response_map;
-    const auto qp = restinio::parse_query(req->body());
-    double ra = 0;
-    double dec = 0;
-    try {
-      ra = restinio::cast_to<uint32_t>(qp["RightAscension"]);
-      dec = restinio::cast_to<uint32_t>(qp["Declination"]);
-    } catch (std::exception &ex) {
-      response_map["ErrorNumber"] = alpaca_exception::INVALID_VALUE;
-      response_map["ErrorMessage"] =
-        fmt::format("Invalid Value passed {}", ex.what());
-      return init_resp(req->create_response(restinio::status_bad_request()))
-          .set_body(nlohmann::json(response_map).dump())
-          .done();
-    }
+  router->http_put(
+      "/api/v1/telescope/:device_number/synctocoordinates", [](auto req, auto) {
+        auto &response_map = req->extra_data().response_map;
+        const auto qp = restinio::parse_query(req->body());
+        double ra = 0;
+        double dec = 0;
+        try {
+          ra = restinio::cast_to<double>(qp["RightAscension"]);
+          dec = restinio::cast_to<double>(qp["Declination"]);
+        } catch (std::exception &ex) {
+          response_map["ErrorNumber"] = alpaca_exception::INVALID_VALUE;
+          response_map["ErrorMessage"] =
+              fmt::format("Invalid Value passed {}", ex.what());
+          return init_resp(req->create_response(restinio::status_bad_request()))
+              .set_body(nlohmann::json(response_map).dump())
+              .done();
+        }
 
-    std::shared_ptr<i_alpaca_telescope> the_telescope =
-        std::dynamic_pointer_cast<i_alpaca_telescope>(req->extra_data().device);
+        std::shared_ptr<i_alpaca_telescope> the_telescope =
+            std::dynamic_pointer_cast<i_alpaca_telescope>(
+                req->extra_data().device);
 
-    try {
-      if (the_telescope->sync_to_coordinates(ra, dec) != 0) {
-        response_map["ErrorNumber"] = -1;
-        response_map["ErrorMessage"] = "Failed to sync";
+        try {
+          if (the_telescope->sync_to_coordinates(ra, dec) != 0) {
+            response_map["ErrorNumber"] = -1;
+            response_map["ErrorMessage"] = "Failed to sync";
+            return init_resp(req->create_response())
+                .set_body(nlohmann::json(response_map).dump())
+                .done();
+          }
+        } catch (alpaca_exception &ex) {
+          response_map["ErrorNumber"] = ex.error_code();
+          response_map["ErrorMessage"] = ex.what();
+        }
         return init_resp(req->create_response())
             .set_body(nlohmann::json(response_map).dump())
             .done();
-      }
-    } catch (alpaca_exception &ex) {
-      response_map["ErrorNumber"] = ex.error_code();
-      response_map["ErrorMessage"] = ex.what();
-    }
-    return init_resp(req->create_response())
-        .set_body(nlohmann::json(response_map).dump())
-        .done();
-  });
+      });
 
   // PUT synctotarget
   router->http_put(

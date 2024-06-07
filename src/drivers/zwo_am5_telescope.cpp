@@ -1425,6 +1425,9 @@ int zwo_am5_telescope::set_connected(bool connected) {
     return 0;
   }
 
+  // Reset state of the target being set
+  _ra_target_set = false;
+  _dec_target_set = false;
   if (connected) {
     try {
       spdlog::debug("Setting connected to true");
@@ -1447,7 +1450,14 @@ int zwo_am5_telescope::set_connected(bool connected) {
 
       spdlog::debug("mount returned {0}", buf);
       _connected = true;
-      return 0;
+
+      _tracking_enabled = false;
+      auto resp =
+          send_command_to_mount(zwoc::cmd_get_tracking_status());
+      if(resp == "1#")
+        _tracking_enabled = true;
+
+        return 0;
     } catch (asio::system_error &e) {
       spdlog::error("problem opening serial connection. {0}", e.what());
       throw alpaca_exception(
@@ -1493,7 +1503,7 @@ zwo_am5_telescope::zwo_am5_telescope()
     : _parked(false), _connected(false), _guide_rate(.8), _site_longitude(0),
       _site_latitude(0), _site_elevation(0), _aperture_diameter(0),
       _moving(false), _io_context(1), _serial_port(_io_context),
-      _is_pulse_guiding(false){};
+      _is_pulse_guiding(false), _ra_target_set(false), _dec_target_set(false) {};
 
 zwo_am5_telescope::~zwo_am5_telescope() {
   spdlog::debug("Closing serial connection");
@@ -1514,7 +1524,7 @@ void zwo_am5_telescope::throw_if_parked() {
 
 std::string zwo_am5_telescope::send_command_to_mount(const std::string &cmd,
                                                      bool read_response,
-                                                     bool read_single_char) {
+                                                     char stop_on_char) {
   spdlog::trace("sending: {} to mount", cmd);
   std::lock_guard lock(_telescope_mtx);
   char buf[512] = {0};
@@ -1526,11 +1536,12 @@ std::string zwo_am5_telescope::send_command_to_mount(const std::string &cmd,
     _io_context.reset();
 
     // TODO: we may need to make the read timeout configurable here
-    alpaca_hub_serial::blocking_reader reader(_serial_port, 100, _io_context);
+    alpaca_hub_serial::blocking_reader reader(cmd, _serial_port, 250,
+                                              _io_context);
     char c;
     while (reader.read_char(c)) {
       rsp += c;
-      if (c == '#' || read_single_char) {
+      if (c == stop_on_char || stop_on_char == '\0' || c == '#') {
         break;
       }
     }
@@ -1603,8 +1614,8 @@ double zwo_am5_telescope::aperture_area() {
 // I'm wondering if I need to implement a state machine
 // to store / set states around movement...
 bool zwo_am5_telescope::slewing() {
-  // if (_moving)
-  //   return true;
+  if (_moving)
+    return true;
   auto resp = send_command_to_mount(zwoc::cmd_get_status());
   auto last_2_chars = resp.substr(resp.size() - 2, resp.size());
   // 4 is moving status
@@ -1865,7 +1876,8 @@ double zwo_am5_telescope::guide_rate_declination() {
 
 int zwo_am5_telescope::set_guide_rate_declination(const double &rate) {
   throw_if_not_connected();
-  spdlog::debug("set_guide_rate_declination called with {} converted to {}", rate, rate*.0042);
+  spdlog::debug("set_guide_rate_declination called with {} converted to {}",
+                rate, rate * .0042);
   send_command_to_mount(zwoc::cmd_set_guide_rate(rate * .0042), false);
   return 0;
 }
@@ -1887,6 +1899,7 @@ bool zwo_am5_telescope::is_pulse_guiding() {
 
 double zwo_am5_telescope::right_ascension() {
   throw_if_not_connected();
+  spdlog::debug("right_ascension() invoked");
   std::string resp = send_command_to_mount(zwoc::cmd_get_current_ra());
   spdlog::trace("ra returned: {0}", resp);
   auto parsed_resp = zwor::parse_hh_mm_ss_response(resp);
@@ -1991,7 +2004,7 @@ int zwo_am5_telescope::set_site_latitude(const double &site_latitude) {
   auto resp = send_command_to_mount(
       zwoc::cmd_set_latitude(latitude_s.plus_or_minus, latitude_s.dd,
                              latitude_s.mm, latitude_s.ss),
-      true, true);
+      true, '\0');
   _site_latitude = site_latitude;
   return 0;
 }
@@ -2002,7 +2015,7 @@ double zwo_am5_telescope::site_longitude() {
   auto parsed_resp = zwor::parse_sddd_mm_ss_response(resp);
 
   // This is a weird behavior from the ASCOM driver I'm mimicking
-  if(parsed_resp.plus_or_minus == '+')
+  if (parsed_resp.plus_or_minus == '+')
     parsed_resp.plus_or_minus = '-';
   else
     parsed_resp.plus_or_minus = '+';
@@ -2018,14 +2031,14 @@ int zwo_am5_telescope::set_site_longitude(const double &site_longitude) {
   zwor::sddd_mm_ss longitude_s(site_longitude);
 
   // This is a weird behavior from the ASCOM driver I'm mimicking
-  if( longitude_s.plus_or_minus == '+')
+  if (longitude_s.plus_or_minus == '+')
     longitude_s.plus_or_minus = '-';
   else
     longitude_s.plus_or_minus = '+';
   auto resp = send_command_to_mount(
-    zwoc::cmd_set_longitude(longitude_s.plus_or_minus, longitude_s.ddd,
-                            longitude_s.mm, longitude_s.ss),
-    true, true);
+      zwoc::cmd_set_longitude(longitude_s.plus_or_minus, longitude_s.ddd,
+                              longitude_s.mm, longitude_s.ss),
+      true, '\0');
 
   _site_longitude = site_longitude;
   return 0;
@@ -2049,6 +2062,10 @@ int zwo_am5_telescope::set_slew_settle_time(const int &slew_settle_time) {
 // sdd_mm_ss
 double zwo_am5_telescope::target_declination() {
   throw_if_not_connected();
+  if (!_dec_target_set)
+    throw alpaca_exception(alpaca_exception::INVALID_OPERATION,
+                           "Must set DEC target before reading");
+
   auto resp = send_command_to_mount(zwoc::cmd_get_target_dec());
   double val = zwor::parse_sdd_mm_ss_response(resp).as_decimal();
   return val;
@@ -2061,13 +2078,22 @@ int zwo_am5_telescope::set_target_declination(const double &dec) {
   auto resp = send_command_to_mount(
       zwoc::cmd_set_target_dec(converted.plus_or_minus, converted.dd,
                                converted.mm, converted.ss),
-      false);
-  return 0;
+      true, '\0');
+  if(resp == "1") {
+    _dec_target_set = true;
+    return 0;
+  } else {
+    throw alpaca_exception(alpaca_exception::DRIVER_ERROR, "Failed to set target declination");
+    return -1;
+  }
 }
 
 // hh_mm_ss
 double zwo_am5_telescope::target_right_ascension() {
   throw_if_not_connected();
+  if (!_ra_target_set)
+    throw alpaca_exception(alpaca_exception::INVALID_OPERATION,
+                           "Must set RA target before reading");
   auto resp = send_command_to_mount(zwoc::cmd_get_target_ra());
   double val = zwor::parse_hh_mm_ss_response(resp).as_decimal();
   return val;
@@ -2078,34 +2104,89 @@ int zwo_am5_telescope::set_target_right_ascension(const double &ra) {
   throw_if_not_connected();
   zwor::hh_mm_ss converted(ra);
   auto resp = send_command_to_mount(
-      zwoc::cmd_set_target_ra(converted.hh, converted.mm, converted.ss), false);
+    zwoc::cmd_set_target_ra(converted.hh, converted.mm, converted.ss), true, '\0');
+  if (resp == "1") {
+    _ra_target_set = true;
+    return 0;
+  } else {
+    throw alpaca_exception(alpaca_exception::DRIVER_ERROR,
+                           "Failed to set target right ascension");
+    return -1;
+  }
   return 0;
 }
 
 // TODO: double check alpaca / ASCOM docs for correct behavior if error code
 // is returned
+
+// I'm going to store the state and manage behind the scenes...
 bool zwo_am5_telescope::tracking() {
   throw_if_not_connected();
-  auto resp = send_command_to_mount(zwoc::cmd_get_tracking_status());
-  auto val = zwor::parse_standard_response(resp);
-  if (val == 1)
-    return true;
-  return false;
+  return _tracking_enabled;
+  // if(slewing())
+  //   return _tracking_enabled;
+  // auto resp = send_command_to_mount(zwoc::cmd_get_tracking_status());
+  // auto val = zwor::parse_standard_response(resp);
+  // if (val == 1)
+  //   return true;
+  // return false;
 }
 
 int zwo_am5_telescope::set_tracking(const bool &tracking) {
+  using namespace std::chrono_literals;
   int val = 0;
   std::string resp;
+  throw_if_not_connected();
+  spdlog::debug("set_tracking invoked with {}", tracking);
   if (tracking)
-    resp = send_command_to_mount(zwoc::cmd_start_tracking(), true, true);
+    resp = send_command_to_mount(zwoc::cmd_start_tracking(), true, '\0');
   else
-    resp = send_command_to_mount(zwoc::cmd_stop_tracking(), true, true);
-  val = std::atoi(&resp[0]);
-  if (val == 1)
+    resp = send_command_to_mount(zwoc::cmd_stop_tracking(), true, '\0');
+  if (resp == "1") {
+    _tracking_enabled = tracking;
     return 0;
-  else
-    throw alpaca_exception(alpaca_exception::DRIVER_ERROR,
-                           "Failed to set tracking status");
+  }
+  else {
+    auto gat_resp = send_command_to_mount(zwoc::cmd_get_tracking_status());
+    spdlog::warn("failed to set tracking status to {}, error: {}", tracking,
+                 gat_resp);
+    if (gat_resp == "1#" && tracking) {
+      spdlog::info("ignore warning, mount is tracking.");
+      _tracking_enabled = tracking;
+      return 0;
+    }
+
+    if (gat_resp == "0#" && !tracking) {
+      spdlog::info("ignore warning, mount is not tracking.");
+      _tracking_enabled = tracking;
+      return 0;
+    }
+
+    if (gat_resp == "0#" && tracking) {
+      spdlog::debug("is mount moving? {}", slewing());
+      spdlog::debug("waiting 2000ms and retrying tracking");
+      std::this_thread::sleep_for(2000ms);
+      resp = send_command_to_mount(zwoc::cmd_start_tracking(), true, '\0');
+      if (resp == "1") {
+        spdlog::info("ignore previous warning, tracking retry successful");
+        _tracking_enabled = tracking;
+        return 0;
+      } else {
+        gat_resp = send_command_to_mount(zwoc::cmd_get_tracking_status());
+        if (gat_resp == "1#") {
+          spdlog::info("ignore previous warning");
+          _tracking_enabled = tracking;
+          return 0;
+        }
+        spdlog::warn("tracking retry failed: {}", resp);
+      }
+    }
+
+    throw alpaca_exception(
+        alpaca_exception::DRIVER_ERROR,
+        fmt::format("Failed to set tracking status: to {}, error: {}", tracking,
+                    gat_resp));
+  }
   return -1;
 }
 
@@ -2162,7 +2243,7 @@ std::string zwo_am5_telescope::utc_date() {
   zwor::shh_mm tz_data = zwor::parse_shh_mm_response(tz_resp);
 
   // This is recreating a strange behavior that the ASCOM driver does
-  if(tz_data.plus_or_minus == '+')
+  if (tz_data.plus_or_minus == '+')
     tz_data.plus_or_minus = '-';
   else
     tz_data.plus_or_minus = '+';
@@ -2209,7 +2290,6 @@ TEST_CASE("Test set and get UTC", "[get_and_set_utc_time]") {
   using namespace std::chrono_literals;
   auto cur_tz = date::current_zone();
   spdlog::trace("cur_tz name {}", cur_tz->name());
-
   date::sys_info sys_info;
 
   // Chrono System Clock
@@ -2242,6 +2322,9 @@ TEST_CASE("Test set and get UTC", "[get_and_set_utc_time]") {
   zwo_am5_telescope telescope;
   telescope.set_serial_device("/dev/ttyACM0");
   telescope.set_connected(true);
+
+  // Clear sync data
+  telescope.send_command_to_mount(":NSC#", true, '\0');
 
   telescope.set_site_latitude(30.33333333333);
   telescope.set_site_longitude(-98.0);
@@ -2296,7 +2379,7 @@ int zwo_am5_telescope::set_utc_date(const std::string &utc_date_str) {
   }
 
   // Set DST to 0
-  send_command_to_mount(zwoc::cmd_set_daylight_savings(0), true, true);
+  send_command_to_mount(zwoc::cmd_set_daylight_savings(0), true, '\0');
 
   spdlog::debug("calculated offset: {}", offset_minutes);
 
@@ -2335,18 +2418,19 @@ int zwo_am5_telescope::set_utc_date(const std::string &utc_date_str) {
     tz_mm = 30;
 
   auto resp = send_command_to_mount(
-    zwoc::cmd_set_timezone(plus_or_minus_tz, tz_hh), true, true);
+      zwoc::cmd_set_timezone(plus_or_minus_tz, tz_hh), true, '\0');
   if (resp != "1")
     throw alpaca_exception(alpaca_exception::DRIVER_ERROR,
                            "Problem setting date with driver");
 
-  resp = send_command_to_mount(zwoc::cmd_set_date(date_mm, date_dd, date_yy), true, true);
+  resp = send_command_to_mount(zwoc::cmd_set_date(date_mm, date_dd, date_yy),
+                               true, '\0');
   if (resp != "1")
     throw alpaca_exception(alpaca_exception::DRIVER_ERROR,
                            "Problem setting date with driver");
 
-  resp = send_command_to_mount(
-      zwoc::cmd_set_time(time_hh, time_mm, time_ss), true, true);
+  resp = send_command_to_mount(zwoc::cmd_set_time(time_hh, time_mm, time_ss),
+                               true, '\0');
   if (resp != "1")
     throw alpaca_exception(alpaca_exception::DRIVER_ERROR,
                            "Problem setting time with driver");
@@ -2369,7 +2453,6 @@ TEST_CASE("Test mount get time", "[get_time]") {
   std::string status_str =
       telescope.send_command_to_mount(zwoc::cmd_get_time());
   spdlog::debug("cmd_get_time() status_str: {0}", status_str);
-
 }
 
 TEST_CASE("Test mount get sidereal time", "[get_sidereal_time]") {
@@ -2390,8 +2473,7 @@ TEST_CASE("Test mount get sidereal time", "[get_sidereal_time]") {
   status_str =
       telescope.send_command_to_mount(zwoc::cmd_get_daylight_savings());
   spdlog::trace("sending cmd_get_lat_and_long()");
-  status_str =
-      telescope.send_command_to_mount(zwoc::cmd_get_lat_and_long());
+  status_str = telescope.send_command_to_mount(zwoc::cmd_get_lat_and_long());
 
   // spdlog::trace("sending cmd_set_timezone()");
   // status_str = telescope.send_command_to_mount(
@@ -2412,7 +2494,7 @@ TEST_CASE("Test mount get sidereal time", "[get_sidereal_time]") {
   // status_str = telescope.utc_date();
   // spdlog::debug("UTC returned from scope: {}", status_str);
   // telescope.set_utc_date()
-  //spdlog::debug("cmd_get_sidereal_time() status_str: {0}", status_str);
+  // spdlog::debug("cmd_get_sidereal_time() status_str: {0}", status_str);
 }
 
 int zwo_am5_telescope::abort_slew() {
@@ -2429,9 +2511,10 @@ zwo_am5_telescope::axis_rates(const telescope_axes_enum &axis) {
   // We are just returning one value with a min and max which is degrees per
   // second
   if (axis == telescope_axes_enum::primary ||
-      axis == telescope_axes_enum::secondary ||
-      axis == telescope_axes_enum::tertiary)
+      axis == telescope_axes_enum::secondary)
     return std::vector<axis_rate>{axis_rate(0.0042 * 1440.0, 0.0042 * .25)};
+  else if (axis == telescope_axes_enum::tertiary)
+    return std::vector<axis_rate>{};
   else
     throw alpaca_exception(alpaca_exception::INVALID_VALUE,
                            fmt::format("{} is not a valid axis", axis));
@@ -2554,7 +2637,7 @@ int zwo_am5_telescope::move_axis(const telescope_axes_enum &axis,
   case telescope_axes_enum::secondary:
     set_is_moving(true);
     send_command_to_mount(
-      zwoc::cmd_set_moving_speed_precise(std::abs(rate) / .0042), false);
+        zwoc::cmd_set_moving_speed_precise(std::abs(rate) / .0042), false);
     if (rate > 0)
       send_command_to_mount(zwoc::cmd_move_towards_north(), false);
     else if (rate < 0)
@@ -2569,6 +2652,7 @@ int zwo_am5_telescope::move_axis(const telescope_axes_enum &axis,
     throw alpaca_exception(alpaca_exception::INVALID_VALUE,
                            "unrecognized axis");
   }
+  set_tracking(_tracking_enabled);
   return 0;
 }
 
@@ -2605,13 +2689,45 @@ int zwo_am5_telescope::park() {
   return 0;
 }
 
+void zwo_am5_telescope::pulse_guide_proc(int duration_ms,
+                                         char cardinal_direction) {
+  spdlog::debug("running guide thread");
+  _is_pulse_guiding = true;
+  int remaining_duration_ms = duration_ms;
+
+  // We will do multiple guide commands if needed
+  if (duration_ms > 3000) {
+    int count = duration_ms / 3000;
+    remaining_duration_ms = duration_ms % 3000;
+
+    spdlog::debug("issuing multiple guide commands");
+    for (int i = 0; i < count; i++) {
+      spdlog::debug("guiding {}/{}", i + 1, count);
+      send_command_to_mount(zwoc::cmd_guide(cardinal_direction, 3000), false);
+      std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+    }
+  }
+  spdlog::debug("guiding remainder", remaining_duration_ms);
+  send_command_to_mount(
+      zwoc::cmd_guide(cardinal_direction, remaining_duration_ms), false);
+
+  using namespace std::chrono_literals;
+  // Need to fire off a timer that sets pulse guiding to false after the
+  // duration
+  std::this_thread::sleep_for(std::chrono::milliseconds(remaining_duration_ms));
+
+  _is_pulse_guiding = false;
+  spdlog::debug("pulse guide thread finished");
+}
+
 int zwo_am5_telescope::pulse_guide(const guide_direction_enum &direction,
                                    const uint32_t &duration_ms) {
   throw_if_not_connected();
   throw_if_parked();
   char cardinal_direction = 0;
   int remaining_duration_ms = duration_ms;
-  spdlog::debug("pulse_guide() invoked with direction: {}, duration: {}ms", direction, duration_ms);
+  spdlog::debug("pulse_guide() invoked with direction: {}, duration: {}ms",
+                direction, duration_ms);
   switch (direction) {
   case guide_direction_enum::guide_east:
     cardinal_direction = 'e';
@@ -2626,34 +2742,44 @@ int zwo_am5_telescope::pulse_guide(const guide_direction_enum &direction,
     cardinal_direction = 's';
     break;
   default:
-    throw alpaca_exception(alpaca_exception::INVALID_VALUE, "invalid guide direction");
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "invalid guide direction");
   }
 
-  _is_pulse_guiding = true;
+  spdlog::debug("creating guiding thread");
+  _guiding_thread =
+      std::thread(std::bind(&zwo_am5_telescope::pulse_guide_proc, this,
+                            duration_ms, cardinal_direction));
 
-  // We will do multiple guide commands if needed
-  if(duration_ms > 3000) {
-    int count = duration_ms / 3000;
-    remaining_duration_ms = duration_ms % 3000;
+  _guiding_thread.detach();
+  spdlog::debug("guiding thread detached");
 
-    spdlog::debug("issuing multiple guide commands");
-    for(int i = 0; i < count; i++) {
-      spdlog::debug("guiding {}/{}", i+1, count);
-      send_command_to_mount(zwoc::cmd_guide(cardinal_direction, 3000),
-                            false);
-      std::this_thread::sleep_for(std::chrono::milliseconds(3000));
-    }
-  }
-  spdlog::debug("guiding remainder", remaining_duration_ms);
-  send_command_to_mount(zwoc::cmd_guide(cardinal_direction, remaining_duration_ms),
-                        false);
+  // _is_pulse_guiding = true;
 
-  using namespace std::chrono_literals;
-  // Need to fire off a timer that sets pulse guiding to false after the
-  // duration
-  std::this_thread::sleep_for(std::chrono::milliseconds(remaining_duration_ms));
-  spdlog::debug("pulse guide finished");
-  _is_pulse_guiding = false;
+  // // We will do multiple guide commands if needed
+  // if (duration_ms > 3000) {
+  //   int count = duration_ms / 3000;
+  //   remaining_duration_ms = duration_ms % 3000;
+
+  //   spdlog::debug("issuing multiple guide commands");
+  //   for (int i = 0; i < count; i++) {
+  //     spdlog::debug("guiding {}/{}", i + 1, count);
+  //     send_command_to_mount(zwoc::cmd_guide(cardinal_direction, 3000),
+  //     false); std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+  //   }
+  // }
+  // spdlog::debug("guiding remainder", remaining_duration_ms);
+  // send_command_to_mount(
+  //     zwoc::cmd_guide(cardinal_direction, remaining_duration_ms), false);
+
+  // using namespace std::chrono_literals;
+  // // Need to fire off a timer that sets pulse guiding to false after the
+  // // duration
+  // std::this_thread::sleep_for(std::chrono::milliseconds(remaining_duration_ms));
+
+  // spdlog::debug("pulse guide finished");
+  // _is_pulse_guiding = false;
+
   return 0;
 }
 
@@ -2686,63 +2812,100 @@ int zwo_am5_telescope::slew_to_coordinates(const double &ra,
                                            const double &dec) {
   throw_if_not_connected();
   throw_if_parked();
-  spdlog::debug("slew_to_coordinates invoked");
+
+  spdlog::debug("slew_to_coordinates invoked ra:{} dec:{}", ra, dec);
+
+  set_target_right_ascension(ra);
+  set_target_declination(dec);
+
+  _ra_target_set = true;
+  _dec_target_set = true;
+
   zwor::hh_mm_ss converted_ra(ra);
   zwor::sdd_mm_ss converted_dec(dec);
 
-  auto resp = send_command_to_mount(zwoc::cmd_set_target_ra_and_dec_and_goto(
-      converted_ra.hh, converted_ra.mm, converted_ra.ss,
-      converted_dec.plus_or_minus, converted_dec.dd, converted_dec.mm,
-      converted_dec.ss), true, true);
+  auto resp = send_command_to_mount(
+      zwoc::cmd_set_target_ra_and_dec_and_goto(
+          converted_ra.hh, converted_ra.mm, converted_ra.ss,
+          converted_dec.plus_or_minus, converted_dec.dd, converted_dec.mm,
+          converted_dec.ss),
+      true, '0');
 
   if (resp == "0") {
     block_while_moving();
     return 0;
-  } else
+  } else {
+    spdlog::warn("error returned from mount on slew_to_coordinates: {}", resp);
     throw alpaca_exception(alpaca_exception::DRIVER_ERROR,
                            fmt::format("mount returned {}", resp));
+  }
+
   return -1;
 }
 
-// This one may need to be reworked...
+// TODO: need to refactor this to share code
 int zwo_am5_telescope::slew_to_coordinates_async(const double &ra,
                                                  const double &dec) {
   throw_if_not_connected();
   throw_if_parked();
+
+  spdlog::debug("slew_to_coordinates_async invoked ra:{} dec:{}", ra, dec);
+
   zwor::hh_mm_ss converted_ra(ra);
   zwor::sdd_mm_ss converted_dec(dec);
-  spdlog::debug("slew_to_coordinates_async invoked");
-  auto resp = send_command_to_mount(zwoc::cmd_set_target_ra_and_dec_and_goto(
-      converted_ra.hh, converted_ra.mm, converted_ra.ss,
-      converted_dec.plus_or_minus, converted_dec.dd, converted_dec.mm,
-      converted_dec.ss), true, true);
+
+  set_target_right_ascension(ra);
+  set_target_declination(dec);
+
+  _ra_target_set = true;
+  _dec_target_set = true;
+
+  if(!_tracking_enabled)
+    throw alpaca_exception(alpaca_exception::INVALID_OPERATION, "Tracking is not enabled");
+  auto resp = send_command_to_mount(
+      zwoc::cmd_set_target_ra_and_dec_and_goto(
+          converted_ra.hh, converted_ra.mm, converted_ra.ss,
+          converted_dec.plus_or_minus, converted_dec.dd, converted_dec.mm,
+          converted_dec.ss),
+      true, '0');
 
   if (resp == "0") {
     return 0;
-  } else
+  } else {
+    spdlog::warn("error returned from mount on slew_to_coordinates_async: {}",
+                 resp);
     throw alpaca_exception(alpaca_exception::DRIVER_ERROR,
                            fmt::format("mount returned {}", resp));
+  }
   return -1;
 }
 
 int zwo_am5_telescope::slew_to_target() {
   throw_if_not_connected();
   throw_if_parked();
+  if (!_ra_target_set || !_dec_target_set)
+    throw alpaca_exception(alpaca_exception::INVALID_OPERATION,
+                           "RA and DEC target must be set");
   spdlog::debug("slew_to_target invoked");
-  auto resp = send_command_to_mount(zwoc::cmd_goto(), true, true);
+  auto resp = send_command_to_mount(zwoc::cmd_goto(), true, '0');
   if (resp == "0") {
     block_while_moving();
     return 0;
-  } else
+  } else {
+    spdlog::warn("error returned from mount on slew_to_coordinates: {}", resp);
     throw alpaca_exception(alpaca_exception::INVALID_OPERATION,
                            fmt::format("goto failed. {}", resp));
+  }
 }
 
 int zwo_am5_telescope::slew_to_target_async() {
   throw_if_not_connected();
   throw_if_parked();
+  if (!_ra_target_set || !_dec_target_set)
+    throw alpaca_exception(alpaca_exception::INVALID_OPERATION,
+                           "RA and DEC target must be set");
   spdlog::debug("slew_to_target_async invoked");
-  auto resp = send_command_to_mount(zwoc::cmd_goto(), true, true);
+  auto resp = send_command_to_mount(zwoc::cmd_goto(), true, '0');
   if (resp == "0")
     return 0;
   else
@@ -2761,20 +2924,27 @@ int zwo_am5_telescope::sync_to_coordinates(const double &ra,
                                            const double &dec) {
   zwor::hh_mm_ss ra_vals(ra);
   zwor::sdd_mm_ss dec_vals(dec);
-  spdlog::debug("sync_to_coordinates invoked");
+  _ra_target_set = true;
+  _dec_target_set = true;
+  spdlog::debug("sync_to_coordinates invoked ra: {} dec: {}", ra, dec);
   auto resp = send_command_to_mount(zwoc::cmd_set_target_ra_and_dec_and_sync(
       ra_vals.hh, ra_vals.mm, ra_vals.ss, dec_vals.plus_or_minus, dec_vals.dd,
       dec_vals.mm, dec_vals.ss));
   // auto result = zwor::parse_standard_response(resp);
-  if( resp == "N/A#")
+  if (resp == "N/A#")
     return 0;
   else
-    throw alpaca_exception(alpaca_exception::DRIVER_ERROR, fmt::format("sync_to_coordinates failed with: {}", resp));
+    throw alpaca_exception(
+        alpaca_exception::DRIVER_ERROR,
+        fmt::format("sync_to_coordinates failed with: {}", resp));
 }
 
 // TODO: test this properly
 int zwo_am5_telescope::sync_to_target() {
   throw_if_not_connected();
+  if (!_ra_target_set || !_dec_target_set)
+    throw alpaca_exception(alpaca_exception::INVALID_OPERATION,
+                           "RA and DEC target must be set");
   spdlog::debug("sync_to_target invoked");
   auto resp = send_command_to_mount(zwoc::cmd_sync());
   // Need to interpret response
@@ -2789,7 +2959,8 @@ int zwo_am5_telescope::sync_to_target() {
 // We will move the telescope back to its home position on this command
 int zwo_am5_telescope::unpark() {
   throw_if_not_connected();
-  // find_home();
+  // Move scope back to home position on unpark
+  // send_command_to_mount(zwo_commands::cmd_home_position(), false);
   // block_while_moving();
   _parked = false;
   return 0;

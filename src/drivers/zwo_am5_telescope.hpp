@@ -131,7 +131,7 @@ public:
 
   std::string send_command_to_mount(const std::string &cmd,
                                     bool read_response = true,
-                                    bool read_single_char = false);
+                                    char stop_on_char = '#');
 
   std::string get_serial_number();
 private:
@@ -139,6 +139,7 @@ private:
   std::mutex _telescope_mtx;
   std::mutex _moving_mtx;
   std::string _serial_device_path;
+  std::thread _guiding_thread;
   // std::unique_ptr<asio::serial_port> _serial_port;
   // std::unique_ptr<asio::io_service> _io_service;
   asio::io_context _io_context;
@@ -150,6 +151,7 @@ private:
   void throw_if_parked();
   void block_while_moving();
   void set_is_moving(bool);
+  void pulse_guide_proc(int duration_ms, char cardinal_direction);
   double _site_elevation;
   double _site_latitude;
   double _site_longitude;
@@ -158,6 +160,9 @@ private:
   bool _parked;
   bool _moving;
   bool _is_pulse_guiding;
+  bool _ra_target_set;
+  bool _dec_target_set;
+  bool _tracking_enabled;
 };
 
 #endif
