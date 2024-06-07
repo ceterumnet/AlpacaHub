@@ -2182,6 +2182,26 @@ int zwo_am5_telescope::set_tracking(const bool &tracking) {
       }
     }
 
+    if (gat_resp == "1#" && !tracking) {
+      spdlog::debug("is mount moving? {}", slewing());
+      spdlog::debug("waiting 2000ms and retrying tracking");
+      std::this_thread::sleep_for(2000ms);
+      resp = send_command_to_mount(zwoc::cmd_stop_tracking(), true, '\0');
+      if (resp == "1") {
+        spdlog::info("ignore previous warning, tracking retry successful");
+        _tracking_enabled = tracking;
+        return 0;
+      } else {
+        gat_resp = send_command_to_mount(zwoc::cmd_get_tracking_status());
+        if (gat_resp == "0#") {
+          spdlog::info("ignore previous warning");
+          _tracking_enabled = tracking;
+          return 0;
+        }
+        spdlog::warn("tracking retry failed: {}", resp);
+      }
+    }
+
     throw alpaca_exception(
         alpaca_exception::DRIVER_ERROR,
         fmt::format("Failed to set tracking status: to {}, error: {}", tracking,
@@ -2592,8 +2612,8 @@ int zwo_am5_telescope::find_home() {
   throw_if_parked();
   spdlog::debug("find_home invoked");
   send_command_to_mount(zwo_commands::cmd_home_position(), false);
-  block_while_moving();
-  spdlog::debug("initial timer has ended");
+  // block_while_moving();
+  // spdlog::debug("initial timer has ended");
   // block_while_moving();
   return 0;
 }
@@ -2652,7 +2672,9 @@ int zwo_am5_telescope::move_axis(const telescope_axes_enum &axis,
     throw alpaca_exception(alpaca_exception::INVALID_VALUE,
                            "unrecognized axis");
   }
-  set_tracking(_tracking_enabled);
+
+  // Why am I doing this again?
+  // set_tracking(_tracking_enabled);
   return 0;
 }
 
@@ -2712,9 +2734,31 @@ void zwo_am5_telescope::pulse_guide_proc(int duration_ms,
       zwoc::cmd_guide(cardinal_direction, remaining_duration_ms), false);
 
   using namespace std::chrono_literals;
-  // Need to fire off a timer that sets pulse guiding to false after the
-  // duration
   std::this_thread::sleep_for(std::chrono::milliseconds(remaining_duration_ms));
+
+  _is_pulse_guiding = false;
+  spdlog::debug("pulse guide thread finished");
+}
+
+void zwo_am5_telescope::pulse_guide_proc_using_move(int duration_ms,
+                                         char cardinal_direction) {
+  spdlog::debug("running guide thread with move instead of guide");
+  _is_pulse_guiding = true;
+
+  using namespace std::chrono_literals;
+
+  auto axis = telescope_axes_enum::primary;
+
+  if (cardinal_direction == 'n' || cardinal_direction == 's')
+    axis = telescope_axes_enum::secondary;
+
+  int rate_direction = 1;
+  if(cardinal_direction == 'w' || cardinal_direction == 's')
+    rate_direction = -1;
+
+  move_axis(axis, .0042 * _guide_rate * rate_direction);
+  std::this_thread::sleep_for(std::chrono::milliseconds(duration_ms));
+  move_axis(axis, 0);
 
   _is_pulse_guiding = false;
   spdlog::debug("pulse guide thread finished");
@@ -2753,32 +2797,6 @@ int zwo_am5_telescope::pulse_guide(const guide_direction_enum &direction,
 
   _guiding_thread.detach();
   spdlog::debug("guiding thread detached");
-
-  // _is_pulse_guiding = true;
-
-  // // We will do multiple guide commands if needed
-  // if (duration_ms > 3000) {
-  //   int count = duration_ms / 3000;
-  //   remaining_duration_ms = duration_ms % 3000;
-
-  //   spdlog::debug("issuing multiple guide commands");
-  //   for (int i = 0; i < count; i++) {
-  //     spdlog::debug("guiding {}/{}", i + 1, count);
-  //     send_command_to_mount(zwoc::cmd_guide(cardinal_direction, 3000),
-  //     false); std::this_thread::sleep_for(std::chrono::milliseconds(3000));
-  //   }
-  // }
-  // spdlog::debug("guiding remainder", remaining_duration_ms);
-  // send_command_to_mount(
-  //     zwoc::cmd_guide(cardinal_direction, remaining_duration_ms), false);
-
-  // using namespace std::chrono_literals;
-  // // Need to fire off a timer that sets pulse guiding to false after the
-  // // duration
-  // std::this_thread::sleep_for(std::chrono::milliseconds(remaining_duration_ms));
-
-  // spdlog::debug("pulse guide finished");
-  // _is_pulse_guiding = false;
 
   return 0;
 }

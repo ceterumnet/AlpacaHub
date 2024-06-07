@@ -152,6 +152,7 @@ private:
   void block_while_moving();
   void set_is_moving(bool);
   void pulse_guide_proc(int duration_ms, char cardinal_direction);
+  void pulse_guide_proc_using_move(int duration_ms, char cardinal_direction);
   double _site_elevation;
   double _site_latitude;
   double _site_longitude;
