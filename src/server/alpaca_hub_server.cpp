@@ -263,9 +263,9 @@ api_v1_handler::create_put_handler(std::string parameter_key,
   return [parameter_key, validate_True_False](auto req, auto) {
     auto &response_map = req->extra_data().response_map;
     const auto qp = restinio::parse_query(req->body());
-    std::variant<drive_rate_enum, pier_side_enum, bool, std::string, int,
-                 uint32_t, double>
-        input_variant;
+    using input_variant_t = std::variant<drive_rate_enum, bool, std::string,
+                                         int, uint32_t, double, pier_side_enum>;
+    input_variant_t input_variant;
 
     if (validate_True_False) {
       try {
@@ -309,6 +309,17 @@ api_v1_handler::create_put_handler(std::string parameter_key,
 
         if (std::is_same<Input_T, double>::value) {
           input_variant = restinio::cast_to<double>(qp[parameter_key]);
+        }
+
+        if (std::is_same<Input_T, pier_side_enum>::value) {
+          auto raw_value = qp[parameter_key];
+          input_variant =
+              static_cast<pier_side_enum>(std::atoi(&raw_value[0]));
+        }
+
+        if (std::is_same<Input_T, drive_rate_enum>::value) {
+          auto raw_value = qp[parameter_key];
+          input_variant = static_cast<drive_rate_enum>(std::atoi(&raw_value[0]));
         }
 
       } catch (std::exception &ex) {
@@ -2075,7 +2086,7 @@ server_handler() {
   });
 
   // PUT synctocoordinates
-  router->http_put("/api/v1/telescope/:device_number/slewtoaltazasync", [](auto req,
+  router->http_put("/api/v1/telescope/:device_number/synctocoordinates", [](auto req,
                                                                    auto) {
     auto &response_map = req->extra_data().response_map;
     const auto qp = restinio::parse_query(req->body());
