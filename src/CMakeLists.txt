@@ -130,7 +130,12 @@ target_link_libraries(AlpacaHub
   uuid Catch2::Catch2 drivers common server llhttp_static
   PRIVATE date::date tz_lib curl)
 
-add_executable(AlpacaHubTests drivers/zwo_am5_telescope.cpp)
+add_executable(AlpacaHubTests
+  drivers/zwo_am5_telescope.cpp
+  tests/zwo_am5_commands_tests.cpp
+  tests/zwo_am5_mount_tests.cpp
+)
+
 target_link_libraries(AlpacaHubTests
   PRIVATE fmt::fmt Catch2::Catch2WithMain common server drivers
   restinio::restinio qhyccd spdlog::spdlog nlohmann_json::nlohmann_json

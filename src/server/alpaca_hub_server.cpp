@@ -2052,7 +2052,7 @@ server_handler() {
 
   // PUT synctoaltaz
   router->http_put(
-      "/api/v1/telescope/:device_number/slewtoaltazasync", [](auto req, auto) {
+      "/api/v1/telescope/:device_number/synctoaltaz", [](auto req, auto) {
         auto &response_map = req->extra_data().response_map;
         const auto qp = restinio::parse_query(req->body());
         double alt = 0;

@@ -24,6 +24,18 @@
 #include <stdexcept>
 #include <thread>
 #include <vector>
+#include "zwo_am5_commands.hpp"
+#include "common/alpaca_hub_common.hpp"
+
+// auto format_as(pier_side_enum s);
+// auto format_as(drive_rate_enum s);
+// auto format_as(telescope_axes_enum s);
+// auto format_as(guide_direction_enum s);
+
+inline auto format_as(pier_side_enum s) { return fmt::underlying(s); }
+inline auto format_as(drive_rate_enum s) { return fmt::underlying(s); }
+inline auto format_as(telescope_axes_enum s) { return fmt::underlying(s); }
+inline auto format_as(guide_direction_enum s) { return fmt::underlying(s); }
 
 class zwo_am5_telescope : public i_alpaca_telescope {
 public:

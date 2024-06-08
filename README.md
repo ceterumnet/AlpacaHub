@@ -55,7 +55,7 @@ following:
 - Add web based view of logs
 - Write a web based planetarium :-) and leverage web asm / webgl
   - Stellarium Web exists...
--
+- OpenPHD2 integration - https://code.google.com/archive/p/open-phd-guiding/wikis/EventMonitoring.wiki
 
 ## Design Thoughts
 
