@@ -32,11 +32,6 @@ template <typename RESP> RESP init_resp_html(RESP resp) {
   return resp;
 }
 
-// static uint32_t get_next_transaction_number() {
-//   std::lock_guard lock(server_tx_mtx);
-//   return server_transaction_number++;
-// }
-
 template <typename T>
 std::basic_string<T> lowercase(const std::basic_string<T> &s) {
   std::basic_string<T> s2 = s;
@@ -1836,7 +1831,7 @@ server_handler() {
                                                                      auto) {
     auto &response_map = req->extra_data().response_map;
     const auto qp = restinio::parse_query(req->body());
-    uint32_t duration = 0;
+    int32_t duration = 0;
     uint32_t direction = 0;
     try {
       duration = restinio::cast_to<uint32_t>(qp["Duration"]);
@@ -2058,12 +2053,12 @@ server_handler() {
         double alt = 0;
         double az = 0;
         try {
-          alt = restinio::cast_to<uint32_t>(qp["Altitude"]);
-          az = restinio::cast_to<uint32_t>(qp["Azimuth"]);
+          alt = restinio::cast_to<double>(qp["Altitude"]);
+          az = restinio::cast_to<double>(qp["Azimuth"]);
         } catch (std::exception &ex) {
           response_map["ErrorNumber"] = alpaca_exception::INVALID_VALUE;
           response_map["ErrorMessage"] =
-              fmt::format("Invalid Value passed for duration");
+              fmt::format("Invalid Value passed Alt Az");
           return init_resp(req->create_response(restinio::status_bad_request()))
               .set_body(nlohmann::json(response_map).dump())
               .done();

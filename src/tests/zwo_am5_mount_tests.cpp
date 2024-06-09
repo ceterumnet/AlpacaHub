@@ -67,39 +67,36 @@ TEST_CASE("Test mount At home", "[at_home]") {
 }
 
 TEST_CASE("Test get azimuth", "[azimuth]") {
+  using namespace std::chrono_literals;
   spdlog::set_level(spdlog::level::trace);
   zwo_am5_telescope telescope;
   telescope.set_serial_device("/dev/ttyACM0");
   telescope.set_connected(true);
 
-  using namespace std::chrono_literals;
-  // Wait for the mount to home...
   double val = telescope.azimuth();
   spdlog::debug("Current azimuth: {0}", val);
   // REQUIRE(telescope.at_home() == true);
 }
 
 TEST_CASE("Test get declination", "[declination]") {
+  using namespace std::chrono_literals;
   spdlog::set_level(spdlog::level::trace);
   zwo_am5_telescope telescope;
   telescope.set_serial_device("/dev/ttyACM0");
   telescope.set_connected(true);
 
-  using namespace std::chrono_literals;
-  // Wait for the mount to home...
   double val = telescope.declination();
   spdlog::debug("Current declination: {0}", val);
   // REQUIRE(telescope.at_home() == true);
 }
 
 TEST_CASE("Test get right_ascension", "[right_ascension]") {
+  using namespace std::chrono_literals;
   spdlog::set_level(spdlog::level::trace);
   zwo_am5_telescope telescope;
   telescope.set_serial_device("/dev/ttyACM0");
   telescope.set_connected(true);
 
-  using namespace std::chrono_literals;
-  // Wait for the mount to home...
   double val = telescope.right_ascension();
   spdlog::debug("Current right ascension: {0}", val);
   // REQUIRE(telescope.at_home() == true);

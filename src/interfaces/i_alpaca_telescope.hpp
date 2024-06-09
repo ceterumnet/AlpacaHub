@@ -130,7 +130,7 @@ public:
   virtual int move_axis(const telescope_axes_enum &, const double &) = 0;
   virtual int park() = 0;
   virtual int pulse_guide(const guide_direction_enum &direction,
-                          const uint32_t &duration_ms) = 0;
+                          const int32_t &duration_ms) = 0;
   virtual int set_park() = 0;
   virtual int slew_to_alt_az(const double &alt, const double &az) = 0;
   virtual int slew_to_alt_az_async(const double &alt, const double &az) = 0;

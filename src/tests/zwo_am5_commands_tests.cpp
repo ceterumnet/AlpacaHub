@@ -30,6 +30,18 @@ TEST_CASE("ZWO hours, minutes, seconds responses", "[zwo_responses_time]") {
   REQUIRE_THROWS_AS(parse_hh_mm_ss_response("02:99:123#"), alpaca_exception);
 }
 
+TEST_CASE("ZWO right ascension values", "[zwo_ra_values]") {
+  using namespace zwo_responses;
+  auto val = parse_hh_mm_ss_response("04:38:51#");
+  REQUIRE(parse_hh_mm_ss_response("04:38:51#").hh == 4);
+  REQUIRE(parse_hh_mm_ss_response("04:38:51#").mm == 38);
+  REQUIRE(parse_hh_mm_ss_response("04:38:51#").ss == 51);
+  spdlog::info("{} to double val: {}", "04:38:51#",  val.as_decimal());
+  auto val2 = hh_mm_ss(4.6475);
+  spdlog::info("{} to ra val: {}:{}:{}", 4.6475, val2.hh, val2.mm, val2.ss);
+  spdlog::info("{} to ra val: {}", 4.6475, val2);
+}
+
 TEST_CASE("ZWO degrees, minutes, seconds responses", "[zwo_responses_dec]") {
   using namespace zwo_responses;
   REQUIRE(parse_dd_mm_ss_response("12*10:34#").dd == 12);

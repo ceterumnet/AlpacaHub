@@ -1,4 +1,5 @@
 #include "zwo_am5_commands.hpp"
+#include <limits>
 
 namespace zwo_commands {
 
@@ -535,7 +536,18 @@ hh_mm_ss::hh_mm_ss() : hh(0), mm(0), ss(0){};
 hh_mm_ss::hh_mm_ss(const double &val) {
   hh = val;
   mm = (val - hh) * 60.0;
-  ss = (val - hh - (mm / 60.0)) * 3600.0;
+  ss = std::round((val - hh - (mm / 60.0)) * 3600.0);
+
+  if (ss == 60) {
+    mm += 1;
+    ss = 0;
+  }
+
+  if (mm == 60) {
+    hh += 1;
+    mm = 0;
+  }
+
 }
 
 hh_mm_ss parse_hh_mm_ss_response(const std::string &resp) {
@@ -593,10 +605,23 @@ sdd_mm_ss::sdd_mm_ss() : plus_or_minus('+'), dd(0), mm(0), ss(0){};
 // sdd_mm_ss(std::initializer_list<sdd_mm_ss>) {};
 // CTOR to support easy initialization
 sdd_mm_ss::sdd_mm_ss(const double &val) {
+  // 40.33333333333333
+  // 40.333333333333336
   double abs_val = std::abs(val);
   dd = abs_val;
   mm = (abs_val - dd) * 60.0;
-  ss = (abs_val - dd - (mm / 60.0)) * 3600.0;
+  ss = std::round((abs_val - dd - (mm / 60.0)) * 3600.0);
+
+  if (ss == 60) {
+    mm += 1;
+    ss = 0;
+  }
+
+  if (mm == 60) {
+    dd += 1;
+    mm = 0;
+  }
+
   plus_or_minus = '+';
   if (val < 0) {
     plus_or_minus = '-';
@@ -640,7 +665,17 @@ sddd_mm_ss::sddd_mm_ss(const double &val) {
   double abs_val = std::abs(val);
   ddd = abs_val;
   mm = (abs_val - ddd) * 60.0;
-  ss = (abs_val - ddd - (mm / 60.0)) * 3600.0;
+  ss = std::round((abs_val - ddd - (mm / 60.0)) * 3600.0);
+  if (ss == 60) {
+    mm += 1;
+    ss = 0;
+  }
+
+  if (mm == 60) {
+    ddd += 1;
+    mm = 0;
+  }
+
   plus_or_minus = '+';
   if (val < 0) {
     plus_or_minus = '-';
@@ -718,12 +753,19 @@ double sdd_mm::as_decimal() {
 }
 
 sdd_mm::sdd_mm() : plus_or_minus('+'), dd(0), mm(0){};
+
 // sdd_mm_ss(std::initializer_list<sdd_mm_ss>) {};
 // CTOR to support easy initialization
 sdd_mm::sdd_mm(const double &val) {
   double abs_val = std::abs(val);
   dd = abs_val;
-  mm = (abs_val - dd) * 60.0;
+  mm = std::round((abs_val - dd) * 60.0);
+
+  if (mm == 60) {
+    dd += 1;
+    mm = 0;
+  }
+
   plus_or_minus = '+';
   if (val < 0) {
     plus_or_minus = '-';
@@ -758,12 +800,19 @@ double sddd_mm::as_decimal() {
 }
 
 sddd_mm::sddd_mm() : plus_or_minus('+'), ddd(0), mm(0){};
+
 // sdd_mm_ss(std::initializer_list<sdd_mm_ss>) {};
 // CTOR to support easy initialization
 sddd_mm::sddd_mm(const double &val) {
   double abs_val = std::abs(val);
   ddd = abs_val;
-  mm = (abs_val - ddd) * 60.0;
+  mm = std::round((abs_val - ddd) * 60.0);
+
+  if (mm == 60) {
+    ddd += 1;
+    mm = 0;
+  }
+
   plus_or_minus = '+';
   if (val < 0) {
     plus_or_minus = '-';
@@ -826,11 +875,21 @@ double ddd_mm_ss::as_decimal() {
 }
 
 ddd_mm_ss::ddd_mm_ss(){};
+
 // CTOR to support easy initialization
 ddd_mm_ss::ddd_mm_ss(const double &val) {
   ddd = val;
   mm = (val - ddd) * 60.0;
-  ss = (val - ddd - (mm / 60.0)) * 3600.0;
+  ss = std::round((val - ddd - (mm / 60.0)) * 3600.0);
+  if(ss == 60) {
+    mm += 1;
+    ss = 0;
+  }
+
+  if (mm == 60) {
+    ddd += 1;
+    mm = 0;
+  }
 }
 
 ddd_mm_ss parse_ddd_mm_ss_response(const std::string &resp) {

@@ -124,7 +124,7 @@ public:
   int move_axis(const telescope_axes_enum &, const double &);
   int park();
   int pulse_guide(const guide_direction_enum &direction,
-                  const uint32_t &duration_ms);
+                  const int32_t &duration_ms);
   int set_park();
   int slew_to_alt_az(const double &alt, const double &az);
   int slew_to_alt_az_async(const double &alt, const double &az);

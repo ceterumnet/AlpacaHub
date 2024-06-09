@@ -1,52 +1,13 @@
 #include "zwo_am5_telescope.hpp"
+#include "common/alpaca_exception.hpp"
+#include "drivers/zwo_am5_commands.hpp"
 #include "interfaces/i_alpaca_telescope.hpp"
 #include <chrono>
 #include <mutex>
 #include <thread>
 
-// auto format_as(pier_side_enum s) { return fmt::underlying(s); }
-// auto format_as(drive_rate_enum s) { return fmt::underlying(s); }
-// auto format_as(telescope_axes_enum s) { return fmt::underlying(s); }
-// auto format_as(guide_direction_enum s) { return fmt::underlying(s); }
-
-// template <typename Duration>
-// inline auto a_localtime(date::local_time<Duration> time) -> std::tm {
-//   return fmt::localtime(
-//       std::chrono::system_clock::to_time_t(date::current_zone()->to_sys(time)));
-// }
-
-// template <typename Char, typename Duration>
-// struct fmt::formatter<date::local_time<Duration>, Char>
-//     : formatter<std::tm, Char> {
-//   FMT_CONSTEXPR formatter() {
-//     this->format_str_ = detail::string_literal<Char, '%', 'F', ' ', '%', 'T'>{};
-//   }
-
-//   template <typename FormatContext>
-//   auto format(date::local_time<Duration> val, FormatContext &ctx) const
-//       -> decltype(ctx.out()) {
-//     using period = typename Duration::period;
-//     if (period::num != 1 || period::den != 1 ||
-//         std::is_floating_point<typename Duration::rep>::value) {
-//       const auto epoch = val.time_since_epoch();
-//       const auto subsecs = std::chrono::duration_cast<Duration>(
-//           epoch - std::chrono::duration_cast<std::chrono::seconds>(epoch));
-
-//       return formatter<std::tm, Char>::do_format(
-//           a_localtime(std::chrono::time_point_cast<std::chrono::seconds>(val)),
-//           ctx, &subsecs);
-//     }
-
-//     return formatter<std::tm, Char>::format(
-//         a_localtime(std::chrono::time_point_cast<std::chrono::seconds>(val)),
-//         ctx);
-//   }
-// };
-
 namespace zwoc = zwo_commands;
-
 namespace zwor = zwo_responses;
-
 
 std::vector<std::string> zwo_am5_telescope::serial_devices() {
   std::vector<std::string> serial_devices{
@@ -204,7 +165,7 @@ std::vector<std::string> zwo_am5_telescope::supported_actions() {
 // Given that the use case for this is imaging - alt / az mode doesn't really
 // sense.
 alignment_mode_enum zwo_am5_telescope::alignment_mode() {
-  return alignment_mode_enum::polar;
+  return alignment_mode_enum::german_polar;
 }
 
 double zwo_am5_telescope::altitude() {
@@ -421,15 +382,15 @@ double zwo_am5_telescope::guide_rate_declination() {
   throw_if_not_connected();
   auto resp = send_command_to_mount(zwoc::cmd_get_guide_rate());
   std::string value = resp.substr(0, 3);
-  auto rate_in_degrees_per_second = atof(&value[0]) / .0042;
+  auto rate_in_degrees_per_second = atof(&value[0]) * .0042;
   return rate_in_degrees_per_second;
 }
 
 int zwo_am5_telescope::set_guide_rate_declination(const double &rate) {
   throw_if_not_connected();
   spdlog::debug("set_guide_rate_declination called with {} converted to {}",
-                rate, rate * .0042);
-  send_command_to_mount(zwoc::cmd_set_guide_rate(rate * .0042), false);
+                rate, rate / .0042);
+  send_command_to_mount(zwoc::cmd_set_guide_rate(rate / .0042), false);
   return 0;
 }
 
@@ -516,6 +477,7 @@ double zwo_am5_telescope::site_latitude() {
   throw_if_not_connected();
   auto resp = send_command_to_mount(zwoc::cmd_get_latitude());
   auto parsed_resp = zwor::parse_sdd_mm_ss_response(resp);
+  spdlog::debug("returning site_latitude: {}", parsed_resp.as_decimal());
   return parsed_resp.as_decimal();
 }
 
@@ -524,8 +486,11 @@ int zwo_am5_telescope::set_site_latitude(const double &site_latitude) {
   throw_if_not_connected();
   if (site_latitude < -90 || site_latitude > 90)
     throw alpaca_exception(alpaca_exception::INVALID_VALUE, "Latitude invalid");
+  spdlog::debug("set_site_latitude invoked with {}", site_latitude);
+
   zwor::sdd_mm_ss latitude_s(site_latitude);
 
+  spdlog::debug(" converts to {}", latitude_s);
   auto resp = send_command_to_mount(
       zwoc::cmd_set_latitude(latitude_s.plus_or_minus, latitude_s.dd,
                              latitude_s.mm, latitude_s.ss),
@@ -539,11 +504,14 @@ double zwo_am5_telescope::site_longitude() {
   auto resp = send_command_to_mount(zwoc::cmd_get_longitude());
   auto parsed_resp = zwor::parse_sddd_mm_ss_response(resp);
 
+
   // This is a weird behavior from the ASCOM driver I'm mimicking
   if (parsed_resp.plus_or_minus == '+')
     parsed_resp.plus_or_minus = '-';
   else
     parsed_resp.plus_or_minus = '+';
+  spdlog::debug("returning site_longitude: {}", parsed_resp.as_decimal());
+
   return parsed_resp.as_decimal();
 }
 
@@ -553,6 +521,8 @@ int zwo_am5_telescope::set_site_longitude(const double &site_longitude) {
   if (site_longitude < -180 || site_longitude > 180)
     throw alpaca_exception(alpaca_exception::INVALID_VALUE,
                            "Longitude invalid");
+  spdlog::debug("set_site_longitude invoked with {}", site_longitude);
+
   zwor::sddd_mm_ss longitude_s(site_longitude);
 
   // This is a weird behavior from the ASCOM driver I'm mimicking
@@ -1097,14 +1067,31 @@ int zwo_am5_telescope::park() {
 
 void zwo_am5_telescope::pulse_guide_proc(int duration_ms,
                                          char cardinal_direction) {
+  using namespace std::chrono_literals;
+  auto guide_rate = guide_rate_ascension();
+
   spdlog::debug("running guide thread");
   _is_pulse_guiding = true;
-  int remaining_duration_ms = duration_ms;
+
+  // a 10 arc second movement is 10 / 15 seconds of time (ignoring sidereal
+  // adjustment) i.e. 0.667 seconds. Also approx 15.042 arcseconds per second
+  // of real time.
+  //
+  // 2000ms in equatorial movement should translate to 2 arc-seconds of movement
+  // using the aforementioned conversion, assuming the guide rate is 1x sidereal
+  // rate (which won't necessarily be the case), which means we can divide
+  // 2000/15.042 which will give us our pulse duration. We should then divide that
+  // by our guide rate.
+  //
+  // However, this doesn't seem to work as expected. I suspect the AM5 driver
+  //
+
+  int remaining_duration_ms = duration_ms * .7;
 
   // We will do multiple guide commands if needed
-  if (duration_ms > 3000) {
-    int count = duration_ms / 3000;
-    remaining_duration_ms = duration_ms % 3000;
+  if (remaining_duration_ms > 3000) {
+    int count = remaining_duration_ms / 3000;
+    remaining_duration_ms = remaining_duration_ms % 3000;
 
     spdlog::debug("issuing multiple guide commands");
     for (int i = 0; i < count; i++) {
@@ -1113,49 +1100,85 @@ void zwo_am5_telescope::pulse_guide_proc(int duration_ms,
       std::this_thread::sleep_for(std::chrono::milliseconds(3000));
     }
   }
-  spdlog::debug("guiding remainder", remaining_duration_ms);
-  send_command_to_mount(
-      zwoc::cmd_guide(cardinal_direction, remaining_duration_ms), false);
 
-  using namespace std::chrono_literals;
+  send_command_to_mount(
+      zwoc::cmd_guide(cardinal_direction, remaining_duration_ms),
+      false);
+  spdlog::debug("sleeping for {}", remaining_duration_ms);
+
   std::this_thread::sleep_for(std::chrono::milliseconds(remaining_duration_ms));
 
   _is_pulse_guiding = false;
   spdlog::debug("pulse guide thread finished");
 }
 
+// The big problem with this I think is that the scope stops tracking when
+// a move command is issued. Therefore when a Dec guide is issued, it
+// will drift in RA.
 void zwo_am5_telescope::pulse_guide_proc_using_move(int duration_ms,
                                                     char cardinal_direction) {
   spdlog::debug("running guide thread with move instead of guide");
-  _is_pulse_guiding = true;
+  // _is_pulse_guiding = true;
 
   using namespace std::chrono_literals;
 
-  auto axis = telescope_axes_enum::primary;
+  // auto axis = telescope_axes_enum::primary;
+  // int rate_direction = 1;
 
-  if (cardinal_direction == 'n' || cardinal_direction == 's')
-    axis = telescope_axes_enum::secondary;
+  // if (cardinal_direction == 'n' || cardinal_direction == 's')
+  //   axis = telescope_axes_enum::secondary;
 
-  int rate_direction = 1;
-  if (cardinal_direction == 'w' || cardinal_direction == 's')
-    rate_direction = -1;
+  auto side = side_of_pier();
 
-  move_axis(axis, .0042 * _guide_rate * rate_direction);
-  std::this_thread::sleep_for(std::chrono::milliseconds(duration_ms));
-  move_axis(axis, 0);
+  auto pulse_duration_ms = std::chrono::milliseconds((duration_ms * 10) / 15);
+
+  send_command_to_mount(zwoc::cmd_set_0_5x_sidereal_rate(), false);
+
+  switch (cardinal_direction) {
+  case 'e':
+    send_command_to_mount(zwoc::cmd_move_towards_east(), false);
+    std::this_thread::sleep_for(pulse_duration_ms);
+    send_command_to_mount(zwoc::cmd_stop_moving_towards_east(), false);
+    break;
+  case 'w':
+    send_command_to_mount(zwoc::cmd_move_towards_west(), false);
+    std::this_thread::sleep_for(pulse_duration_ms);
+    send_command_to_mount(zwoc::cmd_stop_moving_towards_west(), false);
+    break;
+  case 'n':
+    send_command_to_mount(zwoc::cmd_move_towards_north(), false);
+    std::this_thread::sleep_for(pulse_duration_ms);
+    send_command_to_mount(zwoc::cmd_stop_moving_towards_north(), false);
+    break;
+  case 's':
+    send_command_to_mount(zwoc::cmd_move_towards_south(), false);
+    std::this_thread::sleep_for(pulse_duration_ms);
+    send_command_to_mount(zwoc::cmd_stop_moving_towards_south(), false);
+    break;
+  default:
+    _is_pulse_guiding = false;
+    throw alpaca_exception(
+        alpaca_exception::INVALID_VALUE,
+        fmt::format("cardinal direction {} is not valid", cardinal_direction));
+  }
 
   _is_pulse_guiding = false;
-  spdlog::debug("pulse guide thread finished");
+  spdlog::debug("pulse guide thread using move finished");
 }
 
+//  Duration parameter specifies the amount (in equatorial coordinates)
+//  so 3000ms would be 3 arc-seconds I believe
+//  I'm wondering if I need to take this and rationalize it into a movement that
+//  makes sense
 int zwo_am5_telescope::pulse_guide(const guide_direction_enum &direction,
-                                   const uint32_t &duration_ms) {
+                                   const int32_t &duration_ms) {
   throw_if_not_connected();
   throw_if_parked();
   char cardinal_direction = 0;
   int remaining_duration_ms = duration_ms;
-  spdlog::debug("pulse_guide() invoked with direction: {}, duration: {}ms",
-                direction, duration_ms);
+  auto guide_rate = guide_rate_ascension();
+  spdlog::debug("pulse_guide() invoked with direction: {}, duration: {}ms with rate:{}",
+                direction, duration_ms, guide_rate);
   switch (direction) {
   case guide_direction_enum::guide_east:
     cardinal_direction = 'e';
@@ -1174,10 +1197,12 @@ int zwo_am5_telescope::pulse_guide(const guide_direction_enum &direction,
                            "invalid guide direction");
   }
 
+  _is_pulse_guiding = true;
+
   spdlog::debug("creating guiding thread");
   _guiding_thread =
-      std::thread(std::bind(&zwo_am5_telescope::pulse_guide_proc, this,
-                            duration_ms, cardinal_direction));
+      std::thread(std::bind(&zwo_am5_telescope::pulse_guide_proc,
+                            this, duration_ms, cardinal_direction));
 
   _guiding_thread.detach();
   spdlog::debug("guiding thread detached");
@@ -1265,6 +1290,7 @@ int zwo_am5_telescope::slew_to_coordinates_async(const double &ra,
   if (!_tracking_enabled)
     throw alpaca_exception(alpaca_exception::INVALID_OPERATION,
                            "Tracking is not enabled");
+
   auto resp = send_command_to_mount(
       zwoc::cmd_set_target_ra_and_dec_and_goto(
           converted_ra.hh, converted_ra.mm, converted_ra.ss,
