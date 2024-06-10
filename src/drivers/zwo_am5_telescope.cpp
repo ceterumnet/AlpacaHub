@@ -165,7 +165,7 @@ std::vector<std::string> zwo_am5_telescope::supported_actions() {
 // Given that the use case for this is imaging - alt / az mode doesn't really
 // sense.
 alignment_mode_enum zwo_am5_telescope::alignment_mode() {
-  return alignment_mode_enum::german_polar;
+  return alignment_mode_enum::polar;
 }
 
 double zwo_am5_telescope::altitude() {
@@ -1050,17 +1050,17 @@ int zwo_am5_telescope::move_axis(const telescope_axes_enum &axis,
 
 int zwo_am5_telescope::park() {
   throw_if_not_connected();
+  using namespace std::chrono_literals;
+
   spdlog::debug("park() invoked");
   if (_parked)
     return 0;
 
   spdlog::trace("sending cmd_park()");
-  send_command_to_mount(zwoc::cmd_park(), false);
+  // send_command_to_mount(zwoc::cmd_park(), false);
   spdlog::trace("waiting for mount to park");
-  using namespace std::chrono_literals;
   // std::this_thread::sleep_for(30s);  spdlog::debug("blocking while moving");
-  block_while_moving();
-  spdlog::debug("moving has stopped allegedly");
+  // block_while_moving();
   _parked = true;
   return 0;
 }

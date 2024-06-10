@@ -327,7 +327,7 @@ const std::string cmd_sync() { return ":CM#"; }
 // Response should be none
 const std::string cmd_home_position() { return ":hC#"; }
 
-// This is a complicated response...I'm not sure I have this one right yet
+// This is a response with variable length
 // nNG000000000#
 // ^^^^^^^^^^^^
 // |||||| | |||
