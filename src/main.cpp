@@ -188,7 +188,7 @@ int main(int argc, char **argv) {
     // discovery_thread.detach();
 
     if (thread_pool_size > 1) {
-      http_logger->set_level(spdlog::level::info);
+      // http_logger->set_level(spdlog::level::info);
       spdlog::info("Starting web server in multithreaded mode with {0} threads",
                    thread_pool_size);
       restinio::run(

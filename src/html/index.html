@@ -1,32 +1,213 @@
 <html>
     <head>
-        <link type="text/css" rel="stylesheet" href="materialize/css/materialize.min.css"  media="screen,projection"/>
+        <link type="text/css" rel="stylesheet" href="/html/materialize/css/materialize.min.css"  media="screen,projection"/>
+        <style>
+         body {
+             display: flex;
+             min-height: 100vh;
+             flex-direction: column;
+         }
+
+         main {
+             flex: 1 0 auto;
+         }
+         /*
+            main, footer, header {
+            padding-left: 300px;
+            }
+          */
+         /* ul.sidenav {
+            padding-top: 40px;
+            } */
+        </style>
+        <script type="text/javascript" src="/html/js/petite-vue.iife.js"></script>
+        <!-- <script type="text/javascript" src="/html/js/jquery-3.7.1.min.js"></script> -->
+        <script type="module">
+         function Device(props) {
+             return {
+                 $template: '#device-template',
+                 mounted() {
+                     console.log("device mounted");
+                 }
+             }
+         };
+
+         function Devices() {
+             return {
+                 Devices: [],
+                 editingDevice: false,
+                 fetchData() {
+                     fetch("/management/v1/configureddevices")
+                         .then((res) => res.json())
+                         .then((data) => {
+                             this.Devices = data.Value;
+                         })
+                         .then(() => {
+                             console.log("this.Devices: ", this.Devices);
+                             this.Devices.forEach((device) => {
+                                 console.log("device: ", device);
+                                 fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/connected")
+                                     .then((_res) => _res.json())
+                                     .then((_data) => {
+                                         device.Connected = _data.Value;
+                                     })
+                                 fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/description")
+                                     .then((_res) => _res.json())
+                                     .then((_data) => {
+                                         device.Extra = _data.Value;
+                                     })
+
+                             });
+                         });
+
+                 },
+                 editDevice(device) {
+                     this.editingDevice = true;
+                     console.log("editing device: ", device);
+                 },
+                 mounted() {
+                     console.log("Devices mounted");
+                 }
+             }
+         };
+         PetiteVue.createApp({Devices}).mount();
+         /* $.get( "/management/v1/configureddevices", function( data ) {
+          *     for(value of data["Value"]) {
+          *         let tbody = $("#device_table");
+          *         let device_row = document.createElement("tr");
+          *         let device_num = document.createElement("td");
+          *         device_num.innerHTML = value.DeviceNumber;
+          *         let device_type = document.createElement("td");
+          *         device_type.innerHTML = value.DeviceType;
+          *         let device_id = document.createElement("td");
+          *         device_id.innerHTML = value.UniqueID;
+          *         let device_name = document.createElement("td");
+          *         device_name.innerHTML = value.DeviceName;
+          *         device_row.append(device_num);
+          *         device_row.append(device_type);
+          *         device_row.append(device_id);
+          *         device_row.append(device_name);
+          *         tbody.append(device_row);
+          *     }
+          * }); */
+        </script>
+        <template id="device-template">
+            <tr>
+                <td>
+                    {{Type}}
+                </td>
+                <td>
+                    {{Number}}
+                </td>
+                <td>
+                    {{Unique ID}}
+                </td>
+                <td>
+                    {{Name}}
+                </td>
+            </tr>
+        </template>
     </head>
     <body>
-        <nav>
-            <div class="nav-wrapper">
-                <a href="#" class="brand-logo">Add Alpaca Logo</a>
-                <ul id="nav-mobile" class="right hide-on-med-and-down">
-                    <li><a href="">About</a></li>
-                    <li><a href="">Documentation</a></li>
-                </ul>
-            </div>
-        </nav>
+        <header>
+            <nav class="blue-grey lighten-1">
+                <div class="nav-wrapper" style="padding-left: 40px;">
+                    <a href="#" class="brand-logo">Dave's Alpaca Hub</a>
+                    <ul id="nav-mobile" class="right hide-on-med-and-down">
+                        <li><a href="">About</a></li>
+                        <li><a href="">Documentation</a></li>
+                    </ul>
+                </div>
+            </nav>
+        </header>
+        <main>
+            <div class="" v-scope="Devices()" v-effect="fetchData()" @vue:mounted="mounted">
+                <div class="row" id="devicetable">
+                    <div class="col s3">
+                        <div class="collection with-header">
+                            <div class="collection-header" style="">
+                                Menu
+                            </div>
+                            <a class="collection-item" href="#!">
+                                Devices
+                            </a>
+                            <a class="collection-item" href="#!">
+                                Setup
+                            </a>
+                            <a class="collection-item" href="#!">
+                                Logs
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col s9" id="app_main">
+                        <div class="row" id="deviceeditor" v-if="editingDevice">
+                            Device editor
+                        </div>
 
-        <div class="row">
-            <h1>Welcome to Alpaca Hub from the src directory</h1>
-            <div class="col s3">
-                <div class="collection">
-                    <a href="#!" class="collection-item active">Summary</a>
-                    <a href="#!" class="collection-item"></a>
-                    <a href="#!" class="collection-item"></a>
-                    <a href="#!" class="collection-item"></a>
+                        <table id="device_table" v-if="!editingDevice">
+                            <thead>
+                                <tr>
+                                    <th>
+                                        Type
+                                    </th>
+                                    <th>
+                                        Number
+                                    </th>
+                                    <th>
+                                        Unique ID
+                                    </th>
+                                    <th>
+                                        Name
+                                    </th>
+                                    <th>
+                                        Connected
+                                    </th>
+                                    <th>
+                                        Extra
+                                    </th>
+                                    <th>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template v-for="device in Devices">
+                                    <tr>
+                                        <td>
+                                            {{device.DeviceType}}
+                                        </td>
+                                        <td>
+                                            {{device.DeviceNumber}}
+                                        </td>
+                                        <td>
+                                            {{device.UniqueID}}
+                                        </td>
+                                        <td>
+                                            {{device.DeviceName}}
+                                        </td>
+                                        <td>
+                                            {{device.Connected}}
+                                        </td>
+                                        <td>
+                                            {{device.Extra}}
+                                        </td>
+
+                                        <td>
+                                            <a @click="editDevice(device)" class="waves-effect waves-light btn">Setup</a>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
-            <div class="col s7">body content</div>
-        </div>
-        <script type="text/javascript" src="materialize/js/materialize.min.js"></script>
-        <script type="text/javascript" src="js/jquery-3.7.1.min.js"></script>
-        <script type="text/javascript"></script>
+        </main>
+        <footer class="page-footer blue-grey">
+            <div class="row">
+                <div class="col s3">&#169; 2024 Copyright Dave Raphael</div>
+                <div class="col right"><a class="grey-text text-lighten-4 right" href="#!">Github</a></div>
+            </div>
+        </footer>
+        <script type="text/javascript" src="/html/materialize/js/materialize.min.js"></script>
     </body>
 </html>

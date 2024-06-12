@@ -4,6 +4,7 @@
 - Alpacapus
 - Starmada
 - AlpacaBerry
+-
 
 ## Shoulders of Giants
 - ASCOM
@@ -56,6 +57,7 @@ following:
 - Write a web based planetarium :-) and leverage web asm / webgl
   - Stellarium Web exists...
 - OpenPHD2 integration - https://code.google.com/archive/p/open-phd-guiding/wikis/EventMonitoring.wiki
+- Fork PHD2 ... perhaps create an alpaca native version?
 
 ## Design Thoughts
 
@@ -85,21 +87,7 @@ cmake -B build src
 
 To build with support for lsp assistance (generates `compile_commands.json`):
 ``` bash
-cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -B build src
-```
-
-
-## Download restinio to `src/3rd_party`
-```
-cd $QHY_ALPACA_DIR/3rd_party
-wget https://github.com/Stiffstream/restinio/releases/download/v.0.7.2/restinio-0.7.2-full.tar.bz2
-tar jxvf restinio-0.7.2-full.tar.bz2
-```
-
-## Download SPD log
-
-``` bash
-wget spdlog ...
+cmake -B build src
 ```
 
 ### Notes and good docs
@@ -115,12 +103,15 @@ https://github.com/YugnatD/ASCOM_Alpaca_ZWO_AM5
 # TODOs:
  - [ ] Create web page for project
  - [x] Write web server (restinio based)
- - [x] Implement QHY Camera driver (mono only)
  - [ ] Implement QHY Camera driver (color)
+ - [x] Implement QHY Camera driver (mono only)
+    - [ ] Achieve conformance with ASCOM Conform Tool
  - [x] Implement QHY filter wheel driver
+   - [x] Achieve conformance with ASCOM Conform Tool
  - [x] Implement Alpaca discovery
+ - [x] Implement telescope mount driver
+    - [ ] Achieve conformance with ASCOM Conform Tool
  - [ ] Implement focuser driver
- - [ ] Implement telescope mount driver
  - [ ] Implement better descriptions
  - [ ] Implement firmware version to data pulled
  - [ ] Implement support for log file as an option
@@ -129,13 +120,12 @@ https://github.com/YugnatD/ASCOM_Alpaca_ZWO_AM5
  - [ ] Implement web screen for information
  - [x] Implement Alpaca Management API
  - [ ] Figure approach to test suite
- - [ ] Achieve conformance with ASCOM Conform Tool
- - [ ] Cleanup error messages to follow consistent format
- - [ ] Move device initializer code to be called on PUT connected
+ - [x] Cleanup error messages to follow consistent format
+ - [x] Move device initializer code to be called on PUT connected
  - [ ] Need to rethink templates for PUT requests for multiple values
  - [ ] Check all pointers for null
  - [x] Need to fix crash when invalid action is called on valid device type
- - [ ] Need to figure out what the threading model will be for multiple devices
+ - [x] Need to figure out what the threading model will be for multiple devices
        I can do something like 1 thread per device or just add a thread pool the
        size of the device types. The disadvantage of a generic thread pool
        is that if multiple requests on a given device are taking a while, this
@@ -143,10 +133,13 @@ https://github.com/YugnatD/ASCOM_Alpaca_ZWO_AM5
        that it adds a bit of complication to the code potentially.
  - [ ] I want to make the concept of device idx, uuid of a device, and
        devices being plugged in and unplugged as part of the lifecycle
-       of adding / removing from the device_map. This might play into
-       how I spawn threads...
- - [ ] Potentially refactor the registration of PUT routes to be similar to the
+       of adding / removing from the device_map. ~~This might play into
+       how I spawn threads...~~
+ - [x] Potentially refactor the registration of PUT routes to be similar to the
        GET routes so that I can remove the duplication of common paths
-       and also set the device type based on the Device_T passed in
- - [ ] Implement persistent UUID for devices. I can probably use the
+       and also set the device type based on the Device_T passed in.
+       - This is partially done, I don't love the code structure for this
+         but I am not really worried at the moment. This is a good candidate
+         for a later refactor.
+ - [x] Implement persistent UUID for devices. I can probably use the
        device serial number I think

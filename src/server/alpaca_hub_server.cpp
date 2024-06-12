@@ -456,9 +456,58 @@ server_handler() {
 
   // GET request to homepage.
   router->http_get("/", [](auto req, auto) {
-    return init_resp(req->create_response())
-        .set_body("GET request to the homepage.")
-        .done();
+    std::string path = "../src/html/";
+    // std::string path = "./html/";
+    path.append("index.html");
+
+    spdlog::debug("Looking for: {0}", path);
+
+    if (std::filesystem::exists(path)) {
+      spdlog::debug("file found, rendering: {0}", path);
+      std::string data = slurp(path);
+      return init_resp_html(req->create_response()).set_body(data).done();
+    } else {
+      return init_resp_html(req->create_response(restinio::status_not_found()))
+          .set_body("Page not found.")
+          .done();
+    }
+  });
+
+  router->http_get("/setup", [](auto req,
+                                auto) {
+    std::string path = "../src/html/";
+    // std::string path = "./html/";
+    path.append("index.html");
+
+    spdlog::debug("Looking for: {0}", path);
+
+    if (std::filesystem::exists(path)) {
+      spdlog::debug("file found, rendering: {0}", path);
+      std::string data = slurp(path);
+      return init_resp_html(req->create_response()).set_body(data).done();
+    } else {
+      return init_resp_html(req->create_response(restinio::status_not_found()))
+          .set_body("Page not found.")
+          .done();
+    }
+  });
+
+  router->http_get("/setup/v1/:device_type/:device_number/setup", [](auto req, auto) {
+    std::string path = "../src/html/";
+    // std::string path = "./html/";
+    path.append("index.html");
+
+    spdlog::debug("Looking for: {0}", path);
+
+    if (std::filesystem::exists(path)) {
+      spdlog::debug("file found, rendering: {0}", path);
+      std::string data = slurp(path);
+      return init_resp_html(req->create_response()).set_body(data).done();
+    } else {
+      return init_resp_html(req->create_response(restinio::status_not_found()))
+          .set_body("Page not found.")
+          .done();
+    }
   });
 
   // Let's handle rendering static content from ./html
