@@ -1,4 +1,5 @@
 #include "qhy_alpaca_camera.hpp"
+#include "interfaces/i_alpaca_device.hpp"
 
 // Begin camera collection related functions.
 // these are static functions to retrieve
@@ -1358,3 +1359,17 @@ std::shared_ptr<qhy_alpaca_filterwheel> qhy_alpaca_camera::filter_wheel() {
 }
 
 std::string qhy_alpaca_camera::unique_id() { return _camera_id; }
+
+device_variant_t qhy_alpaca_camera::details() {
+  std::map<std::string, device_variant_intermediate_t> detail_map;
+  detail_map["Gain"] = _gain;
+  detail_map["GainMax"] = _gain_max;
+  detail_map["GainMin"] = _gain_min;
+  detail_map["BinX"] = _bin_x;
+  detail_map["BinY"] = _bin_y;
+  detail_map["ImageW"] = _image_w;
+  detail_map["ImageH"] = _image_h;
+  detail_map["Gains"] = _gains;
+  detail_map["Offsets"] = _offsets;
+  return detail_map;
+};

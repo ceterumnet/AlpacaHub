@@ -86,20 +86,7 @@ inline std::string slurp(const std::string &path) {
   return buffer.str();
 }
 
-// TODO: add client id and clienttransaction id to this as well
-using device_mgmt_list_entry_t =
-    std::map<std::string, std::variant<std::string, int>>;
-
-using device_param_t = std::map<
-    std::string,
-  std::variant<drive_rate_enum, pier_side_enum, telescope_axes_enum, axis_rate,
-               long unsigned int, bool, uint8_t, uint16_t, uint32_t, int,
-               long, double, std::string, std::vector<drive_rate_enum>,
-               std::vector<telescope_axes_enum>,
-               std::vector<axis_rate>, std::vector<std::string>,
-               std::vector<int>, std::vector<std::vector<uint32_t>>,
-               std::vector<alpaca_hub_server::device_mgmt_list_entry_t>,
-               std::map<std::string, std::string>>>;
+using device_param_t = std::map<std::string, device_variant_t>;
 
 // This is a data structure that allows us to pass our data between
 // the various rest handlers

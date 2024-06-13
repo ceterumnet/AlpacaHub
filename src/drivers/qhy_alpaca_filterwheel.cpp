@@ -74,3 +74,8 @@ std::vector<int> qhy_alpaca_filterwheel::focus_offsets() {
 std::string qhy_alpaca_filterwheel::unique_id() {
   return _camera->unique_id() + std::string("FW");
 }
+
+device_variant_t qhy_alpaca_filterwheel::details() {
+  std::map<std::string, int> detail_map;
+  return detail_map;
+};

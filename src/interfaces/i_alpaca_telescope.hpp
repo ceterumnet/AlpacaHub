@@ -5,55 +5,6 @@
 
 #include "fmt/format.h"
 
-enum pier_side_enum : int { east = 0, west = 1, unknown = -1 };
-
-struct axis_rate {
-  double Max;
-  double Min;
-  axis_rate(const double &max_, const double &min_) : Max(max_), Min(min_){};
-
-};
-
-enum guide_direction_enum : int {
-  guide_north = 0,
-  guide_south = 1,
-  guide_east = 2,
-  guide_west = 3
-};
-
-enum drive_rate_enum : int { sidereal = 0, lunar = 1, solar = 2, king = 3 };
-
-enum alignment_mode_enum : int { alt_az = 0, polar = 1, german_polar = 2 };
-
-enum equatorial_system_enum : int {
-  // Custom or unknown equinox and/or reference frame.
-  other = 0,
-
-  // Topocentric coordinates. Coordinates of the object at the current
-  // date having allowed for annual aberration, precession and
-  // nutation. This is the most common coordinate type for amateur
-  // telescopes.
-  topocentric = 1,
-
-  // J2000 equator/equinox. Coordinates of the object at mid-day on 1st
-  // January
-  // 2000, ICRS reference frame.
-  j2000 = 2,
-
-  // J2050 equator/equinox, ICRS reference frame.
-  j2050 = 3,
-
-  // B1950 equinox, FK4 reference frame.
-  b1950 = 4,
-
-  // Obsolete. Please use equTopocentric instead - see Astronomical
-  // Coordinates
-  // for an explanation.
-  local_topocentric = 1
-};
-
-enum telescope_axes_enum : int { primary = 0, secondary = 1, tertiary = 2 };
-
 class i_alpaca_telescope : public i_alpaca_device {
 public:
 

@@ -1,6 +1,7 @@
 #include "zwo_am5_telescope.hpp"
 #include "common/alpaca_exception.hpp"
 #include "drivers/zwo_am5_commands.hpp"
+#include "interfaces/i_alpaca_device.hpp"
 #include "interfaces/i_alpaca_telescope.hpp"
 #include <chrono>
 #include <mutex>
@@ -1412,3 +1413,9 @@ std::string zwo_am5_telescope::get_serial_number() {
   auto resp = send_command_to_mount(":GMA#");
   return resp.substr(0, resp.size() - 1);
 }
+
+device_variant_t zwo_am5_telescope::details() {
+  std::map<std::string, device_variant_intermediate_t> detail_map;
+
+  return detail_map;
+};

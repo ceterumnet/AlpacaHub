@@ -239,9 +239,10 @@ api_v1_handler::device_handler(const device_request_handle_t &req,
   try {
     req->extra_data().response_map["Value"] = f();
   } catch (alpaca_exception &ex) {
-    spdlog::warn("Generic handler for {} received alpaca_exception. error_code: {} "
-                 "error_message: {}",
-                 hint, ex.error_code(), ex.what());
+    spdlog::warn(
+        "Generic handler for {} received alpaca_exception. error_code: {} "
+        "error_message: {}",
+        hint, ex.error_code(), ex.what());
     response_map["ErrorNumber"] = ex.error_code();
     response_map["ErrorMessage"] = ex.what();
   }
@@ -473,8 +474,7 @@ server_handler() {
     }
   });
 
-  router->http_get("/setup", [](auto req,
-                                auto) {
+  router->http_get("/setup", [](auto req, auto) {
     std::string path = "../src/html/";
     // std::string path = "./html/";
     path.append("index.html");
@@ -492,7 +492,8 @@ server_handler() {
     }
   });
 
-  router->http_get("/setup/v1/:device_type/:device_number/setup", [](auto req, auto) {
+  router->http_get("/setup/v1/:device_type/:device_number/setup", [](auto req,
+                                                                     auto) {
     std::string path = "../src/html/";
     // std::string path = "./html/";
     path.append("index.html");
@@ -734,6 +735,13 @@ server_handler() {
         .set_body(nlohmann::json(req->extra_data().response_map).dump())
         .done();
   });
+
+  // GET details
+  // This isn't an official alpaca api, but I wanted a streamlined call
+  // so that my web editor can avoid making a dozen calls every time
+  // it wants a basic update of information
+  api_handler->add_route_to_router<i_alpaca_device, &i_alpaca_device::details>(
+      router, "details");
 
   // GET connected
   api_handler
@@ -2095,44 +2103,42 @@ server_handler() {
                                &i_alpaca_telescope::slew_to_target_async>());
 
   // PUT synctoaltaz
-  router->http_put(
-      "/api/v1/telescope/:device_number/synctoaltaz", [](auto req, auto) {
-        auto &response_map = req->extra_data().response_map;
-        const auto qp = restinio::parse_query(req->body());
-        double alt = 0;
-        double az = 0;
-        try {
-          alt = restinio::cast_to<double>(qp["Altitude"]);
-          az = restinio::cast_to<double>(qp["Azimuth"]);
-        } catch (std::exception &ex) {
-          response_map["ErrorNumber"] = alpaca_exception::INVALID_VALUE;
-          response_map["ErrorMessage"] =
-              fmt::format("Invalid Value passed Alt Az");
-          return init_resp(req->create_response(restinio::status_bad_request()))
-              .set_body(nlohmann::json(response_map).dump())
-              .done();
-        }
+  router->http_put("/api/v1/telescope/:device_number/synctoaltaz", [](auto req,
+                                                                      auto) {
+    auto &response_map = req->extra_data().response_map;
+    const auto qp = restinio::parse_query(req->body());
+    double alt = 0;
+    double az = 0;
+    try {
+      alt = restinio::cast_to<double>(qp["Altitude"]);
+      az = restinio::cast_to<double>(qp["Azimuth"]);
+    } catch (std::exception &ex) {
+      response_map["ErrorNumber"] = alpaca_exception::INVALID_VALUE;
+      response_map["ErrorMessage"] = fmt::format("Invalid Value passed Alt Az");
+      return init_resp(req->create_response(restinio::status_bad_request()))
+          .set_body(nlohmann::json(response_map).dump())
+          .done();
+    }
 
-        std::shared_ptr<i_alpaca_telescope> the_telescope =
-            std::dynamic_pointer_cast<i_alpaca_telescope>(
-                req->extra_data().device);
+    std::shared_ptr<i_alpaca_telescope> the_telescope =
+        std::dynamic_pointer_cast<i_alpaca_telescope>(req->extra_data().device);
 
-        try {
-          if (the_telescope->sync_to_alt_az(alt, az) != 0) {
-            response_map["ErrorNumber"] = -1;
-            response_map["ErrorMessage"] = "Failed to sync";
-            return init_resp(req->create_response())
-                .set_body(nlohmann::json(response_map).dump())
-                .done();
-          }
-        } catch (alpaca_exception &ex) {
-          response_map["ErrorNumber"] = ex.error_code();
-          response_map["ErrorMessage"] = ex.what();
-        }
+    try {
+      if (the_telescope->sync_to_alt_az(alt, az) != 0) {
+        response_map["ErrorNumber"] = -1;
+        response_map["ErrorMessage"] = "Failed to sync";
         return init_resp(req->create_response())
             .set_body(nlohmann::json(response_map).dump())
             .done();
-      });
+      }
+    } catch (alpaca_exception &ex) {
+      response_map["ErrorNumber"] = ex.error_code();
+      response_map["ErrorMessage"] = ex.what();
+    }
+    return init_resp(req->create_response())
+        .set_body(nlohmann::json(response_map).dump())
+        .done();
+  });
 
   // PUT synctocoordinates
   router->http_put(

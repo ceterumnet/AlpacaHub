@@ -23,11 +23,26 @@
         <script type="text/javascript" src="/html/js/petite-vue.iife.js"></script>
         <!-- <script type="text/javascript" src="/html/js/jquery-3.7.1.min.js"></script> -->
         <script type="module">
-         function Device(props) {
+         function Device(device) {
+             console.log("Entered Device Component");
+             device: device;
              return {
                  $template: '#device-template',
                  mounted() {
                      console.log("device mounted");
+                 },
+                 fetchDeviceDetails() {
+                     fetch("/api/v1/" + this.device.DeviceType + "/" + this.device.DeviceNumber + "/connected")
+                         .then((_res) => _res.json())
+                         .then((_data) => {
+                             this.device.Connected = _data.Value;
+                         });
+                     fetch("/api/v1/" + this.device.DeviceType + "/" + this.device.DeviceNumber + "/description")
+                         .then((_res) => _res.json())
+                         .then((_data) => {
+                             this.device.Extra = _data.Value;
+                         });
+
                  }
              }
          };
@@ -35,6 +50,7 @@
          function Devices() {
              return {
                  Devices: [],
+                 device: null,
                  editingDevice: false,
                  fetchData() {
                      fetch("/management/v1/configureddevices")
@@ -42,27 +58,37 @@
                          .then((data) => {
                              this.Devices = data.Value;
                          })
-                         .then(() => {
-                             console.log("this.Devices: ", this.Devices);
-                             this.Devices.forEach((device) => {
-                                 console.log("device: ", device);
-                                 fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/connected")
-                                     .then((_res) => _res.json())
-                                     .then((_data) => {
-                                         device.Connected = _data.Value;
-                                     })
-                                 fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/description")
-                                     .then((_res) => _res.json())
-                                     .then((_data) => {
-                                         device.Extra = _data.Value;
-                                     })
+                         // .then(() => {
+                            //  console.log("this.Devices: ", this.Devices);
+                             /* this.Devices.forEach((device) => {
+                              *     console.log("device: ", device);
+                              *     fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/connected")
+                              *         .then((_res) => _res.json())
+                              *         .then((_data) => {
+                              *             device.Connected = _data.Value;
+                              *         });
+                              *     fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/description")
+                              *         .then((_res) => _res.json())
+                              *         .then((_data) => {
+                              *             device.Extra = _data.Value;
+                              *         }); */
+                                 /* if(device.DeviceType == "telescope") {
+                                  *     try {
+                                  *         fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/gain")
+                                  *             .then((_res) => _res.json())
+                                  *             .then((_data) => {
+                                  *                 device.Gain = _data.Value;
+                                  *             });
+                                  *     } catch(e) {}
+                                  * } */
 
-                             });
-                         });
+                     /* });
+                        }); */
 
                  },
                  editDevice(device) {
                      this.editingDevice = true;
+                     this.device = device;
                      console.log("editing device: ", device);
                  },
                  mounted() {
@@ -70,7 +96,8 @@
                  }
              }
          };
-         PetiteVue.createApp({Devices}).mount();
+
+         PetiteVue.createApp({Device, Devices}).mount();
          /* $.get( "/management/v1/configureddevices", function( data ) {
           *     for(value of data["Value"]) {
           *         let tbody = $("#device_table");
@@ -92,20 +119,28 @@
           * }); */
         </script>
         <template id="device-template">
-            <tr>
-                <td>
-                    {{Type}}
-                </td>
-                <td>
-                    {{Number}}
-                </td>
-                <td>
-                    {{Unique ID}}
-                </td>
-                <td>
-                    {{Name}}
-                </td>
-            </tr>
+            <td>
+                {{device.DeviceType}}
+            </td>
+            <td>
+                {{device.DeviceNumber}}
+            </td>
+            <td>
+                {{device.UniqueID}}
+            </td>
+            <td>
+                {{device.DeviceName}}
+            </td>
+            <td>
+                {{device.Connected}}
+            </td>
+            <td>
+                {{device.Extra}} / {{device.Gain}}
+            </td>
+
+            <td>
+                <a @click="editDevice(device)" class="waves-effect waves-light btn">Setup</a>
+            </td>
         </template>
     </head>
     <body>
@@ -142,6 +177,12 @@
                     <div class="col s9" id="app_main">
                         <div class="row" id="deviceeditor" v-if="editingDevice">
                             Device editor
+                            <div v-if="device.DeviceType == 'telescope'">
+                                Telescope Edit
+                            </div>
+                            <div v-if="device.DeviceType == 'camera'">
+                                Camera Edit
+                            </div>
                         </div>
 
                         <table id="device_table" v-if="!editingDevice">
@@ -170,30 +211,31 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <template v-for="device in Devices">
-                                    <tr>
-                                        <td>
-                                            {{device.DeviceType}}
-                                        </td>
-                                        <td>
-                                            {{device.DeviceNumber}}
-                                        </td>
-                                        <td>
-                                            {{device.UniqueID}}
-                                        </td>
-                                        <td>
-                                            {{device.DeviceName}}
-                                        </td>
-                                        <td>
-                                            {{device.Connected}}
-                                        </td>
-                                        <td>
-                                            {{device.Extra}}
-                                        </td>
+                                <tr v-for="device in Devices" v-effect="fetchDeviceDetails()" v-scope="Device(device)" @vue:mounted="mounted"></tr>
+                                <!-- <template v-for="device in Devices">
+                                     <tr>
+                                     <td>
+                                     {{device.DeviceType}}
+                                     </td>
+                                     <td>
+                                     {{device.DeviceNumber}}
+                                     </td>
+                                     <td>
+                                     {{device.UniqueID}}
+                                     </td>
+                                     <td>
+                                     {{device.DeviceName}}
+                                     </td>
+                                     <td>
+                                     {{device.Connected}}
+                                     </td>
+                                     <td>
+                                     {{device.Extra}} / {{device.Gain}}
+                                     </td>
 
-                                        <td>
-                                            <a @click="editDevice(device)" class="waves-effect waves-light btn">Setup</a>
-                                        </td>
+                                     <td>
+                                     <a @click="editDevice(device)" class="waves-effect waves-light btn">Setup</a>
+                                     </td> -->
                                     </tr>
                                 </template>
                             </tbody>

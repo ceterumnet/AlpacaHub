@@ -15,6 +15,7 @@
 #include <spdlog/fmt/ostr.h>
 #include <spdlog/fmt/chrono.h>
 
+
 template <> struct fmt::formatter<nlohmann::json> : fmt::ostream_formatter {};
 
 // This is to facilitate serialization of our json of the types we commonly use

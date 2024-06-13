@@ -40,6 +40,8 @@ inline auto format_as(guide_direction_enum s) { return fmt::underlying(s); }
 class zwo_am5_telescope : public i_alpaca_telescope {
 public:
   static std::vector<std::string> serial_devices();
+  // std::map<std::string, device_variant_t> details();
+  device_variant_t details();
   bool connected();
   int set_connected(bool);
   zwo_am5_telescope();
