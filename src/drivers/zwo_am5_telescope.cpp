@@ -1416,6 +1416,18 @@ std::string zwo_am5_telescope::get_serial_number() {
 
 device_variant_t zwo_am5_telescope::details() {
   std::map<std::string, device_variant_intermediate_t> detail_map;
+  detail_map["Connected"] = _connected;
+  detail_map["Serial Device"] = _serial_device_path;
+  if(_connected) {
+    detail_map["UTC Date"] = utc_date();
+    detail_map["Right Ascension"] = right_ascension();
+    detail_map["Declination"] = declination();
+    detail_map["Azimuth"] = azimuth();
+    detail_map["Altitude"] = altitude();
+    detail_map["Site Latitude"] = _site_latitude;
+    detail_map["Site Longitude"] = _site_longitude;
+    detail_map["Site Elevation"] = _site_elevation;
+  }
 
   return detail_map;
 };

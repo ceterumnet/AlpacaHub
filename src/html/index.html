@@ -15,27 +15,34 @@
         </style>
         <script type="text/javascript" src="/html/js/petite-vue.iife.js"></script>
         <script type="module">
-         function Device(device) {
-             console.log("Entered Device Component");
-             device: device;
+         function App() {
+             console.log("Main App Component");
              return {
-                 $template: '#device-template',
                  mounted() {
-                     console.log("device mounted");
+                     console.log("main app mounted");
                  },
-                 fetchDeviceDetails() {
-                     fetch("/api/v1/" + this.device.DeviceType + "/" + this.device.DeviceNumber + "/details")
-                         .then((_res) => _res.json())
-                         .then((_data) => {
-                             this.device.Details = _data.Value;
-                             this.device.Connected = _data.Value.Connected;
-                         });
-                 }
-             }
-         };
+                 setupRouting() {
+                     console.log("routing setup");
+                     const onHashChange = () => {
+                         var visibility = window.location.hash.replace(/#\/?/, '');
+                         if(visibility === '') {
+                             this.editingDevice = false;
+                         }
 
-         function Devices() {
-             return {
+                         if(visibility.match(/edit/)) {
+                             let chunks = visibility.match(/edit\/(telescope|camera|filterwheel|focuser)\/([0-9]+)/);
+                             if(chunks.length > 2) {
+                                 let deviceToLoad = {};
+                                 deviceToLoad.DeviceType = chunks[1];
+                                 deviceToLoad.DeviceNumber = chunks[2];
+                                 this.device = deviceToLoad;
+                                 this.editingDevice = true;
+                             }
+                         }
+                     }
+                     window.addEventListener('hashchange', onHashChange)
+                     onHashChange()
+                 },
                  Devices: [],
                  device: null,
                  editingDevice: false,
@@ -44,7 +51,7 @@
                          .then((res) => res.json())
                          .then((data) => {
                              this.Devices = data.Value;
-                         })
+                         });
                  },
                  editDevice(device) {
                      this.editingDevice = true;
@@ -52,35 +59,43 @@
                      console.log("editing device: ", device);
                  },
                  mounted() {
-                     console.log("Devices mounted");
+                     console.log("App mounted");
+                 },
+                 fetchDeviceDetails(device) {
+                     console.debug("fetchDeviceDetails invoked with", device);
+                     fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/details")
+                         .then((_res) => _res.json())
+                         .then((_data) => {
+                             device.Details = _data.Value;
+                             device.Connected = _data.Value.Connected;
+                         });
+                 },
+                 connect(device) {
+                     console.log("connect invoked");
+                     let connected_value = "True";
+                     if(device.Connected == true)
+                         connected_value = "False"
+                     fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/connected", {
+                         method: 'PUT',
+                         headers: {
+                             'Content-Type': 'application/json'
+                         },
+                         body: `Connected=${connected_value}`
+                     })
+                             .then((_res) => _res.json())
+                             .then((_data) => {
+                                 console.log("response: ", _data);
+                                 this.fetchDeviceDetails(device);
+                             });
                  }
              }
          };
 
-         PetiteVue.createApp({Device, Devices}).mount();
+
+         PetiteVue.createApp({App}).mount();
         </script>
-        <template id="device-template">
-            <td>
-                {{device.DeviceType}}
-            </td>
-            <td>
-                {{device.DeviceNumber}}
-            </td>
-            <td>
-                {{device.UniqueID}}
-            </td>
-            <td>
-                {{device.DeviceName}}
-            </td>
-            <td>
-                {{device.Connected}}
-            </td>
-            <td>
-                <a @click="editDevice(device)" class="waves-effect waves-light btn">Setup</a>
-            </td>
-        </template>
     </head>
-    <body>
+    <body v-scope="App()" @vue:mounted="setupRouting">
         <header>
             <nav class="blue-grey lighten-1">
                 <div class="nav-wrapper" style="padding-left: 40px;">
@@ -93,26 +108,28 @@
             </nav>
         </header>
         <main>
-            <div class="" v-scope="Devices()" v-effect="fetchData()" @vue:mounted="mounted">
+            <div class=""
+                 v-effect="fetchData()"
+                 @vue:mounted="mounted">
                 <div class="row" id="devicetable">
                     <div class="col s3">
                         <div class="collection with-header">
                             <div class="collection-header" style="">
                                 Menu
                             </div>
-                            <a class="collection-item" href="#!">
+                            <a class="collection-item" href="#">
                                 Devices
                             </a>
-                            <a class="collection-item" href="#!">
+                            <a class="collection-item" href="#">
                                 Setup
                             </a>
-                            <a class="collection-item" href="#!">
+                            <a class="collection-item" href="#">
                                 Logs
                             </a>
                         </div>
                     </div>
                     <div class="col s9" id="app_main">
-                        <div class="row" id="deviceeditor" v-if="editingDevice">
+                        <div class="row" id="deviceeditor" v-if="editingDevice" v-effect="fetchDeviceDetails(device)">
                                 <table>
                                     <thead>
                                         <tr>
@@ -123,37 +140,43 @@
                                     <tbody>
                                         <tr v-for="(value, key) in device.Details" :key="key">
                                             <td>{{key}}</td>
-                                            <td>{{value}}</td>
+                                            <td>
+                                                <span>{{value}}   </span>
+                                                <span v-if="key == 'Connected'">
+                                                    <button @click="connect(device)">{{ value ? 'Disconnect' : 'Connect'}}</button>
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td></td>
+                                            <td><button @click="save()">Save</button></td>
                                         </tr>
                                     </tbody>
                                 </table>
                         </div>
 
-                        <table id="device_table" v-if="!editingDevice">
+                        <table id="device_table" v-if="!editingDevice" >
                             <thead>
                                 <tr>
-                                    <th>
-                                        Type
-                                    </th>
-                                    <th>
-                                        Number
-                                    </th>
-                                    <th>
-                                        Unique ID
-                                    </th>
-                                    <th>
-                                        Name
-                                    </th>
-                                    <th>
-                                        Connected
-                                    </th>
-                                    <th>
-                                    </th>
+                                    <th>Type</th>
+                                    <th>Number</th>
+                                    <th>Unique ID</th>
+                                    <th>Name</th>
+                                    <th>Connected</th>
+                                    <th></th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="device in Devices" v-effect="fetchDeviceDetails()" v-scope="Device(device)" @vue:mounted="mounted"></tr>
-                                </template>
+                                <tr v-for="device in Devices" v-effect="fetchDeviceDetails(device)">
+                                    <td>{{device.DeviceType}}</td>
+                                    <td>{{device.DeviceNumber}}</td>
+                                    <td>{{device.UniqueID}}</td>
+                                    <td>{{device.DeviceName}}</td>
+                                    <td>{{device.Connected}}</td>
+                                    <td>
+                                        <a :href="'#/edit/' + device.DeviceType + '/' + device.DeviceNumber" @click="editDevice(device)" class="waves-effect waves-light btn">Setup</a>
+                                    </td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>

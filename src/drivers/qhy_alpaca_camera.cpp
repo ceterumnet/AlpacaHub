@@ -1350,7 +1350,7 @@ device_variant_t qhy_alpaca_camera::details() {
   detail_map["Connected"] = _connected;
   detail_map["FilterWheel"] = _has_filter_wheel;
   detail_map["Gain"] = _gain;
-  detail_map["Gains"] = _gains;
+  // detail_map["Gains"] = _gains;
   detail_map["GainMax"] = _gain_max;
   detail_map["GainMin"] = _gain_min;
   detail_map["BinX"] = _bin_x;
@@ -1358,7 +1358,7 @@ device_variant_t qhy_alpaca_camera::details() {
   detail_map["ImageW"] = _image_w;
   detail_map["ImageH"] = _image_h;
   detail_map["Offset"] = _offset;
-  detail_map["Offsets"] = _offsets;
+  // detail_map["Offsets"] = _offsets;
   detail_map["Status"] = _camera_state;
   if(_can_control_cooler_power) {
     detail_map["CoolerPower"] = cooler_power();
