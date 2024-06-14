@@ -105,25 +105,27 @@ https://github.com/YugnatD/ASCOM_Alpaca_ZWO_AM5
  - [x] Write web server (restinio based)
  - [ ] Implement QHY Camera driver (color)
  - [x] Implement QHY Camera driver (mono only)
-    - [ ] Achieve conformance with ASCOM Conform Tool
+    - [x] Achieve conformance with ASCOM Conform Tool
  - [x] Implement QHY filter wheel driver
    - [x] Achieve conformance with ASCOM Conform Tool
  - [x] Implement Alpaca discovery
  - [x] Implement telescope mount driver
-    - [ ] Achieve conformance with ASCOM Conform Tool
+    - [x] Achieve conformance with ASCOM Conform Tool (there are a few issues to
+      work through on this)
  - [ ] Implement focuser driver
  - [ ] Implement better descriptions
  - [ ] Implement firmware version to data pulled
  - [ ] Implement support for log file as an option
  - [ ] Implement CLI help
+ - [x] Implement web screen for information
  - [ ] Implement web setup screen for devices
- - [ ] Implement web screen for information
  - [x] Implement Alpaca Management API
- - [ ] Figure approach to test suite
+ - [x] Figure approach to test suite
  - [x] Cleanup error messages to follow consistent format
  - [x] Move device initializer code to be called on PUT connected
  - [ ] Need to rethink templates for PUT requests for multiple values
- - [ ] Check all pointers for null
+ - [x] Check all device pointers for null (this could probably use a bit more
+       robustness. However, I think it is adequate for now.
  - [x] Need to fix crash when invalid action is called on valid device type
  - [x] Need to figure out what the threading model will be for multiple devices
        I can do something like 1 thread per device or just add a thread pool the

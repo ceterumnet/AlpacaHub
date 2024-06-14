@@ -76,15 +76,9 @@ public:
 
   int image_array(std::vector<uint8_t> &theImage);
 
-  // template <typename T>
-  // std::vector<std::vector<T>> image_2d();
   std::vector<std::vector<uint32_t>> image_2d();
   std::vector<std::vector<uint32_t>> image_2d_8bpp();
   std::vector<std::vector<uint32_t>> image_2d_16bpp();
-
-  // template <> std::vector<std::vector<uint16_t>> image_2d();
-
-  // virtual Array< Array<long> > ImageArrayVariant() = 0;
 
   bool image_ready();
   bool is_pulse_guiding();
@@ -172,7 +166,6 @@ private:
   void initialize();
   void init_filterwheel();
   void chip_info();
-  // int get_is_qhy_control_available(CONTROL_ID);
   std::string _camera_id;
   std::string _unique_id;
   bool _connected;
@@ -181,6 +174,7 @@ private:
   uint32_t _num_modes;
   camera_state_enum _camera_state;
   std::mutex _cam_mutex;
+
   // This allows us to get the camera id from the camera name conveniently
   static std::map<std::string, int> _camera_map;
   short _bin_x;
@@ -222,6 +216,7 @@ private:
   void read_image_from_camera();
   int start_exposure_proc();
   asio::io_context _io;
+  asio::steady_timer __t;
   void set_reading_state();
   std::string _qhy_model_name;
   double _current_set_temp;

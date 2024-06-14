@@ -1329,7 +1329,7 @@ server_handler() {
 
   // END camera routes
 
-  // BEGIN focuser routes
+  // BEGIN filterwheel routes
 
   // GET position
   api_handler->add_route_to_router<i_alpaca_filterwheel,
@@ -1353,7 +1353,7 @@ server_handler() {
                                       &i_alpaca_filterwheel::set_position>(
           "Position"));
 
-  // END focuser routes
+  // END filterwheel routes
 
   // BEGIN telescope routes
 

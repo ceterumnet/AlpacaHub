@@ -60,20 +60,21 @@ enum telescope_axes_enum : int { primary = 0, secondary = 1, tertiary = 2 };
 using device_mgmt_list_entry_t =
     std::map<std::string, std::variant<std::string, int>>;
 
+// Takes a variant for the first arg and creates a new variant
+// that is composed of the original variant and the list of
+// types after
+// Commenting out as I am using a different version of this below
+// template <typename... Args0, typename... Args1>
+// struct variant_concatenator<std::variant<Args0...>, Args1...> {
+//   using type = std::variant<Args0..., Args1...>;
+// };
+
 template <typename T, typename... Args> struct variant_concatenator;
 
 template <typename... Args0, typename... Args1>
 struct variant_concatenator<std::variant<Args0...>, std::variant<Args1...>> {
   using type = std::variant<Args0..., Args1...>;
 };
-
-// Takes a variant for the first arg and creates a new variant
-// that is composed of the original variant and the list of
-// types after
-// template <typename... Args0, typename... Args1>
-// struct variant_concatenator<std::variant<Args0...>, Args1...> {
-//   using type = std::variant<Args0..., Args1...>;
-// };
 
 template <typename T> struct vectors_of_type_list;
 
@@ -86,9 +87,12 @@ template <typename Key_T, typename T> struct maps_of_type_list;
 
 template <typename Key_T, typename... Args0>
 struct maps_of_type_list<Key_T, std::variant<Args0...>> {
-  using type = std::variant<std::map<Key_T, std::variant<Args0...>>, std::map<Key_T, Args0>...>;
+  using type = std::variant<std::map<Key_T, std::variant<Args0...>>,
+                            std::map<Key_T, Args0>...>;
 };
 
+// This is where we add supported primitives / integral types to
+// our variants which will propogate into collections like vectors and maps
 using device_value_t =
     std::variant<drive_rate_enum, pier_side_enum, telescope_axes_enum,
                  axis_rate, long unsigned int, bool, uint8_t, uint16_t,
@@ -99,18 +103,12 @@ using device_value_t =
 using device_vector_of_values_t = vectors_of_type_list<device_value_t>::type;
 using device_variant_intermediate_t =
     variant_concatenator<device_value_t, device_vector_of_values_t>::type;
-// Generate variant of std::map<std::string, ...> with each of the types
-
-// Just a string key based map to the device_value_t and also
-// device_vector_of_values_t
+// Generate map variants
 using device_map_to_variants =
     maps_of_type_list<std::string, device_variant_intermediate_t>::type;
 
 using device_variant_t = variant_concatenator<device_variant_intermediate_t,
                                               device_map_to_variants>::type;
-
-// std::map<std::string, std::string> a_map;
-// device_variant_t b_map = a_map;
 
 class i_alpaca_device {
 public:
@@ -124,7 +122,6 @@ public:
   virtual ~i_alpaca_device(){};
   virtual std::vector<std::string> supported_actions() = 0;
   virtual std::string unique_id() = 0;
-  // virtual std::map<std::string, device_variant_t> details() = 0;
   virtual device_variant_t details() = 0;
 };
 

@@ -466,6 +466,7 @@ void qhy_alpaca_camera::initialize_camera_by_camera_id(std::string &camera_id) {
 qhy_alpaca_camera::qhy_alpaca_camera(std::string &camera_id)
     : _camera_state(camera_state_enum::CAMERA_IDLE), _cam_handle(0),
       _camera_id(camera_id), _connected(false), _bin_x(1), _bin_y(1),
+      _bayer_offset_x(0), _bayer_offset_y(0),
       _start_x(0), _start_y(0), _chip_w(0), _chip_h(0), _image_w(0),
       _image_h(0), _pixel_w(0), _pixel_h(0), _num_x(0), _num_y(0), _gain(0),
       _current_set_temp(40), _exposure_max(0), _exposure_min(0),
@@ -477,7 +478,7 @@ qhy_alpaca_camera::qhy_alpaca_camera(std::string &camera_id)
       _percent_complete(100), _set_cooler_power(0),
       _can_control_ccd_temp(false), _run_cooler_thread(false),
       _has_filter_wheel(false), _last_camera_temp(0), _last_cooler_power(0),
-      _usb_traffic(20), _force_bin(false), _bpp(16) {
+      _usb_traffic(20), _force_bin(false), _bpp(16), __t(_io) {
   initialize_camera_by_camera_id(camera_id);
 };
 
@@ -915,7 +916,6 @@ int qhy_alpaca_camera::set_num_x(long num_x) {
             num_x, _max_num_x));
   uint32_t r = QHYCCD_ERROR;
   r = set_resolution(_start_x, _start_y, num_x, _num_y);
-  //    SetQHYCCDResolution(_cam_handle, _start_x, _start_y, num_x, _num_y);
   if (r != QHYCCD_SUCCESS)
     throw alpaca_exception(
         alpaca_exception::DRIVER_ERROR,
@@ -1040,19 +1040,20 @@ int qhy_alpaca_camera::start_exposure_proc() {
 
   spdlog::debug("ExpQHYCCDSingleFrame returned and {0}s remaining", wait_time);
   if (r == QHYCCD_SUCCESS || r == QHYCCD_READ_DIRECTLY) {
-    asio::steady_timer __t(_io, asio::chrono::seconds(wait_time));
-    // I may need to have the __t as a member so that I can control the expiry
-    // of the timer when an exposure is canceled and the image must be read out
-    __t.async_wait(std::bind(&qhy_alpaca_camera::read_image_from_camera, this));
+    __t.expires_after(asio::chrono::seconds(wait_time));
+    __t.async_wait(
+        std::bind(&qhy_alpaca_camera::read_image_from_camera, this));
     _io.run();
     spdlog::debug("start_exposure_proc ended");
     return 0;
   }
   spdlog::error("Failed to start exposing frame: {0}", r);
   uint8_t cam_status_buf[4] = {};
-  GetQHYCCDCameraStatus(_cam_handle, cam_status_buf);
-  spdlog::trace("Camera Status: {0}, {1}, {2}, {3}", cam_status_buf[0],
-                cam_status_buf[1], cam_status_buf[3], cam_status_buf[3]);
+
+  // I don't think this call is officially supported in the QHYCCD SDK
+  // GetQHYCCDCameraStatus(_cam_handle, cam_status_buf);
+  // spdlog::trace("Camera Status: {0}, {1}, {2}, {3}", cam_status_buf[0],
+  //               cam_status_buf[1], cam_status_buf[3], cam_status_buf[3]);
   return -1;
 }
 
@@ -1063,28 +1064,12 @@ int qhy_alpaca_camera::start_exposure(double duration_seconds, bool is_light) {
   _camera_state = camera_state_enum::CAMERA_EXPOSING;
   spdlog::debug("Setting Exposure to: {0} seconds", duration_seconds);
 
-  // _bpp = 16;
-  // uint32_t set_bits_res = SetQHYCCDBitsMode(_cam_handle, _bpp);
-  // uint32_t set_bits_res = SetQHYCCDParam(_cam_handle,
-  // CONTROL_ID::CONTROL_TRANSFERBIT, _bpp); if (set_bits_res == QHYCCD_SUCCESS)
-  // {
-  //   spdlog::trace("Successfully set bits mode");
-  // } else {
-
-  //   spdlog::error("Failed to set bits mode: {0}", set_bits_res);
-  //   // throw alpaca_exception(
-  //   //     alpaca_exception::DRIVER_ERROR,
-  //   //     fmt::format("Failed to set bits mode: {0}", set_bits_res));
-  // }
-
   _last_exposure_duration = duration_seconds;
 
   double u_seconds = duration_seconds * 1000000;
   spdlog::trace("Exposure time in uSeconds: {0}", u_seconds);
   uint32_t r = 0;
 
-  // r = SetQHYCCDParam(_cam_handle, CONTROL_ID::CONTROL_USBTRAFFIC, 30);
-  // r = SetQHYCCDParam(_cam_handle, CONTROL_ID::CONTROL_TRANSFERBIT, _bpp);
   r = SetQHYCCDParam(_cam_handle, CONTROL_ID::CONTROL_EXPOSURE, u_seconds);
 
   if (r == QHYCCD_SUCCESS) {
@@ -1362,14 +1347,25 @@ std::string qhy_alpaca_camera::unique_id() { return _camera_id; }
 
 device_variant_t qhy_alpaca_camera::details() {
   std::map<std::string, device_variant_intermediate_t> detail_map;
+  detail_map["Connected"] = _connected;
+  detail_map["FilterWheel"] = _has_filter_wheel;
   detail_map["Gain"] = _gain;
+  detail_map["Gains"] = _gains;
   detail_map["GainMax"] = _gain_max;
   detail_map["GainMin"] = _gain_min;
   detail_map["BinX"] = _bin_x;
   detail_map["BinY"] = _bin_y;
   detail_map["ImageW"] = _image_w;
   detail_map["ImageH"] = _image_h;
-  detail_map["Gains"] = _gains;
+  detail_map["Offset"] = _offset;
   detail_map["Offsets"] = _offsets;
+  detail_map["Status"] = _camera_state;
+  if(_can_control_cooler_power) {
+    detail_map["CoolerPower"] = cooler_power();
+    detail_map["CoolerOn"] = cooler_power();
+    detail_map["SetTemp"] = _current_set_temp;
+  }
+  detail_map["Temp"] = ccd_temperature();
+
   return detail_map;
 };
