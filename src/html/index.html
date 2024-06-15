@@ -18,10 +18,22 @@
          function App() {
              console.log("Main App Component");
              return {
+                 pc_time: new Date(),
+                 updateTime() {
+                     this.pc_time = new Date().toISOString();
+                 },
+                 updateDevice() {
+                     if(this.editingDevice) {
+                         /* console.log("updating device on timer..."); */
+                         this.fetchDeviceDetails(this.device);
+                     }
+                 },
                  mounted() {
-                     console.log("main app mounted");
                  },
                  setupRouting() {
+                     console.log("main app mounted");
+                     setInterval(() => { this.updateTime(); this.updateDevice();}, 1000);
+
                      console.log("routing setup");
                      const onHashChange = () => {
                          var visibility = window.location.hash.replace(/#\/?/, '');
@@ -62,15 +74,30 @@
                      console.log("App mounted");
                  },
                  fetchDeviceDetails(device) {
-                     console.debug("fetchDeviceDetails invoked with", device);
+                     // console.log("fetchDeviceDetails invoked with", device);
                      fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/details")
-                         .then((_res) => _res.json())
+                         .then((_res) => {
+                             // console.log("_res: ", _res);
+                             return _res.json()
+                         }).catch((e) => {console.log("_res e: ", e)})
                          .then((_data) => {
-                             device.Details = _data.Value;
-                             device.Connected = _data.Value.Connected;
-                         });
+                             if(_data.ErrorNumber === 0) {
+                                 device.Details = _data.Value;
+                                 device.Connected = _data.Value.Connected;
+                                 if(!device.Latitude)
+                                     device.Latitude = _data.Value["Site Latitude"];
+                                 if(!device.Longitude)
+                                     device.Longitude = _data.Value["Site Longitude"];
+                                 if(!device.Elevation)
+                                     device.Elevation = _data.Value["Site Elevation"];
+                             } else {
+                                 device.ErrorNumber = _data.ErrorNumber;
+                                 device.ErrorMessage = _data.ErrorMessage;
+                             }
+                         }).catch((e) => {console.log("_data e: ", e)});
                  },
                  connect(device) {
+                     device.busy = true;
                      console.log("connect invoked");
                      let connected_value = "True";
                      if(device.Connected == true)
@@ -84,13 +111,140 @@
                      })
                              .then((_res) => _res.json())
                              .then((_data) => {
-                                 console.log("response: ", _data);
-                                 this.fetchDeviceDetails(device);
+                                 device.busy = false;
+                                 if(_data.ErrorNumber === 0) {
+                                     console.log("response: ", _data);
+                                     // device.Connected = _data.Value.Connected;
+                                     this.fetchDeviceDetails(device);
+                                 } else {
+                                     device.ErrorNumber = _data.ErrorNumber;
+                                     device.ErrorMessage = _data.ErrorMessage;
+                                 }
                              });
-                 }
+                 },
+                 reconnectDevice(device) {
+                     device.Connected = true;
+                     device.ErrorNumber = null;
+                     device.ErrorMessage = null;
+                     this.connect(device);
+                 },
+                 setMountTimeFromPC(device) {
+                     device.busy = true;
+                     let date_now = new Date();
+                     var date_iso_str = date_now.toISOString();
+                     fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/utcdate", {
+                         method: 'PUT',
+                         headers: {
+                             'Content-Type': 'application/json'
+                         },
+                         body: `UTCDate=${encodeURIComponent(date_now.toISOString())}`
+                     })
+                         .then((_res) => _res.json())
+                         .catch((e) => {
+                             alert("problem setting date!");
+                             device.busy = false;
+                         })
+                         .then((_data) => {
+                             device.busy = false;
+                             device.busy = false;
+                             if(_data.ErrorNumber === 0) {
+                                 this.fetchDeviceDetails(device);
+                             } else {
+                                 device.ErrorNumber = _data.ErrorNumber;
+                                 device.ErrorMessage = _data.ErrorMessage;
+                             }
+                         });
+                 },
+                 setLatitude(device) {
+                     device.busy = true;
+                     fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/sitelatitude", {
+                         method: 'PUT',
+                         headers: {
+                             'Content-Type': 'application/json'
+                         },
+                         body: `SiteLatitude=${encodeURIComponent(device.Latitude)}`
+                     })
+                         .then((_res) => _res.json())
+                         .catch((e) => {
+                             alert("problem setting latitude!");
+                             device.busy = false;
+                         })
+                         .then((_data) => {
+                             device.busy = false;
+                             device.busy = false;
+                             if(_data.ErrorNumber === 0) {
+                                 console.log("response: ", _data);
+                                 // device.Connected = _data.Value.Connected;
+                                 device.Latitude = null;
+                                 this.fetchDeviceDetails(device);
+                             } else {
+                                 /* device.ErrorNumber = _data.ErrorNumber;
+                                  * device.ErrorMessage = _data.ErrorMessage; */
+                                 // device.Latitude = null;
+                                 alert("Problem: " + _data.ErrorMessage);
+                                 this.fetchDeviceDetails(device);
+                             }
+                         });
+                 },
+                 setLongitude(device) {
+                     device.busy = true;
+                     fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/sitelongitude", {
+                         method: 'PUT',
+                         headers: {
+                             'Content-Type': 'application/json'
+                         },
+                         body: `SiteLongitude=${encodeURIComponent(device.Longitude)}`
+                     })
+                         .then((_res) => _res.json())
+                         .catch((e) => {
+                             alert("problem setting longitude!");
+                             device.busy = false;
+                         })
+                         .then((_data) => {
+                             if(_data.ErrorNumber === 0) {
+                                 console.log("response: ", _data);
+                                 // device.Connected = _data.Value.Connected;
+                                 device.Longitude = null;
+                                 this.fetchDeviceDetails(device);
+                                 device.busy = false;
+                             } else {
+                                 /* device.ErrorNumber = _data.ErrorNumber;
+                                  * device.ErrorMessage = _data.ErrorMessage; */
+                                 // device.Longitude = null;
+                                 alert("Problem: " + _data.ErrorMessage);
+                                 this.fetchDeviceDetails(device);
+                                 device.busy = false;
+                             }
+                         });
+                 },
+                 setElevation(device) {
+                     device.busy = true;
+                     fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/siteelevation", {
+                         method: 'PUT',
+                         headers: {
+                             'Content-Type': 'application/json'
+                         },
+                         body: `SiteElevation=${encodeURIComponent(device.Elevation)}`
+                     })
+                         .then((_res) => _res.json())
+                         .catch((e) => {
+                             alert("problem setting elevation!");
+                             device.busy = false;
+                         })
+                         .then((_data) => {
+                             if(_data.ErrorNumber === 0) {
+                                 device.Elevation = null;
+                                 this.fetchDeviceDetails(device);
+                                 device.busy = false;
+                             } else {
+                                 alert("Problem: " + _data.ErrorMessage);
+                                 this.fetchDeviceDetails(device);
+                                 device.busy = false;
+                             }
+                         });
+                 },
              }
          };
-
 
          PetiteVue.createApp({App}).mount();
         </script>
@@ -108,9 +262,7 @@
             </nav>
         </header>
         <main>
-            <div class=""
-                 v-effect="fetchData()"
-                 @vue:mounted="mounted">
+            <div class="" v-effect="fetchData()">
                 <div class="row" id="devicetable">
                     <div class="col s3">
                         <div class="collection with-header">
@@ -130,29 +282,104 @@
                     </div>
                     <div class="col s9" id="app_main">
                         <div class="row" id="deviceeditor" v-if="editingDevice" v-effect="fetchDeviceDetails(device)">
-                                <table>
+
+                            <div class="card-panel red-text lighten-2"
+                                 v-if="device && device.ErrorNumber ">
+                                <div>
+                                    Error Number: {{device.ErrorNumber}}
+                                </div>
+                                <div>
+                                    Error Message: {{device.ErrorMessage}}
+                                </div>
+                                <div>
+                                    <button class="waves-effect waves-light btn" @click="reconnectDevice(device)">
+                                        Try reconnecting
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col s4 valign-wrapper" style="padding: 10px">
+                                    <button :class="{ disabled: device.busy }" class="waves-effect waves-light btn" @click="connect(device)">{{ device.Connected ? 'Disconnect' : 'Connect'}}</button>
+                                    <span v-if="device.busy"  style="font-size: .75em" class="black-text green lighten-3 badge right">{{ device.busy ? 'working...' : '' }}</span>
+                                </div>
+                            </div>
+                            <table v-show="!device.ErrorNumber">
                                     <thead>
                                         <tr>
                                             <th>Property</th>
                                             <th>Value</th>
+                                            <th></th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr v-for="(value, key) in device.Details" :key="key">
+                                        <tr
+                                            v-for="(value, key) in device.Details" :key="key">
                                             <td>{{key}}</td>
                                             <td>
-                                                <span>{{value}}   </span>
-                                                <span v-if="key == 'Connected'">
-                                                    <button @click="connect(device)">{{ value ? 'Disconnect' : 'Connect'}}</button>
-                                                </span>
+                                                <span>{{value}}</span>
+                                            </td>
+                                            <td>
+                                                <div class="" v-if="key === 'UTC Date'">
+                                                    <button @click="setMountTimeFromPC(device)"
+                                                            style="font-size: .75em"
+                                                            :class="{ disabled: device.busy }"
+                                                            class="waves-effect waves-light btn-small">
+                                                        Sync from PC to Mount
+                                                    </button>
+                                                    <div style="padding-top: 5px; font-size: .7em">(currently: {{pc_time}})</div>
+                                                </div>
+                                                <div class="input-field" v-if="key === 'Site Elevation'">
+                                                    <input
+                                                        v-model="device.Elevation"
+                                                        id="site_elevation"
+                                                        type="text"
+                                                        class="validate right"
+                                                        @keyup.enter="setElevation(device)">
+                                                    <label for="site_elevation"></label>
+                                                    <button :class="{ disabled: device.busy }"
+                                                            @click="setElevation(device)"
+                                                            style="font-size: .75em"
+                                                            class="waves-effect waves-light btn-small">
+                                                        Set Elevation (meters)
+                                                    </button>
+                                                </div>
+
+                                                <div class="input-field" v-if="key === 'Site Latitude'">
+                                                    <input
+                                                        v-model="device.Latitude"
+                                                        id="site_latitude"
+                                                        type="text"
+                                                        class="validate right"
+                                                        @keyup.enter="setLatitude(device)">
+                                                    <label for="site_latitude"></label>
+                                                    <button :class="{ disabled: device.busy }"
+                                                            @click="setLatitude(device)"
+                                                            style="font-size: .75em"
+                                                            class="waves-effect waves-light btn-small">
+                                                        Set Latitude
+                                                    </button>
+                                                </div>
+
+                                                <div class="input-field" v-if="key === 'Site Longitude'">
+                                                    <input
+                                                        v-model="device.Longitude"
+                                                        id="site_longitude"
+                                                        type="text"
+                                                        class="validate right"
+                                                        @keyup.enter="setLongitude(device)">
+                                                    <label for="site_longitude"></label>
+                                                    <button :class="{ disabled: device.busy }"
+                                                            @click="setLongitude(device)"
+                                                            style="font-size: .75em"
+                                                            class="waves-effect waves-light btn-small">
+                                                        Set Longitude
+                                                    </button>
+                                                </div>
+
                                             </td>
                                         </tr>
-                                        <tr>
-                                            <td></td>
-                                            <td><button @click="save()">Save</button></td>
-                                        </tr>
                                     </tbody>
-                                </table>
+                            </table>
                         </div>
 
                         <table id="device_table" v-if="!editingDevice" >
@@ -163,7 +390,6 @@
                                     <th>Unique ID</th>
                                     <th>Name</th>
                                     <th>Connected</th>
-                                    <th></th>
                                 </tr>
                             </thead>
                             <tbody>

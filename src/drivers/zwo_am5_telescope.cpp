@@ -117,30 +117,37 @@ void zwo_am5_telescope::throw_if_parked() {
 std::string zwo_am5_telescope::send_command_to_mount(const std::string &cmd,
                                                      bool read_response,
                                                      char stop_on_char) {
-  spdlog::trace("sending: {} to mount", cmd);
-  std::lock_guard lock(_telescope_mtx);
-  char buf[512] = {0};
-  _serial_port.write_some(asio::buffer(cmd));
+  try {
+    spdlog::trace("sending: {} to mount", cmd);
+    std::lock_guard lock(_telescope_mtx);
+    char buf[512] = {0};
+    _serial_port.write_some(asio::buffer(cmd));
 
-  std::string rsp;
+    std::string rsp;
 
-  if (read_response) {
-    _io_context.reset();
+    if (read_response) {
+      _io_context.reset();
 
-    // TODO: we may need to make the read timeout configurable here
-    alpaca_hub_serial::blocking_reader reader(cmd, _serial_port, 250,
-                                              _io_context);
-    char c;
-    while (reader.read_char(c)) {
-      rsp += c;
-      if (c == stop_on_char || stop_on_char == '\0' || c == '#') {
-        break;
+      // TODO: we may need to make the read timeout configurable here
+      alpaca_hub_serial::blocking_reader reader(cmd, _serial_port, 250,
+                                                _io_context);
+      char c;
+      while (reader.read_char(c)) {
+        rsp += c;
+        if (c == stop_on_char || stop_on_char == '\0' || c == '#') {
+          break;
+        }
       }
     }
-  }
 
-  spdlog::trace("mount returned: {}", rsp);
-  return rsp;
+    spdlog::trace("mount returned: {}", rsp);
+    return rsp;
+
+  } catch (std::exception &ex) {
+    throw alpaca_exception(
+        alpaca_exception::DRIVER_ERROR,
+        fmt::format("Problem sending command to mount: ", ex.what()));
+  }
 }
 
 uint32_t zwo_am5_telescope::interface_version() { return 3; }
@@ -504,7 +511,6 @@ double zwo_am5_telescope::site_longitude() {
   throw_if_not_connected();
   auto resp = send_command_to_mount(zwoc::cmd_get_longitude());
   auto parsed_resp = zwor::parse_sddd_mm_ss_response(resp);
-
 
   // This is a weird behavior from the ASCOM driver I'm mimicking
   if (parsed_resp.plus_or_minus == '+')
@@ -1081,8 +1087,8 @@ void zwo_am5_telescope::pulse_guide_proc(int duration_ms,
   // 2000ms in equatorial movement should translate to 2 arc-seconds of movement
   // using the aforementioned conversion, assuming the guide rate is 1x sidereal
   // rate (which won't necessarily be the case), which means we can divide
-  // 2000/15.042 which will give us our pulse duration. We should then divide that
-  // by our guide rate.
+  // 2000/15.042 which will give us our pulse duration. We should then divide
+  // that by our guide rate.
   //
   // However, this doesn't seem to work as expected. I suspect the AM5 driver
   //
@@ -1103,8 +1109,7 @@ void zwo_am5_telescope::pulse_guide_proc(int duration_ms,
   }
 
   send_command_to_mount(
-      zwoc::cmd_guide(cardinal_direction, remaining_duration_ms),
-      false);
+      zwoc::cmd_guide(cardinal_direction, remaining_duration_ms), false);
   spdlog::debug("sleeping for {}", remaining_duration_ms);
 
   std::this_thread::sleep_for(std::chrono::milliseconds(remaining_duration_ms));
@@ -1178,8 +1183,9 @@ int zwo_am5_telescope::pulse_guide(const guide_direction_enum &direction,
   char cardinal_direction = 0;
   int remaining_duration_ms = duration_ms;
   auto guide_rate = guide_rate_ascension();
-  spdlog::debug("pulse_guide() invoked with direction: {}, duration: {}ms with rate:{}",
-                direction, duration_ms, guide_rate);
+  spdlog::debug(
+      "pulse_guide() invoked with direction: {}, duration: {}ms with rate:{}",
+      direction, duration_ms, guide_rate);
   switch (direction) {
   case guide_direction_enum::guide_east:
     cardinal_direction = 'e';
@@ -1202,8 +1208,8 @@ int zwo_am5_telescope::pulse_guide(const guide_direction_enum &direction,
 
   spdlog::debug("creating guiding thread");
   _guiding_thread =
-      std::thread(std::bind(&zwo_am5_telescope::pulse_guide_proc,
-                            this, duration_ms, cardinal_direction));
+      std::thread(std::bind(&zwo_am5_telescope::pulse_guide_proc, this,
+                            duration_ms, cardinal_direction));
 
   _guiding_thread.detach();
   spdlog::debug("guiding thread detached");
@@ -1418,15 +1424,21 @@ device_variant_t zwo_am5_telescope::details() {
   std::map<std::string, device_variant_intermediate_t> detail_map;
   detail_map["Connected"] = _connected;
   detail_map["Serial Device"] = _serial_device_path;
-  if(_connected) {
-    detail_map["UTC Date"] = utc_date();
-    detail_map["Right Ascension"] = right_ascension();
-    detail_map["Declination"] = declination();
-    detail_map["Azimuth"] = azimuth();
-    detail_map["Altitude"] = altitude();
-    detail_map["Site Latitude"] = _site_latitude;
-    detail_map["Site Longitude"] = _site_longitude;
-    detail_map["Site Elevation"] = _site_elevation;
+  if (_connected) {
+    // try {
+      detail_map["UTC Date"] = utc_date();
+      detail_map["Right Ascension"] = right_ascension();
+      detail_map["Declination"] = declination();
+      detail_map["Azimuth"] = azimuth();
+      detail_map["Altitude"] = altitude();
+      detail_map["Site Latitude"] = _site_latitude;
+      detail_map["Site Longitude"] = _site_longitude;
+      detail_map["Site Elevation"] = _site_elevation;
+      detail_map["Sidereal Time"] = sidereal_time();
+      detail_map["Side of Pier"] = side_of_pier();
+    // } catch (alpaca_exception &e) {
+    //   spdlog::warn("problem fetching details: ", e.what());
+    // }
   }
 
   return detail_map;
