@@ -261,13 +261,8 @@ int pegasus_alpaca_focuscube3::move(const int &pos) {
   throw_if_not_connected();
   using namespace std::chrono_literals;
   std::string move_cmd = fmt::format("FM:{:#d}\n", pos);
-  auto resp = send_command_to_focuser(move_cmd);
-  // Well...let's go ahead and set this to true so that we
-  // allow it to automatically be updated during the normal update
-  // thread
   _moving = true;
-  // while(_moving)
-  //   std::this_thread::sleep_for(100ms);
+  auto resp = send_command_to_focuser(move_cmd);
   return 0;
 }
 

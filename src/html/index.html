@@ -93,6 +93,7 @@
                      console.log("App mounted");
                  },
                  fetchDeviceDetails(device) {
+                     console.log("fetching device details, busy? ", device.busy);
                      fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/details")
                          .then((_res) => {
                              return _res.json()
@@ -472,6 +473,32 @@
                          .then((_data) => {
                              if(_data.ErrorNumber === 0) {
                                  // device.Position = null;
+                                 device.busy = true;
+                                 console.log("device should be busy...");
+                                 this.fetchDeviceDetails(device);
+                             } else {
+                                 alert("Problem: " + _data.ErrorMessage);
+                                 this.fetchDeviceDetails(device);
+                                 device.busy = false;
+                             }
+                         });
+                 },
+                 haltFocuser(device) {
+                     device.busy = true;
+                     fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/halt", {
+                         method: 'PUT',
+                         headers: {
+                             'Content-Type': 'application/json'
+                         }
+                     })
+                         .then((_res) => _res.json())
+                         .catch((e) => {
+                             alert("problem halting focuser");
+                             device.busy = false;
+                         })
+                         .then((_data) => {
+                             if(_data.ErrorNumber === 0) {
+                                 // device.Position = null;
                                  this.fetchDeviceDetails(device);
                                  device.busy = true;
                              } else {
@@ -721,6 +748,11 @@
                                                         style="font-size: .75em"
                                                         class="blue-grey darken-2 waves-effect waves-light btn-small">
                                                     Set Focuser Position
+                                                </button>
+                                                <button @click="haltFocuser(device)"
+                                                        style="font-size: .75em"
+                                                        class="blue-grey darken-2 waves-effect waves-light btn-small">
+                                                    Halt Focuser
                                                 </button>
                                             </div>
 
