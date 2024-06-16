@@ -1,6 +1,7 @@
 <html>
     <head>
         <link type="text/css" rel="stylesheet" href="/html/materialize/css/materialize.min.css"  media="screen,projection"/>
+        <link type="text/css" rel="stylesheet" href="/html/css/icons.css">
         <style>
          body {
              display: flex;
@@ -24,11 +25,8 @@
                  },
                  updateDevice() {
                      if(this.editingDevice) {
-                         /* console.log("updating device on timer..."); */
                          this.fetchDeviceDetails(this.device);
                      }
-                 },
-                 mounted() {
                  },
                  setupRouting() {
                      console.log("main app mounted");
@@ -56,6 +54,9 @@
                      onHashChange()
                  },
                  Devices: [],
+                 devicesSelected: true,
+                 setupSelected: false,
+                 logsSelected: false,
                  device: null,
                  editingDevice: false,
                  fetchData() {
@@ -74,10 +75,8 @@
                      console.log("App mounted");
                  },
                  fetchDeviceDetails(device) {
-                     // console.log("fetchDeviceDetails invoked with", device);
                      fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/details")
                          .then((_res) => {
-                             // console.log("_res: ", _res);
                              return _res.json()
                          }).catch((e) => {console.log("_res e: ", e)})
                          .then((_data) => {
@@ -98,7 +97,6 @@
                  },
                  connect(device) {
                      device.busy = true;
-                     console.log("connect invoked");
                      let connected_value = "True";
                      if(device.Connected == true)
                          connected_value = "False"
@@ -114,7 +112,6 @@
                                  device.busy = false;
                                  if(_data.ErrorNumber === 0) {
                                      console.log("response: ", _data);
-                                     // device.Connected = _data.Value.Connected;
                                      this.fetchDeviceDetails(device);
                                  } else {
                                      device.ErrorNumber = _data.ErrorNumber;
@@ -171,16 +168,11 @@
                          })
                          .then((_data) => {
                              device.busy = false;
-                             device.busy = false;
                              if(_data.ErrorNumber === 0) {
                                  console.log("response: ", _data);
-                                 // device.Connected = _data.Value.Connected;
                                  device.Latitude = null;
                                  this.fetchDeviceDetails(device);
                              } else {
-                                 /* device.ErrorNumber = _data.ErrorNumber;
-                                  * device.ErrorMessage = _data.ErrorMessage; */
-                                 // device.Latitude = null;
                                  alert("Problem: " + _data.ErrorMessage);
                                  this.fetchDeviceDetails(device);
                              }
@@ -202,15 +194,10 @@
                          })
                          .then((_data) => {
                              if(_data.ErrorNumber === 0) {
-                                 console.log("response: ", _data);
-                                 // device.Connected = _data.Value.Connected;
                                  device.Longitude = null;
                                  this.fetchDeviceDetails(device);
                                  device.busy = false;
                              } else {
-                                 /* device.ErrorNumber = _data.ErrorNumber;
-                                  * device.ErrorMessage = _data.ErrorMessage; */
-                                 // device.Longitude = null;
                                  alert("Problem: " + _data.ErrorMessage);
                                  this.fetchDeviceDetails(device);
                                  device.busy = false;
@@ -234,15 +221,214 @@
                          .then((_data) => {
                              if(_data.ErrorNumber === 0) {
                                  device.Elevation = null;
-                                 this.fetchDeviceDetails(device);
                                  device.busy = false;
+                                 this.fetchDeviceDetails(device);
                              } else {
                                  alert("Problem: " + _data.ErrorMessage);
-                                 this.fetchDeviceDetails(device);
                                  device.busy = false;
+                                 this.fetchDeviceDetails(device);
                              }
                          });
                  },
+                 moveNorth(device) {
+                     fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/moveaxis", {
+                         method: 'PUT',
+                         headers: {
+                             'Content-Type': 'application/json'
+                         },
+                         body: `Axis=1&Rate=6`
+                     })
+                         .then((_res) => _res.json())
+                         .catch((e) => {
+                             alert("problem moving north!");
+                             device.busy = false;
+                         })
+                         .then((_data) => {
+                             if(_data.ErrorNumber === 0) {
+                                 this.fetchDeviceDetails(device);
+                             } else {
+                                 alert("Problem: " + _data.ErrorMessage);
+                                 this.fetchDeviceDetails(device);
+                             }
+                         });
+                 },
+                 stopMoveNorth(device) {
+                     fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/moveaxis", {
+                         method: 'PUT',
+                         headers: {
+                             'Content-Type': 'application/json'
+                         },
+                         body: `Axis=1&Rate=0`
+                     })
+                         .then((_res) => _res.json())
+                         .catch((e) => {
+                             alert("problem moving north!");
+                             device.busy = false;
+                         })
+                         .then((_data) => {
+                             if(_data.ErrorNumber === 0) {
+                                 this.fetchDeviceDetails(device);
+                             } else {
+                                 alert("Problem: " + _data.ErrorMessage);
+                                 this.fetchDeviceDetails(device);
+                             }
+                         });
+                 },
+                 moveSouth(device) {
+                     fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/moveaxis", {
+                         method: 'PUT',
+                         headers: {
+                             'Content-Type': 'application/json'
+                         },
+                         body: `Axis=1&Rate=-6`
+                     })
+                         .then((_res) => _res.json())
+                         .catch((e) => {
+                             alert("problem moving north!");
+                             device.busy = false;
+                         })
+                         .then((_data) => {
+                             if(_data.ErrorNumber === 0) {
+                                 this.fetchDeviceDetails(device);
+                             } else {
+                                 alert("Problem: " + _data.ErrorMessage);
+                                 this.fetchDeviceDetails(device);
+                             }
+                         });
+                 },
+                 stopMoveSouth(device) {
+                     fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/moveaxis", {
+                         method: 'PUT',
+                         headers: {
+                             'Content-Type': 'application/json'
+                         },
+                         body: `Axis=1&Rate=0`
+                     })
+                         .then((_res) => _res.json())
+                         .catch((e) => {
+                             alert("problem moving north!");
+                             device.busy = false;
+                         })
+                         .then((_data) => {
+                             if(_data.ErrorNumber === 0) {
+                                 this.fetchDeviceDetails(device);
+                             } else {
+                                 alert("Problem: " + _data.ErrorMessage);
+                                 this.fetchDeviceDetails(device);
+                             }
+                         });
+                 },
+                 moveEast(device) {
+                     fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/moveaxis", {
+                         method: 'PUT',
+                         headers: {
+                             'Content-Type': 'application/json'
+                         },
+                         body: `Axis=0&Rate=6`
+                     })
+                         .then((_res) => _res.json())
+                         .catch((e) => {
+                             alert("problem moving east!");
+                             device.busy = false;
+                         })
+                         .then((_data) => {
+                             if(_data.ErrorNumber === 0) {
+                                 this.fetchDeviceDetails(device);
+                             } else {
+                                 alert("Problem: " + _data.ErrorMessage);
+                                 this.fetchDeviceDetails(device);
+                             }
+                         });
+                 },
+                 stopMoveEast(device) {
+                     fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/moveaxis", {
+                         method: 'PUT',
+                         headers: {
+                             'Content-Type': 'application/json'
+                         },
+                         body: `Axis=0&Rate=0`
+                     })
+                         .then((_res) => _res.json())
+                         .catch((e) => {
+                             alert("problem moving east!");
+                             device.busy = false;
+                         })
+                         .then((_data) => {
+                             if(_data.ErrorNumber === 0) {
+                                 this.fetchDeviceDetails(device);
+                             } else {
+                                 alert("Problem: " + _data.ErrorMessage);
+                                 this.fetchDeviceDetails(device);
+                             }
+                         });
+                 },
+                 moveWest(device) {
+                     fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/moveaxis", {
+                         method: 'PUT',
+                         headers: {
+                             'Content-Type': 'application/json'
+                         },
+                         body: `Axis=0&Rate=-6`
+                     })
+                         .then((_res) => _res.json())
+                         .catch((e) => {
+                             alert("problem moving west!");
+                             device.busy = false;
+                         })
+                         .then((_data) => {
+                             if(_data.ErrorNumber === 0) {
+                                 this.fetchDeviceDetails(device);
+                             } else {
+                                 alert("Problem: " + _data.ErrorMessage);
+                                 this.fetchDeviceDetails(device);
+                             }
+                         });
+                 },
+                 stopMoveWest(device) {
+                     fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/moveaxis", {
+                         method: 'PUT',
+                         headers: {
+                             'Content-Type': 'application/json'
+                         },
+                         body: `Axis=0&Rate=0`
+                     })
+                         .then((_res) => _res.json())
+                         .catch((e) => {
+                             alert("problem moving west!");
+                             device.busy = false;
+                         })
+                         .then((_data) => {
+                             if(_data.ErrorNumber === 0) {
+                                 this.fetchDeviceDetails(device);
+                             } else {
+                                 alert("Problem: " + _data.ErrorMessage);
+                                 this.fetchDeviceDetails(device);
+                             }
+                         });
+                 },
+                 homeTelescope(device) {
+                     fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/findhome", {
+                         method: 'PUT',
+                         headers: {
+                             'Content-Type': 'application/json'
+                         }
+                     })
+                         .then((_res) => _res.json())
+                         .catch((e) => {
+                             alert("problem homing scope!");
+                             device.busy = false;
+                         })
+                         .then((_data) => {
+                             if(_data.ErrorNumber === 0) {
+                                 this.fetchDeviceDetails(device);
+                             } else {
+                                 alert("Problem: " + _data.ErrorMessage);
+                                 this.fetchDeviceDetails(device);
+                             }
+                         });
+                 },
+
+
              }
          };
 
@@ -252,8 +438,8 @@
     <body v-scope="App()" @vue:mounted="setupRouting">
         <header>
             <nav class="blue-grey lighten-1">
-                <div class="nav-wrapper" style="padding-left: 40px;">
-                    <a href="#" class="brand-logo">Dave's Alpaca Hub</a>
+                <div class="nav-wrapper" >
+                    <a href="#" class="brand-logo" style="margin-left: 10px">Dave's Alpaca Hub</a>
                     <ul id="nav-mobile" class="right hide-on-med-and-down">
                         <li><a href="">About</a></li>
                         <li><a href="">Documentation</a></li>
@@ -261,127 +447,226 @@
                 </div>
             </nav>
         </header>
+
         <main>
-            <div class="" v-effect="fetchData()">
-                <div class="row" id="devicetable">
-                    <div class="col s3">
-                        <div class="collection with-header">
-                            <div class="collection-header" style="">
-                                Menu
-                            </div>
-                            <a class="collection-item" href="#">
-                                Devices
-                            </a>
-                            <a class="collection-item" href="#">
-                                Setup
-                            </a>
-                            <a class="collection-item" href="#">
-                                Logs
-                            </a>
+            <!-- first div in main -->
+            <div class="row" v-effect="fetchData()">
+
+                <!-- Left hand nav -->
+                <div class="col s2" style="padding:0; margin: 0">
+                    <div class="collection with-header" style="padding:0; margin: 0">
+                        <div class="z-depth-5 valign-wrapper blue-grey lighten-3 white-text collection-header"
+                             style="height: 65px">
+                            Menu
                         </div>
+
+                        <a :class="{ 'blue-grey lighten-4' : devicesSelected }"
+                           class="blue-grey-text collection-item" href="#">
+                            Devices
+                        </a>
+                        <a :class="{ 'blue-grey lighten-4' : setupSelected }"
+                           class="blue-grey-text collection-item" href="#">
+                            Setup
+                        </a>
+                        <a :class="{ 'blue-grey lighten-4' : logsSelected }"
+                           class="blue-grey-text collection-item" href="#">
+                            Logs
+                        </a>
                     </div>
-                    <div class="col s9" id="app_main">
-                        <div class="row" id="deviceeditor" v-if="editingDevice" v-effect="fetchDeviceDetails(device)">
+                </div>
+                <!-- end left hand nav -->
 
-                            <div class="card-panel red-text lighten-2"
-                                 v-if="device && device.ErrorNumber ">
-                                <div>
-                                    Error Number: {{device.ErrorNumber}}
+                <!-- Main app panel -->
+                <div class="col s10" id="app_main">
+                    <!-- breadcrumb -->
+                    <div class="row">
+                        <nav class="grey">
+                            <div class="nav-wrapper">
+                                <div class="col s12">
+                                    <a class="breadcrumb" href="#">
+                                        Devices
+                                    </a>
+                                    <a v-if="editingDevice" class="breadcrumb" :href="'#/edit/' + device.DeviceType + '/' + device.DeviceNumber">
+                                        {{device.DeviceType}} #{{device.DeviceNumber}}
+                                    </a>
+
                                 </div>
-                                <div>
-                                    Error Message: {{device.ErrorMessage}}
-                                </div>
-                                <div>
-                                    <button class="waves-effect waves-light btn" @click="reconnectDevice(device)">
-                                        Try reconnecting
+                            </div>
+                        </nav>
+                    </div>
+                    <!-- end breadcrumb -->
+
+                    <!-- deviceeditor panel -->
+                    <div class="row"
+                         id="deviceeditor"
+                         v-if="editingDevice"
+                         v-effect="fetchDeviceDetails(device)">
+
+                        <!-- error panel -->
+                        <div class="card-panel red-text lighten-2"
+                             v-if="device && device.ErrorNumber ">
+                            <div>
+                                Error Number: {{device.ErrorNumber}}
+                            </div>
+                            <div>
+                                Error Message: {{device.ErrorMessage}}
+                            </div>
+                            <div>
+                                <button class="blue-grey waves-effect waves-light btn"
+                                        @click="reconnectDevice(device)">
+                                    Try reconnecting
+                                </button>
+                            </div>
+                        </div>
+                        <!-- end error panel -->
+
+                        <!-- properties panel  -->
+                        <div class="col s12">
+                            <div class="row" style="text-size: .75em">
+                                <div class="col s8 valign-wrapper">
+                                    <button :class="{ disabled: device.busy }"
+                                            class="blue-grey darken-2 waves-effect waves-light btn"
+                                            @click="connect(device)"
+                                            style="font-size: 10px;">
+                                        {{ device.Connected ? 'Disconnect' : 'Connect'}}
                                     </button>
+                                    <span v-if="device.busy"
+                                          style="font-size: .75em"
+                                          class="black-text green lighten-3 badge right">
+                                        {{ device.busy ? 'working...' : '' }}
+                                    </span>
+                                </div>
+                                <div v-show="device.Connected"
+                                     class="col s4"
+                                     v-if="device.DeviceType == 'telescope'">
+                                    <div class="row">
+                                        <div class="col s4 center"></div>
+                                        <div class="col s4 center">
+                                            <button style="font-size: 10px;"
+                                                    class="blue-grey darken-2 btn-small waves-effect waves-light"
+                                                    @mousedown="moveNorth(device)"
+                                                    @mouseup="stopMoveNorth(device)"
+                                                    @mouseout="stopMoveNorth(device)">^</button>
+                                        </div>
+                                        <div class="col s4 center"></div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col s4 center">
+                                            <button style="font-size: 10px;"
+                                                    class="blue-grey darken-2 btn-small waves-effect waves-light"
+                                                    @mousedown="moveEast(device)"
+                                                    @mouseup="stopMoveEast(device)"
+                                                    @mouseout="stopMoveEast(device)">&lt;</button>
+                                        </div>
+                                        <div class="col s4 center">
+                                            <button style="font-size: 8px;"
+                                                    class="blue-grey darken-2 center btn-small waves-effect waves-light"
+                                                    @click="homeTelescope(device)">home</button>
+                                        </div>
+                                        <div class="col s4 center">
+                                            <button style="font-size: 10px;"
+                                                    class="blue-grey darken-2 btn-small waves-effect waves-light"
+                                                    @mousedown="moveWest(device)"
+                                                    @mouseup="stopMoveWest(device)"
+                                                    @mouseout="stopMoveWest(device)">&gt;</button>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col s4 center"></div>
+                                        <div class="col s4 center">
+                                            <button style="font-size: 10px; text-transform: lowercase;"
+                                                    class="blue-grey darken-2 btn-small waves-effect waves-light"
+                                                    @mousedown="moveSouth(device)"
+                                                    @mouseup="stopMoveSouth(device)"
+                                                    @mouseout="stopMoveSouth(device)">v</button>
+                                        </div>
+                                        <div class="col s4 center"></div>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="row">
-                                <div class="col s4 valign-wrapper" style="padding: 10px">
-                                    <button :class="{ disabled: device.busy }" class="waves-effect waves-light btn" @click="connect(device)">{{ device.Connected ? 'Disconnect' : 'Connect'}}</button>
-                                    <span v-if="device.busy"  style="font-size: .75em" class="black-text green lighten-3 badge right">{{ device.busy ? 'working...' : '' }}</span>
-                                </div>
-                            </div>
+
+                            <!-- Properties table -->
                             <table v-show="!device.ErrorNumber">
-                                    <thead>
-                                        <tr>
-                                            <th>Property</th>
-                                            <th>Value</th>
-                                            <th></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr
-                                            v-for="(value, key) in device.Details" :key="key">
-                                            <td>{{key}}</td>
-                                            <td>
-                                                <span>{{value}}</span>
-                                            </td>
-                                            <td>
-                                                <div class="" v-if="key === 'UTC Date'">
-                                                    <button @click="setMountTimeFromPC(device)"
-                                                            style="font-size: .75em"
-                                                            :class="{ disabled: device.busy }"
-                                                            class="waves-effect waves-light btn-small">
-                                                        Sync from PC to Mount
-                                                    </button>
-                                                    <div style="padding-top: 5px; font-size: .7em">(currently: {{pc_time}})</div>
-                                                </div>
-                                                <div class="input-field" v-if="key === 'Site Elevation'">
-                                                    <input
-                                                        v-model="device.Elevation"
-                                                        id="site_elevation"
-                                                        type="text"
-                                                        class="validate right"
-                                                        @keyup.enter="setElevation(device)">
-                                                    <label for="site_elevation"></label>
-                                                    <button :class="{ disabled: device.busy }"
-                                                            @click="setElevation(device)"
-                                                            style="font-size: .75em"
-                                                            class="waves-effect waves-light btn-small">
-                                                        Set Elevation (meters)
-                                                    </button>
-                                                </div>
-
-                                                <div class="input-field" v-if="key === 'Site Latitude'">
-                                                    <input
-                                                        v-model="device.Latitude"
-                                                        id="site_latitude"
-                                                        type="text"
-                                                        class="validate right"
-                                                        @keyup.enter="setLatitude(device)">
-                                                    <label for="site_latitude"></label>
-                                                    <button :class="{ disabled: device.busy }"
-                                                            @click="setLatitude(device)"
-                                                            style="font-size: .75em"
-                                                            class="waves-effect waves-light btn-small">
-                                                        Set Latitude
-                                                    </button>
-                                                </div>
-
-                                                <div class="input-field" v-if="key === 'Site Longitude'">
-                                                    <input
-                                                        v-model="device.Longitude"
-                                                        id="site_longitude"
-                                                        type="text"
-                                                        class="validate right"
-                                                        @keyup.enter="setLongitude(device)">
-                                                    <label for="site_longitude"></label>
-                                                    <button :class="{ disabled: device.busy }"
-                                                            @click="setLongitude(device)"
-                                                            style="font-size: .75em"
-                                                            class="waves-effect waves-light btn-small">
-                                                        Set Longitude
-                                                    </button>
-                                                </div>
-
-                                            </td>
-                                        </tr>
-                                    </tbody>
+                                <thead>
+                                    <tr>
+                                        <th>Property</th>
+                                        <th>Value</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr
+                                        v-for="(value, key) in device.Details" :key="key">
+                                        <td>{{key}}</td>
+                                        <td>
+                                            <span>{{value}}</span>
+                                        </td>
+                                        <td>
+                                            <div class="" v-if="key === 'UTC Date'">
+                                                <button @click="setMountTimeFromPC(device)"
+                                                        style="font-size: .75em"
+                                                        :class="{ disabled: device.busy }"
+                                                        class="blue-grey darken-2 waves-effect waves-light btn-small">
+                                                    Sync from PC to Mount
+                                                </button>
+                                                <div style="padding-top: 5px; font-size: .7em">(currently: {{pc_time}})</div>
+                                            </div>
+                                            <div class="input-field" v-if="key === 'Site Elevation'">
+                                                <input
+                                                    v-model="device.Elevation"
+                                                    id="site_elevation"
+                                                    type="text"
+                                                    class="validate right"
+                                                    @keyup.enter="setElevation(device)">
+                                                <label for="site_elevation"></label>
+                                                <button :class="{ disabled: device.busy }"
+                                                        @click="setElevation(device)"
+                                                        style="font-size: .75em"
+                                                        class="blue-grey darken-2 waves-effect waves-light btn-small">
+                                                    Set Elevation (meters)
+                                                </button>
+                                            </div>
+                                            <div class="input-field" v-if="key === 'Site Latitude'">
+                                                <input
+                                                    v-model="device.Latitude"
+                                                    id="site_latitude"
+                                                    type="text"
+                                                    class="validate right"
+                                                    @keyup.enter="setLatitude(device)">
+                                                <label for="site_latitude"></label>
+                                                <button :class="{ disabled: device.busy }"
+                                                        @click="setLatitude(device)"
+                                                        style="font-size: .75em"
+                                                        class="blue-grey darken-2 waves-effect waves-light btn-small">
+                                                    Set Latitude
+                                                </button>
+                                            </div>
+                                            <div class="input-field" v-if="key === 'Site Longitude'">
+                                                <input
+                                                    v-model="device.Longitude"
+                                                    id="site_longitude"
+                                                    type="text"
+                                                    class="validate right"
+                                                    @keyup.enter="setLongitude(device)">
+                                                <label for="site_longitude"></label>
+                                                <button :class="{ disabled: device.busy }"
+                                                        @click="setLongitude(device)"
+                                                        style="font-size: .75em"
+                                                        class="blue-grey darken-2 waves-effect waves-light btn-small">
+                                                    Set Longitude
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
                             </table>
                         </div>
+                        <!-- end properties panel -->
+                    </div>
+                    <!-- end deviceeditor panel -->
 
+                    <!-- device list -->
+                    <div>
                         <table id="device_table" v-if="!editingDevice" >
                             <thead>
                                 <tr>
@@ -406,8 +691,12 @@
                             </tbody>
                         </table>
                     </div>
+                    <!-- end device list -->
+
                 </div>
+                <!-- end main app panel -->
             </div>
+            <!-- end first div in main -->
         </main>
         <footer class="page-footer blue-grey">
             <div class="row">
