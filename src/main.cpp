@@ -1,4 +1,5 @@
 #include "drivers/zwo_am5_telescope.hpp"
+#include "drivers/pegasus_alpaca_focuser.hpp"
 #include "server/alpaca_hub_server.hpp"
 
 // We need these for 2 reasons:
@@ -133,6 +134,17 @@ int main(int argc, char **argv) {
     thread_pool_size = restinio::cast_to<int>(cli_map_iter->second);
   }
 
+  bool run_discovery = true;
+
+  cli_map_iter = cli_args.find("-d");
+  if (cli_map_iter != cli_args.end()) {
+    auto run_discovery_arg = cli_map_iter->second;
+    spdlog::info("Run discovery: ",
+                 run_discovery_arg);
+    if(run_discovery_arg == "false")
+      run_discovery = false;
+  }
+
   spdlog::info("Starting AlpacaHub");
   alpaca_hub_server::device_map["camera"] =
       std::vector<std::shared_ptr<i_alpaca_device>>();
@@ -148,6 +160,13 @@ int main(int argc, char **argv) {
     telescope_ptr->set_serial_device(iter);
     spdlog::info("Adding ZWO mount at {}", iter);
     alpaca_hub_server::device_map["telescope"].push_back(telescope_ptr);
+  }
+
+  for (auto iter : pegasus_alpaca_focuser::serial_devices()) {
+    auto focuser_ptr = std::make_shared<pegasus_alpaca_focuser>();
+    focuser_ptr->set_serial_device(iter);
+    spdlog::info("Adding Pegasus Focuser at {}", iter);
+    alpaca_hub_server::device_map["focuser"].push_back(focuser_ptr);
   }
 
   try {
@@ -184,7 +203,9 @@ int main(int argc, char **argv) {
     }
 
     // auto discover_f = std::bind(&discovery_thread_proc, &io_context);
-    std::thread discovery_thread(&discovery_thread_proc);
+    std::thread discovery_thread;
+    if (run_discovery)
+      discovery_thread = std::thread(&discovery_thread_proc);
     // discovery_thread.detach();
 
     if (thread_pool_size > 1) {
@@ -219,9 +240,11 @@ int main(int argc, char **argv) {
 
     spdlog::trace("Exiting restinio loop");
     spdlog::trace("joining discovery thread");
-    cancel_discovery();
+    if(run_discovery)
+      cancel_discovery();
 
-    discovery_thread.join();
+    if(run_discovery)
+      discovery_thread.join();
     spdlog::trace("discovery thread joined");
     // TODO: need to actually check result of this and handle errors
 

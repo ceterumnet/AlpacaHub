@@ -1,5 +1,6 @@
 #include "alpaca_hub_server.hpp"
 #include "interfaces/i_alpaca_telescope.hpp"
+#include "interfaces/i_alpaca_focuser.hpp"
 #include "restinio/cast_to.hpp"
 #include "restinio/request_handler.hpp"
 #include "restinio/router/express.hpp"
@@ -413,6 +414,12 @@ void api_v1_handler::add_route_to_router(
     device_type_regex = "telescope";
   }
 
+  if (std::is_same<T, i_alpaca_focuser>::value) {
+    device_type_regex = "focuser";
+  }
+
+  // I think this is a bug...when I do the format, I don't believe it correctly
+  // generates a valid regex.
   if (std::is_same<T, i_alpaca_device>::value) {
     device_type_regex = "telescope|camera|focuser|filterwheel";
   }
@@ -2204,6 +2211,78 @@ server_handler() {
                                       &i_alpaca_telescope::unpark>());
 
   // END telescope routes
+
+  // BEGIN focuser routes
+
+  // GET absolute
+  api_handler
+      ->add_route_to_router<i_alpaca_focuser, &i_alpaca_focuser::absolute>(
+          router, "absolute");
+
+  // GET ismoving
+  api_handler
+      ->add_route_to_router<i_alpaca_focuser, &i_alpaca_focuser::is_moving>(
+          router, "ismoving");
+
+  // GET maxincrement
+  api_handler
+      ->add_route_to_router<i_alpaca_focuser, &i_alpaca_focuser::max_increment>(
+          router, "maxincrement");
+
+  // GET maxstep
+  api_handler
+      ->add_route_to_router<i_alpaca_focuser, &i_alpaca_focuser::max_step>(
+          router, "maxstep");
+
+  // GET position
+  api_handler
+      ->add_route_to_router<i_alpaca_focuser, &i_alpaca_focuser::position>(
+          router, "position");
+
+  // GET stepsize
+  api_handler
+      ->add_route_to_router<i_alpaca_focuser, &i_alpaca_focuser::step_size>(
+          router, "stepsize");
+
+  // GET tempcomp
+  api_handler
+      ->add_route_to_router<i_alpaca_focuser, &i_alpaca_focuser::temp_comp>(
+          router, "tempcomp");
+
+  // GET tempcompavailable
+  api_handler->add_route_to_router<i_alpaca_focuser,
+                                   &i_alpaca_focuser::temp_comp_available>(
+      router, "tempcompavailable");
+
+  // GET temperature
+  api_handler->add_route_to_router<i_alpaca_focuser,
+                                   &i_alpaca_focuser::temperature>(
+      router, "temperature");
+
+  // GET details
+  api_handler
+      ->add_route_to_router<i_alpaca_focuser, &i_alpaca_focuser::details>(
+          router, "details");
+
+  // PUT tempcomp
+  router->http_put(
+      "/api/v1/focuser/:device_number/tempcomp",
+      api_handler->create_put_handler<bool, i_alpaca_focuser,
+                                      &i_alpaca_focuser::set_temp_comp>(
+                                        "TempComp", true));
+
+  // PUT halt
+  router->http_put("/api/v1/focuser/:device_number/halt",
+                   api_handler->create_put_handler<void, i_alpaca_focuser,
+                                                   &i_alpaca_focuser::halt>());
+
+  // PUT move
+  router->http_put(
+      "/api/v1/focuser/:device_number/move",
+      api_handler->create_put_handler<uint32_t, i_alpaca_focuser,
+                                      &i_alpaca_focuser::move>("Position"));
+
+  // END focuser routes
 
   router->non_matched_request_handler([](auto req) {
     return req->create_response(restinio::status_not_found())

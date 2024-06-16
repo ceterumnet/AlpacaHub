@@ -134,6 +134,7 @@ add_executable(AlpacaHubTests
   drivers/zwo_am5_telescope.cpp
   tests/zwo_am5_commands_tests.cpp
   tests/zwo_am5_mount_tests.cpp
+  tests/pegasus_alpaca_focuser_tests.cpp
 )
 
 target_link_libraries(AlpacaHubTests

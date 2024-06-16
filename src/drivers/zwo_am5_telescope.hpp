@@ -154,8 +154,9 @@ private:
   std::mutex _moving_mtx;
   std::string _serial_device_path;
   std::thread _guiding_thread;
-  // std::unique_ptr<asio::serial_port> _serial_port;
-  // std::unique_ptr<asio::io_service> _io_service;
+
+  // TODO: need to see
+  // why I have 2 io_contexts declared. It is probably just a mistake.
   asio::io_context _io_context;
   asio::serial_port _serial_port;
   bool _connected;

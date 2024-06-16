@@ -107,6 +107,16 @@
                                      device.Longitude = _data.Value["Site Longitude"];
                                  if(!device.Elevation)
                                      device.Elevation = _data.Value["Site Elevation"];
+                                 if(!device.Position) {
+                                     device.Position = _data.Value["Position"];
+                                 }
+                                 if(device.Details.Moving) {
+                                     device.busy = true;
+                                     // device.Position = _data.Value["Position"];
+                                 } else {
+                                     device.busy = false;
+                                     // device.Position = _data.Value["Position"];
+                                 }
                              } else {
                                  device.ErrorNumber = _data.ErrorNumber;
                                  device.ErrorMessage = _data.ErrorMessage;
@@ -445,7 +455,32 @@
                              }
                          });
                  },
-
+                 setFocuserPosition(device) {
+                     device.busy = true;
+                     fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/move", {
+                         method: 'PUT',
+                         headers: {
+                             'Content-Type': 'application/json'
+                         },
+                         body: `Position=${encodeURIComponent(device.Position)}`
+                     })
+                         .then((_res) => _res.json())
+                         .catch((e) => {
+                             alert("problem setting focuser position!");
+                             device.busy = false;
+                         })
+                         .then((_data) => {
+                             if(_data.ErrorNumber === 0) {
+                                 // device.Position = null;
+                                 this.fetchDeviceDetails(device);
+                                 device.busy = true;
+                             } else {
+                                 alert("Problem: " + _data.ErrorMessage);
+                                 this.fetchDeviceDetails(device);
+                                 device.busy = false;
+                             }
+                         });
+                 },
 
              }
          };
@@ -673,6 +708,22 @@
                                                     Set Longitude
                                                 </button>
                                             </div>
+                                            <div class="input-field" v-if="key === 'Position' && device.DeviceType == 'focuser'">
+                                                <input
+                                                    v-model="device.Position"
+                                                    id="focuser_position"
+                                                    type="text"
+                                                    class="validate right"
+                                                    @keyup.enter="setFocuserPosition(device)">
+                                                <label for="focuser_position"></label>
+                                                <button :class="{ disabled: device.busy }"
+                                                        @click="setFocuserPosition(device)"
+                                                        style="font-size: .75em"
+                                                        class="blue-grey darken-2 waves-effect waves-light btn-small">
+                                                    Set Focuser Position
+                                                </button>
+                                            </div>
+
                                         </td>
                                     </tr>
                                 </tbody>
