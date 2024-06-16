@@ -42,6 +42,9 @@
                          if(visibility.match(/edit/)) {
                              let chunks = visibility.match(/edit\/(telescope|camera|filterwheel|focuser)\/([0-9]+)/);
                              if(chunks.length > 2) {
+                                 this.devicesSelected = true;
+                                 this.setupSelected = false;
+                                 this.logsSelected = false;
                                  let deviceToLoad = {};
                                  deviceToLoad.DeviceType = chunks[1];
                                  deviceToLoad.DeviceNumber = chunks[2];
@@ -49,6 +52,21 @@
                                  this.editingDevice = true;
                              }
                          }
+
+                         if(visibility.match(/devices/)) {
+                             this.devicesSelected = true;
+                             this.setupSelected = false;
+                             this.logsSelected = false;
+                             this.editingDevice = false;
+                         }
+
+                         if(visibility.match(/logs/)) {
+                             this.devicesSelected = false;
+                             this.setupSelected = false;
+                             this.logsSelected = true;
+                             this.editingDevice = false;
+                         }
+
                      }
                      window.addEventListener('hashchange', onHashChange)
                      onHashChange()
@@ -284,7 +302,7 @@
                      })
                          .then((_res) => _res.json())
                          .catch((e) => {
-                             alert("problem moving north!");
+                             alert("problem moving south!");
                              device.busy = false;
                          })
                          .then((_data) => {
@@ -306,7 +324,7 @@
                      })
                          .then((_res) => _res.json())
                          .catch((e) => {
-                             alert("problem moving north!");
+                             alert("problem moving south!");
                              device.busy = false;
                          })
                          .then((_data) => {
@@ -451,7 +469,6 @@
         <main>
             <!-- first div in main -->
             <div class="row" v-effect="fetchData()">
-
                 <!-- Left hand nav -->
                 <div class="col s2" style="padding:0; margin: 0">
                     <div class="collection with-header" style="padding:0; margin: 0">
@@ -461,7 +478,7 @@
                         </div>
 
                         <a :class="{ 'blue-grey lighten-4' : devicesSelected }"
-                           class="blue-grey-text collection-item" href="#">
+                           class="blue-grey-text collection-item" href="#/devices">
                             Devices
                         </a>
                         <a :class="{ 'blue-grey lighten-4' : setupSelected }"
@@ -469,7 +486,7 @@
                             Setup
                         </a>
                         <a :class="{ 'blue-grey lighten-4' : logsSelected }"
-                           class="blue-grey-text collection-item" href="#">
+                           class="blue-grey-text collection-item" href="#/logs">
                             Logs
                         </a>
                     </div>
@@ -685,7 +702,7 @@
                                     <td>{{device.DeviceName}}</td>
                                     <td>{{device.Connected}}</td>
                                     <td>
-                                        <a :href="'#/edit/' + device.DeviceType + '/' + device.DeviceNumber" @click="editDevice(device)" class="waves-effect waves-light btn">Setup</a>
+                                        <a :href="'#/edit/' + device.DeviceType + '/' + device.DeviceNumber" @click="editDevice(device)" class="blue-grey waves-effect waves-light btn">Setup</a>
                                     </td>
                                 </tr>
                             </tbody>

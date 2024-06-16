@@ -2,6 +2,7 @@
 #define HTTP_SERVER_LOGGER_HPP
 
 #include <spdlog/spdlog.h>
+#include <spdlog/sinks/callback_sink.h>
 
 class http_server_logger_t {
 public:
@@ -35,6 +36,5 @@ private:
   //! Logger object.
   std::shared_ptr<spdlog::logger> m_logger;
 };
-
 
 #endif

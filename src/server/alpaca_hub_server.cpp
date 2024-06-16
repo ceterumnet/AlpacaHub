@@ -4,6 +4,17 @@
 #include "restinio/request_handler.hpp"
 #include "restinio/router/express.hpp"
 
+// This is one way I can do logs over the web interface...
+// I am thinking about maybe keeping 10mb or so of logs in a fifo type
+// rolling buffer
+//
+// auto callback_sink = std::make_shared<spdlog::sinks::callback_sink_mt>(
+//     [](const spdlog::details::log_msg &msg) {
+//       // for example you can be notified by sending an email to yourself
+//       //  msg.level
+//       // msg.
+//     });
+
 namespace nlohmann {
 void to_json(nlohmann::json &j, const axis_rate &p) {
   j = nlohmann::json{{"Maximum", p.Max}, {"Minimum", p.Min}};
