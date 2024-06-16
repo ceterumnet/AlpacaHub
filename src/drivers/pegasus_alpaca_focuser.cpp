@@ -16,6 +16,7 @@ pegasus_alpaca_focuser::pegasus_alpaca_focuser()
     : _connected(false), _moving(false), _serial_port(_io_context) {}
 
 pegasus_alpaca_focuser::~pegasus_alpaca_focuser() {
+  _connected = false;
   _focuser_update_thread.join();
   _serial_port.close();
 }
