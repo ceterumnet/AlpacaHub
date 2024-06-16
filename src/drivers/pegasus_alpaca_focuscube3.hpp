@@ -5,12 +5,12 @@
 #include "asio/io_context.hpp"
 #include "common/alpaca_hub_serial.hpp"
 
-class pegasus_alpaca_focuser : public i_alpaca_focuser {
+class pegasus_alpaca_focuscube3 : public i_alpaca_focuser {
 public:
   static std::vector<std::string> serial_devices();
 
-  pegasus_alpaca_focuser();
-  ~pegasus_alpaca_focuser();
+  pegasus_alpaca_focuscube3();
+  ~pegasus_alpaca_focuscube3();
   device_variant_t details();
   bool connected();
   int set_connected(bool);

@@ -1,5 +1,5 @@
 #include "drivers/zwo_am5_telescope.hpp"
-#include "drivers/pegasus_alpaca_focuser.hpp"
+#include "drivers/pegasus_alpaca_focuscube3.hpp"
 #include "server/alpaca_hub_server.hpp"
 
 // We need these for 2 reasons:
@@ -162,8 +162,8 @@ int main(int argc, char **argv) {
     alpaca_hub_server::device_map["telescope"].push_back(telescope_ptr);
   }
 
-  for (auto iter : pegasus_alpaca_focuser::serial_devices()) {
-    auto focuser_ptr = std::make_shared<pegasus_alpaca_focuser>();
+  for (auto iter : pegasus_alpaca_focuscube3::serial_devices()) {
+    auto focuser_ptr = std::make_shared<pegasus_alpaca_focuscube3>();
     focuser_ptr->set_serial_device(iter);
     spdlog::info("Adding Pegasus Focuser at {}", iter);
     alpaca_hub_server::device_map["focuser"].push_back(focuser_ptr);
