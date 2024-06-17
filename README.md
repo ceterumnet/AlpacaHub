@@ -112,18 +112,18 @@ https://github.com/YugnatD/ASCOM_Alpaca_ZWO_AM5
  - [x] Implement telescope mount driver
     - [x] Achieve conformance with ASCOM Conform Tool (there are a few issues to
       work through on this)
- - [ ] Implement focuser driver
+ - [x] Implement focuser driver
  - [ ] Implement better descriptions
  - [ ] Implement firmware version to data pulled
  - [ ] Implement support for log file as an option
  - [ ] Implement CLI help
  - [x] Implement web screen for information
- - [ ] Implement web setup screen for devices
+ - [x] Implement web setup screen for devices
  - [x] Implement Alpaca Management API
  - [x] Figure approach to test suite
  - [x] Cleanup error messages to follow consistent format
  - [x] Move device initializer code to be called on PUT connected
- - [ ] Need to rethink templates for PUT requests for multiple values
+ - [x] Need to rethink templates for PUT requests for multiple values
  - [x] Check all device pointers for null (this could probably use a bit more
        robustness. However, I think it is adequate for now.
  - [x] Need to fix crash when invalid action is called on valid device type

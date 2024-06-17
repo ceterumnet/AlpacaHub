@@ -13,10 +13,11 @@ std::vector<std::string> pegasus_alpaca_focuscube3::serial_devices() {
 }
 
 pegasus_alpaca_focuscube3::pegasus_alpaca_focuscube3()
-    : _connected(false), _moving(false), _serial_port(_io_context) {}
+    : _connected(false), _moving(false), _position(0), _temperature(0),
+      _backlash(0), _serial_port(_io_context) {}
 
 pegasus_alpaca_focuscube3::~pegasus_alpaca_focuscube3() {
-  if(_connected) {
+  if (_connected) {
     _connected = false;
     _focuser_update_thread.join();
     _serial_port.close();
@@ -87,7 +88,7 @@ int pegasus_alpaca_focuscube3::set_connected(bool connected) {
   } else {
     try {
       spdlog::debug("Setting connected to false");
-      if(_connected) {
+      if (_connected) {
         _connected = false;
         _focuser_update_thread.join();
         _serial_port.close();
@@ -139,10 +140,10 @@ void pegasus_alpaca_focuscube3::update_properties() {
 
 void pegasus_alpaca_focuscube3::update_properties_proc() {
   using namespace std::chrono_literals;
-  while(_connected) {
+  while (_connected) {
     try {
       update_properties();
-    } catch(alpaca_exception &ex) {
+    } catch (alpaca_exception &ex) {
       spdlog::warn("problem during update_properties: {}", ex.what());
     }
     std::this_thread::sleep_for(500ms);
@@ -183,7 +184,9 @@ std::string pegasus_alpaca_focuscube3::send_command_to_focuser(
   }
 }
 
-std::string pegasus_alpaca_focuscube3::unique_id() { return _serial_device_path; }
+std::string pegasus_alpaca_focuscube3::unique_id() {
+  return _serial_device_path;
+}
 
 int pegasus_alpaca_focuscube3::set_serial_device(
     const std::string &serial_device_path) {
@@ -242,7 +245,8 @@ bool pegasus_alpaca_focuscube3::temp_comp_available() {
 
 int pegasus_alpaca_focuscube3::set_temp_comp(bool enable_temp_comp) {
   throw_if_not_connected();
-  throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED, "Temp comp not implemented");
+  throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED,
+                         "Temp comp not implemented");
   return 0;
 }
 
@@ -271,7 +275,7 @@ device_variant_t pegasus_alpaca_focuscube3::details() {
   detail_map["Connected"] = _connected;
   detail_map["Serial Device"] = _serial_device_path;
 
-  if(_connected) {
+  if (_connected) {
     detail_map["Temperature"] = _temperature;
     detail_map["Position"] = _position;
     detail_map["Moving"] = _moving;

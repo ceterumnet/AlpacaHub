@@ -100,6 +100,7 @@
                          }).catch((e) => {console.log("_res e: ", e)})
                          .then((_data) => {
                              if(_data.ErrorNumber === 0) {
+                                 device.ErrorNumber = 0;
                                  device.Details = _data.Value;
                                  device.Connected = _data.Value.Connected;
                                  if(!device.Latitude)
@@ -111,12 +112,10 @@
                                  if(!device.Position) {
                                      device.Position = _data.Value["Position"];
                                  }
-                                 if(device.Details.Moving) {
+                                 if(device.DeviceType == 'focuser' && device.Details.Moving) {
                                      device.busy = true;
-                                     // device.Position = _data.Value["Position"];
                                  } else {
                                      device.busy = false;
-                                     // device.Position = _data.Value["Position"];
                                  }
                              } else {
                                  device.ErrorNumber = _data.ErrorNumber;
