@@ -3,12 +3,6 @@
 #include "server/alpaca_hub_server.hpp"
 #include <ostream>
 
-// We need these for 2 reasons:
-//  1. If we ever want to log source location etc...these are compile time
-//     loggers
-//  2. During destruction of the http logger, restinio attempts to destroy the
-//     sink
-
 static asio::io_context io_ctx(1);
 
 bool _keep_running_discovery = true;
@@ -23,19 +17,18 @@ void cancel_discovery() {
   _keep_running_discovery = false;
 }
 
+// Alpaca Discovery code:
+// To listen for IPv4 DISCOVERY MESSAGEs, Alpaca devices should:
+//  1. Listen for IPv4 broadcasts on the DISCOVERY PORT
+//  2. Assess each received message to confirm whether it is a valid
+//  DISCOVERY MESSAGE.
+//  3. If the request is valid, return a RESPONSE MESSAGE indicating the
+//  device's ALPACA PORT.
+
 void discovery_thread_proc() {
   spdlog::debug("entering discovery_thread_proc");
   using namespace std::chrono_literals;
 
-  // Alpaca Discovery code:
-  // To listen for IPv4 DISCOVERY MESSAGEs, Alpaca devices should:
-  //  1. Listen for IPv4 broadcasts on the DISCOVERY PORT
-  //  2. Assess each received message to confirm whether it is a valid
-  //  DISCOVERY MESSAGE.
-  //  3. If the request is valid, return a RESPONSE MESSAGE indicating the
-  //  device's ALPACA PORT.
-
-  // asio::io_context io_ctx(1);
   int alpaca_discovery_port = 32227;
 
   // Standard discovery message: byte 0-14
@@ -266,14 +259,13 @@ int main(int argc, char **argv) {
     }
 
     spdlog::trace("Exiting restinio loop");
-    spdlog::trace("joining discovery thread");
-    if (run_discovery)
-      cancel_discovery();
 
-    if (run_discovery)
+    if (run_discovery) {
+      spdlog::trace("joining discovery thread");
+      cancel_discovery();
       discovery_thread.join();
-    spdlog::trace("discovery thread joined");
-    // TODO: need to actually check result of this and handle errors
+      spdlog::trace("discovery thread joined");
+    }
 
   } catch (const std::exception &ex) {
     std::cerr << "Error: " << ex.what() << std::endl;

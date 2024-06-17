@@ -160,12 +160,12 @@ public:
 
   template <typename Device_T, auto F>
   restinio::request_handling_status_t
-  device_handler(const device_request_handle_t &req, std::string hint);
+  device_get_handler(const device_request_handle_t &req, std::string hint);
 
   // I'm trying to get rid of a ton of boilerplate code for common PUT handling
   // this is a templated approach as a first attempt
   template <typename Input_T, typename Device_T, auto Device_F>
-  device_request_handler_t create_put_handler(std::string parameter_key = "",
+  device_request_handler_t device_put_handler(std::string parameter_key = "",
                                               bool validate_True_False = false);
 
   template <typename T, auto F>

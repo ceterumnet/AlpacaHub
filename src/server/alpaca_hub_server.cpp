@@ -225,13 +225,13 @@ template <typename Device_T, auto F>
 device_request_handler_t api_v1_handler::create_handler(std::string hint) {
   return [=](auto req, auto) {
     spdlog::trace("Creating generic handler {0}", hint);
-    return this->device_handler<Device_T, F>(req, hint);
+    return this->device_get_handler<Device_T, F>(req, hint);
   };
 };
 
 template <typename Device_T, auto F>
 restinio::request_handling_status_t
-api_v1_handler::device_handler(const device_request_handle_t &req,
+api_v1_handler::device_get_handler(const device_request_handle_t &req,
                                std::string hint) {
   std::shared_ptr<Device_T> the_device =
       std::dynamic_pointer_cast<Device_T>(req->extra_data().device);
@@ -266,7 +266,7 @@ api_v1_handler::device_handler(const device_request_handle_t &req,
 
 template <typename Input_T, typename Device_T, auto Device_F>
 device_request_handler_t
-api_v1_handler::create_put_handler(std::string parameter_key,
+api_v1_handler::device_put_handler(std::string parameter_key,
                                    bool validate_True_False) {
   return [parameter_key, validate_True_False](auto req, auto) {
     auto &response_map = req->extra_data().response_map;
@@ -1162,63 +1162,63 @@ server_handler() {
   // PUT abortexposure
   router->http_put(
       "/api/v1/camera/:device_number/abortexposure",
-      api_handler->create_put_handler<void, i_alpaca_camera,
+      api_handler->device_put_handler<void, i_alpaca_camera,
                                       &i_alpaca_camera::abort_exposure>());
 
   // PUT binx
   router->http_put(
       "/api/v1/camera/:device_number/binx",
-      api_handler->create_put_handler<int, i_alpaca_camera,
+      api_handler->device_put_handler<int, i_alpaca_camera,
                                       &i_alpaca_camera::set_bin_x>("BinX"));
 
   // PUT biny
   router->http_put(
       "/api/v1/camera/:device_number/biny",
-      api_handler->create_put_handler<int, i_alpaca_camera,
+      api_handler->device_put_handler<int, i_alpaca_camera,
                                       &i_alpaca_camera::set_bin_y>("BinY"));
 
   // PUT connected
   router->http_put(
       "/api/v1/:device_type/:device_number/connected",
-      api_handler->create_put_handler<bool, i_alpaca_device,
+      api_handler->device_put_handler<bool, i_alpaca_device,
                                       &i_alpaca_device::set_connected>(
           "Connected", true));
 
   // PUT cooleron
   router->http_put(
       "/api/v1/camera/:device_number/cooleron",
-      api_handler->create_put_handler<bool, i_alpaca_camera,
+      api_handler->device_put_handler<bool, i_alpaca_camera,
                                       &i_alpaca_camera::set_cooler_on>(
           "CoolerOn", true));
 
   // PUT fastreadout
   router->http_put(
       "/api/v1/camera/:device_number/fastreadout",
-      api_handler->create_put_handler<bool, i_alpaca_camera,
+      api_handler->device_put_handler<bool, i_alpaca_camera,
                                       &i_alpaca_camera::set_fast_readout>(
           "FastReadout", true));
 
   // PUT gain
   router->http_put(
       "/api/v1/camera/:device_number/gain",
-      api_handler->create_put_handler<int, i_alpaca_camera,
+      api_handler->device_put_handler<int, i_alpaca_camera,
                                       &i_alpaca_camera::set_gain>("Gain"));
   // PUT numx
   router->http_put(
       "/api/v1/camera/:device_number/numx",
-      api_handler->create_put_handler<uint32_t, i_alpaca_camera,
+      api_handler->device_put_handler<uint32_t, i_alpaca_camera,
                                       &i_alpaca_camera::set_num_x>("NumX"));
 
   // PUT numy
   router->http_put(
       "/api/v1/camera/:device_number/numy",
-      api_handler->create_put_handler<uint32_t, i_alpaca_camera,
+      api_handler->device_put_handler<uint32_t, i_alpaca_camera,
                                       &i_alpaca_camera::set_num_y>("NumY"));
 
   // PUT offset
   router->http_put(
       "/api/v1/camera/:device_number/offset",
-      api_handler->create_put_handler<uint32_t, i_alpaca_camera,
+      api_handler->device_put_handler<uint32_t, i_alpaca_camera,
                                       &i_alpaca_camera::set_offset>("Offset"));
 
   // PUT pulseguide
@@ -1237,33 +1237,33 @@ server_handler() {
   // PUT readoutmode
   router->http_put(
       "/api/v1/camera/:device_number/readoutmode",
-      api_handler->create_put_handler<int, i_alpaca_camera,
+      api_handler->device_put_handler<int, i_alpaca_camera,
                                       &i_alpaca_camera::set_readout_mode>(
           "ReadoutMode"));
 
   // PUT setccdtemperature
   router->http_put(
       "/api/v1/camera/:device_number/setccdtemperature",
-      api_handler->create_put_handler<double, i_alpaca_camera,
+      api_handler->device_put_handler<double, i_alpaca_camera,
                                       &i_alpaca_camera::set_ccd_temperature>(
           "SetCCDTemperature"));
 
   // PUT startx
   router->http_put(
       "/api/v1/camera/:device_number/startx",
-      api_handler->create_put_handler<uint32_t, i_alpaca_camera,
+      api_handler->device_put_handler<uint32_t, i_alpaca_camera,
                                       &i_alpaca_camera::set_start_x>("StartX"));
 
   // PUT starty
   router->http_put(
       "/api/v1/camera/:device_number/starty",
-      api_handler->create_put_handler<uint32_t, i_alpaca_camera,
+      api_handler->device_put_handler<uint32_t, i_alpaca_camera,
                                       &i_alpaca_camera::set_start_y>("StartY"));
 
   // PUT subexposureduration
   router->http_put(
       "/api/v1/camera/:device_number/subexposureduration",
-      api_handler->create_put_handler<
+      api_handler->device_put_handler<
           double, i_alpaca_camera, &i_alpaca_camera::set_subexposure_duration>(
           "SubExposureDuration"));
 
@@ -1342,7 +1342,7 @@ server_handler() {
   // PUT stopexposure
   router->http_put(
       "/api/v1/camera/:device_number/stopexposure",
-      api_handler->create_put_handler<void, i_alpaca_camera,
+      api_handler->device_put_handler<void, i_alpaca_camera,
                                       &i_alpaca_camera::stop_exposure>());
 
   // END camera routes
@@ -1367,7 +1367,7 @@ server_handler() {
   // PUT position
   router->http_put(
       "/api/v1/filterwheel/:device_number/position",
-      api_handler->create_put_handler<uint32_t, i_alpaca_filterwheel,
+      api_handler->device_put_handler<uint32_t, i_alpaca_filterwheel,
                                       &i_alpaca_filterwheel::set_position>(
           "Position"));
 
@@ -1735,21 +1735,21 @@ server_handler() {
   // PUT findhome
   router->http_put(
       "/api/v1/telescope/:device_number/findhome",
-      api_handler->create_put_handler<void, i_alpaca_telescope,
+      api_handler->device_put_handler<void, i_alpaca_telescope,
                                       &i_alpaca_telescope::find_home>());
 
   // PUT declinationrate
   router->http_put(
       "/api/v1/telescope/:device_number/declinationrate",
       api_handler
-          ->create_put_handler<double, i_alpaca_telescope,
+          ->device_put_handler<double, i_alpaca_telescope,
                                &i_alpaca_telescope::set_declination_rate>(
               "DeclinationRate"));
 
   // PUT doesrefraction
   router->http_put(
       "/api/v1/telescope/:device_number/doesrefraction",
-      api_handler->create_put_handler<bool, i_alpaca_telescope,
+      api_handler->device_put_handler<bool, i_alpaca_telescope,
                                       &i_alpaca_telescope::set_does_refraction>(
           "DoesRefraction", true));
 
@@ -1757,7 +1757,7 @@ server_handler() {
   router->http_put(
       "/api/v1/telescope/:device_number/guideratedeclination",
       api_handler
-          ->create_put_handler<double, i_alpaca_telescope,
+          ->device_put_handler<double, i_alpaca_telescope,
                                &i_alpaca_telescope::set_guide_rate_declination>(
               "GuideRateDeclination"));
 
@@ -1765,7 +1765,7 @@ server_handler() {
   router->http_put(
       "/api/v1/telescope/:device_number/guideraterightascension",
       api_handler
-          ->create_put_handler<double, i_alpaca_telescope,
+          ->device_put_handler<double, i_alpaca_telescope,
                                &i_alpaca_telescope::set_guide_rate_ascension>(
               "GuideRateRightAscension"));
 
@@ -1773,42 +1773,42 @@ server_handler() {
   router->http_put(
       "/api/v1/telescope/:device_number/rightascensionrate",
       api_handler
-          ->create_put_handler<double, i_alpaca_telescope,
+          ->device_put_handler<double, i_alpaca_telescope,
                                &i_alpaca_telescope::set_right_ascension_rate>(
               "RightAscensionRate"));
 
   // PUT sideofpier
   router->http_put(
       "/api/v1/telescope/:device_number/sideofpier",
-      api_handler->create_put_handler<pier_side_enum, i_alpaca_telescope,
+      api_handler->device_put_handler<pier_side_enum, i_alpaca_telescope,
                                       &i_alpaca_telescope::set_side_of_pier>(
           "SideOfPier"));
 
   // PUT siteelevation
   router->http_put(
       "/api/v1/telescope/:device_number/siteelevation",
-      api_handler->create_put_handler<double, i_alpaca_telescope,
+      api_handler->device_put_handler<double, i_alpaca_telescope,
                                       &i_alpaca_telescope::set_site_elevation>(
           "SiteElevation"));
 
   // PUT sitelatitude
   router->http_put(
       "/api/v1/telescope/:device_number/sitelatitude",
-      api_handler->create_put_handler<double, i_alpaca_telescope,
+      api_handler->device_put_handler<double, i_alpaca_telescope,
                                       &i_alpaca_telescope::set_site_latitude>(
           "SiteLatitude"));
 
   // PUT sitelongitude
   router->http_put(
       "/api/v1/telescope/:device_number/sitelongitude",
-      api_handler->create_put_handler<double, i_alpaca_telescope,
+      api_handler->device_put_handler<double, i_alpaca_telescope,
                                       &i_alpaca_telescope::set_site_longitude>(
           "SiteLongitude"));
 
   // PUT slewsettletime
   router->http_put(
       "/api/v1/telescope/:device_number/slewsettletime",
-      api_handler->create_put_handler<
+      api_handler->device_put_handler<
           int, i_alpaca_telescope, &i_alpaca_telescope::set_slew_settle_time>(
           "SlewSettleTime"));
 
@@ -1816,7 +1816,7 @@ server_handler() {
   router->http_put(
       "/api/v1/telescope/:device_number/targetdeclination",
       api_handler
-          ->create_put_handler<double, i_alpaca_telescope,
+          ->device_put_handler<double, i_alpaca_telescope,
                                &i_alpaca_telescope::set_target_declination>(
               "TargetDeclination"));
 
@@ -1824,35 +1824,35 @@ server_handler() {
   router->http_put(
       "/api/v1/telescope/:device_number/targetrightascension",
       api_handler
-          ->create_put_handler<double, i_alpaca_telescope,
+          ->device_put_handler<double, i_alpaca_telescope,
                                &i_alpaca_telescope::set_target_right_ascension>(
               "TargetRightAscension"));
 
   // PUT tracking
   router->http_put(
       "/api/v1/telescope/:device_number/tracking",
-      api_handler->create_put_handler<bool, i_alpaca_telescope,
+      api_handler->device_put_handler<bool, i_alpaca_telescope,
                                       &i_alpaca_telescope::set_tracking>(
           "Tracking", true));
 
   // PUT trackingrate
   router->http_put(
       "/api/v1/telescope/:device_number/trackingrate",
-      api_handler->create_put_handler<drive_rate_enum, i_alpaca_telescope,
+      api_handler->device_put_handler<drive_rate_enum, i_alpaca_telescope,
                                       &i_alpaca_telescope::set_tracking_rate>(
           "TrackingRate"));
 
   // PUT utcdate
   router->http_put(
       "/api/v1/telescope/:device_number/utcdate",
-      api_handler->create_put_handler<std::string, i_alpaca_telescope,
+      api_handler->device_put_handler<std::string, i_alpaca_telescope,
                                       &i_alpaca_telescope::set_utc_date>(
           "UTCDate"));
 
   // PUT abortslew
   router->http_put(
       "/api/v1/telescope/:device_number/abortslew",
-      api_handler->create_put_handler<void, i_alpaca_telescope,
+      api_handler->device_put_handler<void, i_alpaca_telescope,
                                       &i_alpaca_telescope::abort_slew>());
 
   // PUT moveaxis
@@ -1898,7 +1898,7 @@ server_handler() {
   // PUT park
   router->http_put(
       "/api/v1/telescope/:device_number/park",
-      api_handler->create_put_handler<void, i_alpaca_telescope,
+      api_handler->device_put_handler<void, i_alpaca_telescope,
                                       &i_alpaca_telescope::park>());
 
   // PUT pulseguide
@@ -1944,7 +1944,7 @@ server_handler() {
   // PUT setpark
   router->http_put(
       "/api/v1/telescope/:device_number/setpark",
-      api_handler->create_put_handler<void, i_alpaca_telescope,
+      api_handler->device_put_handler<void, i_alpaca_telescope,
                                       &i_alpaca_telescope::set_park>());
 
   // PUT slewtoaltaz
@@ -2110,14 +2110,14 @@ server_handler() {
   // PUT slewtotarget
   router->http_put(
       "/api/v1/telescope/:device_number/slewtotarget",
-      api_handler->create_put_handler<void, i_alpaca_telescope,
+      api_handler->device_put_handler<void, i_alpaca_telescope,
                                       &i_alpaca_telescope::slew_to_target>());
 
   // PUT slewtotargetasync
   router->http_put(
       "/api/v1/telescope/:device_number/slewtotargetasync",
       api_handler
-          ->create_put_handler<void, i_alpaca_telescope,
+          ->device_put_handler<void, i_alpaca_telescope,
                                &i_alpaca_telescope::slew_to_target_async>());
 
   // PUT synctoaltaz
@@ -2201,13 +2201,13 @@ server_handler() {
   // PUT synctotarget
   router->http_put(
       "/api/v1/telescope/:device_number/synctotarget",
-      api_handler->create_put_handler<void, i_alpaca_telescope,
+      api_handler->device_put_handler<void, i_alpaca_telescope,
                                       &i_alpaca_telescope::sync_to_target>());
 
   // PUT unpark
   router->http_put(
       "/api/v1/telescope/:device_number/unpark",
-      api_handler->create_put_handler<void, i_alpaca_telescope,
+      api_handler->device_put_handler<void, i_alpaca_telescope,
                                       &i_alpaca_telescope::unpark>());
 
   // END telescope routes
@@ -2267,19 +2267,19 @@ server_handler() {
   // PUT tempcomp
   router->http_put(
       "/api/v1/focuser/:device_number/tempcomp",
-      api_handler->create_put_handler<bool, i_alpaca_focuser,
+      api_handler->device_put_handler<bool, i_alpaca_focuser,
                                       &i_alpaca_focuser::set_temp_comp>(
                                         "TempComp", true));
 
   // PUT halt
   router->http_put("/api/v1/focuser/:device_number/halt",
-                   api_handler->create_put_handler<void, i_alpaca_focuser,
+                   api_handler->device_put_handler<void, i_alpaca_focuser,
                                                    &i_alpaca_focuser::halt>());
 
   // PUT move
   router->http_put(
       "/api/v1/focuser/:device_number/move",
-      api_handler->create_put_handler<uint32_t, i_alpaca_focuser,
+      api_handler->device_put_handler<uint32_t, i_alpaca_focuser,
                                       &i_alpaca_focuser::move>("Position"));
 
   // END focuser routes

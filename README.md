@@ -143,8 +143,6 @@ Generate makefiles
 cmake -B build src
 ```
 
-
-
 # TODOs:
 
 Note: Move these to an issues list / tickets in Github
