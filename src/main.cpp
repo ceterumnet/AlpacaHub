@@ -1,6 +1,7 @@
-#include "drivers/zwo_am5_telescope.hpp"
 #include "drivers/pegasus_alpaca_focuscube3.hpp"
+#include "drivers/zwo_am5_telescope.hpp"
 #include "server/alpaca_hub_server.hpp"
+#include <ostream>
 
 // We need these for 2 reasons:
 //  1. If we ever want to log source location etc...these are compile time
@@ -93,16 +94,38 @@ int main(int argc, char **argv) {
     }
   }
 
-  // auto console_sink =
-  // std::make_shared<spdlog::sinks::stdout_color_sink_mt>(); auto http_logger =
-  // std::make_shared<spdlog::logger>("HTTP", console_sink); auto core_logger =
-  // std::make_shared<spdlog::logger>("CORE", console_sink);
+  auto cli_map_iter = cli_args.find("-h");
 
-  // I may try to get some good formatting in place later. I think
-  // this is the default format:
-  // spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%n] [%l] %v");
+  if (cli_map_iter != cli_args.end()) {
+    // this is kinda ugly. I may need to add a basic args library to avoid this
+    // hand wrapped shit.
+    std::cout
+        << "Usage: AlpacaHub [OPTION]..." << std::endl
+        << "Open Source Alpaca Implementation "
+        << std::endl << std::endl
+        << "  -h                     Displays this help message" << std::endl
+        << std::endl
+        << "  -l LEVEL               Set the log to LEVEL:" << std::endl
+        << "                           1 - INFO (default)" << std::endl
+        << "                           2 - DEBUG" << std::endl
+        << "                           3 - TRACE" << std::endl
+        << "                           4 - TRACE +" << std::endl << std::endl
+        << "  -t THREAD_COUNT        Sets the number of concurrent threads "
+        << std::endl
+        << "                         for the web server. 4 threads is the "
+           "default."
+        << std::endl
+        << std::endl
+        << "  -d                     Disable Alpaca Discovery" << std::endl
+        << std::endl
+        << "  -p PORT                Sets the web server to listen on "
+        << std::endl
+        << "                         PORT. Default is port 8080" << std::endl
+        << std::endl;
+    return 0;
+  }
 
-  auto cli_map_iter = cli_args.find("-l");
+  cli_map_iter = cli_args.find("-l");
 
   if (cli_map_iter != cli_args.end()) {
     spdlog::info("logging level passed from user");
@@ -117,14 +140,17 @@ int main(int argc, char **argv) {
     }
     if (log_level == "3") {
       spdlog::set_level(spdlog::level::trace);
+      http_logger->set_level(spdlog::level::debug);
+    }
+    if (log_level == "4") {
+      spdlog::set_level(spdlog::level::trace);
       http_logger->set_level(spdlog::level::trace);
     }
-
   } else {
     spdlog::set_level(spdlog::level::info);
   }
 
-  int thread_pool_size = 1;
+  int thread_pool_size = 4;
 
   cli_map_iter = cli_args.find("-t");
   if (cli_map_iter != cli_args.end()) {
@@ -139,10 +165,7 @@ int main(int argc, char **argv) {
   cli_map_iter = cli_args.find("-d");
   if (cli_map_iter != cli_args.end()) {
     auto run_discovery_arg = cli_map_iter->second;
-    spdlog::info("Run discovery: ",
-                 run_discovery_arg);
-    if(run_discovery_arg == "false")
-      run_discovery = false;
+    run_discovery = false;
   }
 
   spdlog::info("Starting AlpacaHub");
@@ -155,7 +178,11 @@ int main(int argc, char **argv) {
   alpaca_hub_server::device_map["focuser"] =
       std::vector<std::shared_ptr<i_alpaca_device>>();
 
-  for(auto iter : zwo_am5_telescope::serial_devices()) {
+  // BEGIN Implementation specific initialization of various device types:
+  // TODO: figure out how to setup the implementation specific pieces in a
+  // different part of the project to make it more extensible and clean.
+
+  for (auto iter : zwo_am5_telescope::serial_devices()) {
     auto telescope_ptr = std::make_shared<zwo_am5_telescope>();
     telescope_ptr->set_serial_device(iter);
     spdlog::info("Adding ZWO mount at {}", iter);
@@ -172,8 +199,6 @@ int main(int argc, char **argv) {
   try {
     using namespace std::chrono;
 
-    // TODO: consolidate the different SDKs. Right now I'm only doing QHY,
-    // but I plan on supporting ZWO and Pegasus as well.
     spdlog::debug("Initializing QHY SDK");
 
     // TODO: need to actually check result
@@ -191,6 +216,7 @@ int main(int argc, char **argv) {
 
       alpaca_hub_server::device_map["camera"].push_back(cam_ptr);
 
+      // This is for QHY camera attached filter wheels
       if (cam_ptr->has_filter_wheel()) {
         auto fw_ptr = cam_ptr->filter_wheel();
         spdlog::info("filterwheel added");
@@ -202,14 +228,15 @@ int main(int argc, char **argv) {
       }
     }
 
-    // auto discover_f = std::bind(&discovery_thread_proc, &io_context);
+    // TODO: Add standalone filter wheels here
+
+    // END Implementation specific initialization of various device types:
+
     std::thread discovery_thread;
     if (run_discovery)
       discovery_thread = std::thread(&discovery_thread_proc);
-    // discovery_thread.detach();
 
     if (thread_pool_size > 1) {
-      // http_logger->set_level(spdlog::level::info);
       spdlog::info("Starting web server in multithreaded mode with {0} threads",
                    thread_pool_size);
       restinio::run(
@@ -240,10 +267,10 @@ int main(int argc, char **argv) {
 
     spdlog::trace("Exiting restinio loop");
     spdlog::trace("joining discovery thread");
-    if(run_discovery)
+    if (run_discovery)
       cancel_discovery();
 
-    if(run_discovery)
+    if (run_discovery)
       discovery_thread.join();
     spdlog::trace("discovery thread joined");
     // TODO: need to actually check result of this and handle errors

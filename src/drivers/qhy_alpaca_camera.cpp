@@ -189,9 +189,19 @@ void qhy_alpaca_camera::chip_info() {
       _effective_start_x = eff_start_x;
       _effective_start_y = eff_start_y;
 
+      // This is a hack for the QHYIII568 which has a quirk in FD binning which
+      // doesn't seem to return the correct chip size in y
+      // _force_bin is a variable that we set when we are resetting things.
+      // It probably needs a better name.
+      if (_effective_num_y > _effective_num_x && _force_bin) {
+        spdlog::warn("Forcing y dimension to half based on potential quirk in QHY SDK");
+        spdlog::warn("          QHY is saying the eff_num_y is {}", eff_num_y);
+        _effective_num_y = _effective_num_y / 2;
+      }
+
       // Set the max width and height based on the effective values
-      _max_num_x = eff_num_x;
-      _max_num_y = eff_num_y;
+      _max_num_x = _effective_num_x;
+      _max_num_y = _effective_num_y;
 
       // Initialize the image width and height to the effective values
       _image_w = _max_num_x;
@@ -201,8 +211,8 @@ void qhy_alpaca_camera::chip_info() {
       _start_x = eff_start_x;
       _start_y = eff_start_y;
 
-      _num_x = eff_num_x;
-      _num_y = eff_num_y;
+      _num_x = _effective_num_x;
+      _num_y = _effective_num_y;
 
       spdlog::debug("Returned from GetQHYCCDEffectiveArea: ");
       spdlog::debug("  _effective_start_x: {0}", _effective_start_x);
@@ -519,6 +529,9 @@ int qhy_alpaca_camera::set_bin_x(short x) {
   if (x == _bin_x && !_force_bin)
     return 0;
 
+  if(x == _bin_x)
+    spdlog::debug("forcing bin to: {0}", x);
+
   std::lock_guard lock(_cam_mutex);
 
   if (x > _max_bin || x < 1)
@@ -535,6 +548,9 @@ int qhy_alpaca_camera::set_bin_x(short x) {
     _start_y = _effective_start_y / x;
     _num_x = _effective_num_x / x;
     _num_y = _effective_num_y / x;
+
+    // this is when we are resetting read mode...there is a bug in
+    // the qhy SDK where the effective area returned is incorrect
 
     set_resolution(_start_x, _start_y, _num_x, _num_y);
 
@@ -1257,6 +1273,9 @@ int qhy_alpaca_camera::set_readout_mode(int idx) {
   if (idx < _read_mode_names.size()) {
     _readout_mode = idx;
     initialize();
+    // _force_bin = true;
+    // set_bin_x(_bin_x);
+    // _force_bin = false;
   } else {
     throw alpaca_exception(alpaca_exception::INVALID_VALUE,
                            "Readout mode not valid");

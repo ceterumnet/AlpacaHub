@@ -1,10 +1,15 @@
 # Alpaca Hub
 
-## Name ideas
-- Alpacapus
-- Starmada
-- AlpacaBerry
--
+With a focus on astrophotography use cases, Alpaca Hub is an open
+source ASCOM Alpaca server that provides structure and implementation
+for running one or more devices as exposed and discoverable via the
+Alpaca Protocol specified here -
+https://www.ascom-standards.org/AlpacaDeveloper/Index.htm.
+
+Currently, Alpaca Hub has support for
+- QHY cameras (mono) and Filterwheels
+- ZWO AM5/AM3 Mount
+- Pegasus FocusCube 3
 
 ## Shoulders of Giants
 - ASCOM
@@ -12,10 +17,6 @@
 - Indigo
 - AlpacaPi
 - PixInsight
-
-## Code Style
-I think I'm going to try and stick to Google's C++ guide:
-https://google.github.io/styleguide/cppguide.html
 
 ## Background / Intent of System
 Just for those that are curious as to "why are you building this?"
@@ -54,12 +55,27 @@ following:
 - Use PCL (PixInsight Class Library) to support image stuff in the web pages
 - Create an Alpaca proxy
 - Add web based view of logs
-- Write a web based planetarium :-) and leverage web asm / webgl
+- ~~Write a web based planetarium :-) and leverage web asm / webgl/~~
   - Stellarium Web exists...
 - OpenPHD2 integration - https://code.google.com/archive/p/open-phd-guiding/wikis/EventMonitoring.wiki
-- Fork PHD2 ... perhaps create an alpaca native version?
+- ~~Fork PHD2 ... perhaps create an alpaca native version?~~
 
-## Design Thoughts
+## Design and Implementation
+
+### Code Style
+I think I'm going to try and stick to Google's C++ guide:
+https://google.github.io/styleguide/cppguide.html. However, I don't
+necessarily think it needs to compulsively adhered to.
+
+### Architecture
+
+### Name ideas for the project
+
+I don't necessarily know if "Alpaca Hub" is the right name.
+
+- Alpacapus
+- Starmada
+- AlpacaBerry
 
 ### Other Alpaca devices
 - What is the pattern for another remote alpaca device?
@@ -70,42 +86,82 @@ following:
 ## Decision Rationale
 
 ### Why C++?
+I debated whether or not to implement this with a higher level language
+such as Rust or C#.
+
+Ultimately, given how far C++17 and beyond have come, I find that C++
+is still one of the ultimate gold standards in terms of cross-platform
+and high performance. Additionally, most of the vendor SDKs support C++
+and so I hope that this makes it attractive for contributions.
+
+Additionally, as I've been implementing this, I have found that
+C++ has been a very productive language striking a nice balance of
+productivity with tight control over areas of code when needed.
 
 ### Why ASCOM Alpaca?
 
-###
+I found that Alpaca really struck a nice balance in leveraging http
+with a simple REST API vs a proprietary network protocol.
 
-- Need to have device level locking / multi-threaded support
+Additionally, I've found that the ASCOM project in general has been
+very successful in becoming the de facto standard when it comes to
+interoperability across different software vendors. For a long time
+it was just Windows. I think that Alpaca was a stroke of brilliance
+to allow the project to become ubiquitous across all platforms while
+retaining so much of the value that has already been created through
+the ASCOM interface definitions.
+
+#### What about INDI / Indigo?
+
+I'm blown away with the INDI and Indigo projects. I think they have
+created something fairly amazing, and I strongly recommend using those
+if your use cases warrant that.
 
 # Build notes
 
+## Supported Hardware / OS
+
+- Raspberry Pi 5 (it should work fine on Raspberry Pi 4 as well...but
+  needs to be tested)
+
+Initially, I've only been focused on building and running Alpaca Hub
+on the Raspberry Pi 5. That said, I've been fairly meticulous about
+writing C++ code that _should_ be portable. That, combined with CMake,
+there really should be no big challenge compiling and running on other
+platforms.
+
+## Dependencies
+
+TODO: Need to do a fresh from scratch build and double check all requirements
+and enumerate them here
+
+1. Download and install QHY SDK
+2. Checkout Alpaca Hub locally
 
 Generate makefiles
 ``` bash
 cmake -B build src
 ```
 
-To build with support for lsp assistance (generates `compile_commands.json`):
-``` bash
-cmake -B build src
-```
-
-### Notes and good docs
-
-This looks like an attempt to implement the AM5 driver over Alpaca
-
-https://github.com/YugnatD/ASCOM_Alpaca_ZWO_AM5
-
-
-#### Download and install QHY SDK
 
 
 # TODOs:
- - [ ] Create web page for project
+
+Note: Move these to an issues list / tickets in Github
+
+ - [ ] Create web page for project with documentation on usage
+ - [ ] Build a downloadable version of this and create a release
+ - [ ] Add github actions for build / execution of unit tests
+       aka basic CI (Continuous Integration)
+ - [x] Add Alpaca support to OpenPHD2
+   - This is in my fork here: https://github.com/ceterumnet/phd2/tree/alpaca_support
  - [x] Write web server (restinio based)
  - [ ] Implement QHY Camera driver (color)
+   - Note: I really need a QHY color camera to test this with...
  - [x] Implement QHY Camera driver (mono only)
     - [x] Achieve conformance with ASCOM Conform Tool
+    - [ ] Refactor implementation to clean up weirdness around
+          initialization and general clumsyness of the code
  - [x] Implement QHY filter wheel driver
    - [x] Achieve conformance with ASCOM Conform Tool
  - [x] Implement Alpaca discovery
@@ -113,10 +169,10 @@ https://github.com/YugnatD/ASCOM_Alpaca_ZWO_AM5
     - [x] Achieve conformance with ASCOM Conform Tool (there are a few issues to
       work through on this)
  - [x] Implement focuser driver
- - [ ] Implement better descriptions
- - [ ] Implement firmware version to data pulled
- - [ ] Implement support for log file as an option
- - [ ] Implement CLI help
+ - [ ] Implement better descriptions in device driver implementations
+ - [ ] Implement firmware version to data pulled into the device driver implementations
+ - [ ] Implement support for logging to file as an option
+ - [x] Implement CLI help
  - [x] Implement web screen for information
  - [x] Implement web setup screen for devices
  - [x] Implement Alpaca Management API
