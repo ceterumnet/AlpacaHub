@@ -6,12 +6,24 @@ for running one or more devices as exposed and discoverable via the
 Alpaca Protocol specified here -
 https://www.ascom-standards.org/AlpacaDeveloper/Index.htm.
 
+Here are some screen shots:
+
+![Screenshot](docs/images/alpaca_hub_main_web_page.png)
+![Screenshot](docs/images/alpaca_hub_telescope_page.png)
+
 Currently, Alpaca Hub has support for
 - QHY cameras (mono) and Filterwheels
 - ZWO AM5/AM3 Mount
 - Pegasus FocusCube 3
 
 ## Shoulders of Giants
+
+It is very important to me that I acknowledge the work that this has been
+built on top of.
+
+Specifically, the following are major projects / products that have
+been crucial in building this tool:
+
 - ASCOM
 - INDI
 - Indigo
@@ -19,9 +31,10 @@ Currently, Alpaca Hub has support for
 - PixInsight
 
 ## Background / Intent of System
+
 Just for those that are curious as to "why are you building this?"
 
-First of all, a *huge* motivation for this project is scratching my
+First of all, a _big_ motivation for this project is scratching my
 itch to write some code for astrophotography. There are more and better
 projects than ever, so I can't exactly claim that this project will
 be better or have any particular advantage.
@@ -36,7 +49,8 @@ that some point in the future.
 As far as what "makes sense to me" - I want to be able to do the
 following:
 - More or less fully automate my image acquisition from the point that
-  equipment is powered up, mount is polar aligned, etc...
+  equipment is powered up, mount is polar aligned, etc... (this is not
+  by itself a reason to make something like this...)
 - Be able to mix and match components from the standpoint of not
   everything relying on one computer
 - treat my astronomy devices like little network attached systems with
@@ -48,17 +62,6 @@ following:
 - I don't want to have any of my devices physically connected to my
   NINA instance
 - In order to do this, I think the ASCOM Alpaca standard makes sense
-
-## Cool Ideas
-- Embed a lua interpreter
-- Create a sophisticated web app to run everything
-- Use PCL (PixInsight Class Library) to support image stuff in the web pages
-- Create an Alpaca proxy
-- Add web based view of logs
-- ~~Write a web based planetarium :-) and leverage web asm / webgl/~~
-  - Stellarium Web exists...
-- OpenPHD2 integration - https://code.google.com/archive/p/open-phd-guiding/wikis/EventMonitoring.wiki
-- ~~Fork PHD2 ... perhaps create an alpaca native version?~~
 
 ## Design and Implementation
 
@@ -143,7 +146,18 @@ Generate makefiles
 cmake -B build src
 ```
 
-# TODOs:
+# TODOs and potential ideas:
+
+## Potentially Cool Ideas
+- Embed a lua interpreter
+- Create a sophisticated web app to run everything
+- Use PCL (PixInsight Class Library) to support image stuff in the web pages
+- Create an Alpaca proxy
+- Add web based view of logs
+- ~~Write a web based planetarium :-) and leverage web asm / webgl/~~
+  - Stellarium Web exists...
+- OpenPHD2 integration - https://code.google.com/archive/p/open-phd-guiding/wikis/EventMonitoring.wiki
+- ~~Fork PHD2 ... perhaps create an alpaca native version?~~
 
 Note: Move these to an issues list / tickets in Github
 
