@@ -1218,6 +1218,9 @@ uint32_t qhy_alpaca_camera::gain_max() { return _gain_max; };
 uint32_t qhy_alpaca_camera::gain_min() { return _gain_min; };
 
 // TODO: need to decide if I'm going to support gains vs min max
+// The specification seems to test conformance of min/max vs list
+// of values...I want to support both but need to work through the
+// details.
 std::vector<std::string> qhy_alpaca_camera::gains() {
   // throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED, "can't get
   // gains"); return std::vector<std::string>();
@@ -1280,40 +1283,6 @@ int qhy_alpaca_camera::set_readout_mode(int idx) {
     throw alpaca_exception(alpaca_exception::INVALID_VALUE,
                            "Readout mode not valid");
   }
-
-  // std::lock_guard lock(_cam_mutex);
-  // try {
-  //   spdlog::debug("Setting readout mode to {0}", _read_mode_names.at(idx));
-
-  //   uint32_t r = QHYCCD_ERROR;
-  //   r = SetQHYCCDReadMode(_cam_handle, idx);
-
-  //   if (r == QHYCCD_SUCCESS) {
-  //     _readout_mode = idx;
-  //   } else {
-  //     spdlog::error("SetQHYCCDReadMode failed {}", r);
-  //     return -1;
-  //   }
-
-  //   r = QHYCCD_ERROR;
-  //   r = GetQHYCCDReadModeResolution(_cam_handle, idx, &_effective_num_x,
-  //   &_effective_num_y); _max_num_x = _effective_num_x; _max_num_y =
-  //   _effective_num_y;
-
-  //   r = QHYCCD_ERROR;
-  //   r = InitQHYCCD(_cam_handle);
-
-  //   if (r == QHYCCD_SUCCESS) {
-  //     set_bin_x(_bin_x);
-  //     // set_resolution(_start_x, _start_x, _num_x, _num_y);
-  //   } else {
-  //     spdlog::error("InitQHYCCD failed ");
-  //     return -1;
-  //   }
-
-  // } catch (std::exception ex) {
-  //   spdlog::error("Problem setting read mode {0}", idx);
-  // }
   return 0;
 }
 
