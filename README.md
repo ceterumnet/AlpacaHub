@@ -1,6 +1,6 @@
 # Alpaca Hub
 
-<img href="docs/images/alpaca_hub_main_image.webp" width="500">
+<img src="docs/images/alpaca_hub_main_image.webp" width="500">
 
 With a focus on astrophotography use cases, Alpaca Hub is an open
 source ASCOM Alpaca server that provides structure and implementation
