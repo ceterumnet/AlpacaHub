@@ -1,20 +1,50 @@
 # Alpaca Hub
 
+<img href="docs/images/alpaca_hub_main_image.webp" width="500">
+
 With a focus on astrophotography use cases, Alpaca Hub is an open
 source ASCOM Alpaca server that provides structure and implementation
 for running one or more devices as exposed and discoverable via the
 Alpaca Protocol specified here -
 https://www.ascom-standards.org/AlpacaDeveloper/Index.htm.
 
-Here are some screen shots:
+One of the goals of this project is to make sure that ASCOM Alpaca is
+more generally available for people that want to leverage network
+attached astronomy gear. I really think that the folks over at ASCOM
+have done an amazing job of carrying the torch around interoperability
+in Astronomy equipment for a long time now.
+
+For example, my favorite astrophotography software is
+[NINA](https://nighttime-imaging.eu/). NINA has excellent support for
+ASCOM and also the Alpaca protocol which is actually the original
+reason I decided to implement this!
+
+## What is supported now?
+At the moment, the list of hardware supported is not huge, but I have
+written drivers for the hardware I have at home:
+- QHY cameras (mono) and attached Filterwheels
+- ZWO AM5/AM3 Mount
+- Pegasus FocusCube 3
+
+Alpaca Hub also implements the discovery protocol as well which is one
+of my favorite parts of the Alpaca protocol.
+
+Also, there is not a binary distribution at the moment, but that is on
+the short list of things to get done.
+
+However, it is not hard to build from scratch if you are so
+inclined. See the build instructions later in this README for details.
+Please reach out to me through an issue on Github if you have any issues
+compiling the project.
+
+Here are some screen shots of the web interface:
 
 ![Screenshot](docs/images/alpaca_hub_main_web_page.png)
 ![Screenshot](docs/images/alpaca_hub_telescope_page.png)
 
-Currently, Alpaca Hub has support for
-- QHY cameras (mono) and Filterwheels
-- ZWO AM5/AM3 Mount
-- Pegasus FocusCube 3
+As the project matures, I definitely plan on ensuring that there is good
+documentation. And I would absolutely appreciate any contributions towards
+this.
 
 ## Shoulders of Giants
 
@@ -34,20 +64,26 @@ been crucial in building this tool:
 
 Just for those that are curious as to "why are you building this?"
 
-First of all, a _big_ motivation for this project is scratching my
-itch to write some code for astrophotography. There are more and better
-projects than ever, so I can't exactly claim that this project will
-be better or have any particular advantage.
+When I originally started this, I was simply mildly frustrated with
+the lack of Alpaca implementations for the astronomy hardware I like
+to use. So I said to myself "don't complain, just build what you need."
 
 I wanted to be able to setup my imaging system in a way that "makes
 sense to me." Years ago I started a project that implemented image
 acquisition on top of PixInsight, but I abandoned it due to lack of
 free time. Back then, I had imagined I would use PixInsight for as
 much of my astrophotography imaging needs as possible. I _may_ revisit
-that some point in the future.
+that some point in the future, but I'm not sure it makes sense at this
+point.
 
-As far as what "makes sense to me" - I want to be able to do the
-following:
+Also, a _big_ motivation for this project is scratching my itch to
+write some code for astrophotography. There are more projects than
+ever, so I can't exactly claim that this project will be better or
+have any particular advantage. However, I do feel strongly about making
+a system that is easy to extend. That is one of the main goals of this
+project: **It should be very easy to add support for additional drivers**
+
+I personally want to be able to do the following:
 - More or less fully automate my image acquisition from the point that
   equipment is powered up, mount is polar aligned, etc... (this is not
   by itself a reason to make something like this...)
@@ -89,6 +125,7 @@ I don't necessarily know if "Alpaca Hub" is the right name.
 ## Decision Rationale
 
 ### Why C++?
+
 I debated whether or not to implement this with a higher level language
 such as Rust or C#.
 
@@ -148,18 +185,25 @@ cmake -B build src
 
 # TODOs and potential ideas:
 
-## Potentially Cool Ideas
+## Potentially Cool / Random ideas
 - Embed a lua interpreter
+  - I like the idea of being able to have a cli console where I can interact
+    with my gear. I've leveraged embedding lua in the past to support this
+    kind of scenario, so it _might_ make sense to do that with this project.
 - Create a sophisticated web app to run everything
-- Use PCL (PixInsight Class Library) to support image stuff in the web pages
-- Create an Alpaca proxy
+  - This _might_ make more sense as a separate project...
+- Use PCL (PixInsight Class Library) to support image "stuff"
+- Create an Alpaca "proxy"
+  - This only makes sense if the need arises...so far I'm not seeing one
 - Add web based view of logs
+  - This is probably a lot of work...and I'm not sure it is worth the effort
 - ~~Write a web based planetarium :-) and leverage web asm / webgl/~~
-  - Stellarium Web exists...
+  - Stellarium Web exists...and this is probably more of an insane
+    idea than random or cool lol
 - OpenPHD2 integration - https://code.google.com/archive/p/open-phd-guiding/wikis/EventMonitoring.wiki
 - ~~Fork PHD2 ... perhaps create an alpaca native version?~~
 
-Note: Move these to an issues list / tickets in Github
+Note: I need to move these to an issues list / tickets in Github
 
  - [ ] Create web page for project with documentation on usage
  - [ ] Build a downloadable version of this and create a release
@@ -178,11 +222,12 @@ Note: Move these to an issues list / tickets in Github
    - [x] Achieve conformance with ASCOM Conform Tool
  - [x] Implement Alpaca discovery
  - [x] Implement telescope mount driver
-    - [x] Achieve conformance with ASCOM Conform Tool (there are a few issues to
-      work through on this)
+    - [x] Achieve conformance with ASCOM Conform Tool (there are a few
+      issues to work through on this)
  - [x] Implement focuser driver
  - [ ] Implement better descriptions in device driver implementations
- - [ ] Implement firmware version to data pulled into the device driver implementations
+ - [ ] Implement firmware version to data pulled into the device
+       driver implementations
  - [ ] Implement support for logging to file as an option
  - [x] Implement CLI help
  - [x] Implement web screen for information
@@ -192,22 +237,25 @@ Note: Move these to an issues list / tickets in Github
  - [x] Cleanup error messages to follow consistent format
  - [x] Move device initializer code to be called on PUT connected
  - [x] Need to rethink templates for PUT requests for multiple values
- - [x] Check all device pointers for null (this could probably use a bit more
-       robustness. However, I think it is adequate for now.
- - [x] Need to fix crash when invalid action is called on valid device type
- - [x] Need to figure out what the threading model will be for multiple devices
-       I can do something like 1 thread per device or just add a thread pool the
-       size of the device types. The disadvantage of a generic thread pool
-       is that if multiple requests on a given device are taking a while, this
-       can cause thread exhaustion. The disadvantage of a thread per device is
+ - [x] Check all device pointers for null (this could probably use a
+       bit more robustness. However, I think it is adequate for now.
+ - [x] Need to fix crash when invalid action is called on valid device
+       type
+ - [x] Need to figure out what the threading model will be for
+       multiple devices I can do something like 1 thread per device or
+       just add a thread pool the size of the device types. The
+       disadvantage of a generic thread pool is that if multiple
+       requests on a given device are taking a while, this can cause
+       thread exhaustion. The disadvantage of a thread per device is
        that it adds a bit of complication to the code potentially.
  - [ ] I want to make the concept of device idx, uuid of a device, and
        devices being plugged in and unplugged as part of the lifecycle
        of adding / removing from the device_map. ~~This might play into
        how I spawn threads...~~
- - [x] Potentially refactor the registration of PUT routes to be similar to the
-       GET routes so that I can remove the duplication of common paths
-       and also set the device type based on the Device_T passed in.
+ - [x] Potentially refactor the registration of PUT routes to be
+       similar to the GET routes so that I can remove the duplication
+       of common paths and also set the device type based on the
+       Device_T passed in.
        - This is partially done, I don't love the code structure for this
          but I am not really worried at the moment. This is a good candidate
          for a later refactor.
