@@ -25,7 +25,7 @@ template <typename T> struct image_bytes_t {
   uint32_t client_transaction_number;
   uint32_t server_transaction_number;
   int data_start = 44;
-  int image_element_type = 1;
+  int image_element_type = 2;
   int transmission_element_type;
   int rank = 2;
   int dimension1;
