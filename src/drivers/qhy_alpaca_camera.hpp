@@ -264,7 +264,8 @@ private:
   bool _has_filter_wheel;
   std::shared_ptr<qhy_alpaca_filterwheel> _filter_wheel;
 
-  bool _force_bin;
+  bool _needs_initialization;
+
 };
 
 #endif

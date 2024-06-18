@@ -150,7 +150,6 @@ void qhy_alpaca_camera::chip_info() {
         qhy_res);
   }
 
-  SetQHYCCDParam(_cam_handle, CONTROL_ID::CONTROL_TRANSFERBIT, _bpp);
   // Initialize subframe width and height to the values returned for the chip
   _num_x = _image_w;
   _num_y = _image_h;
@@ -206,36 +205,22 @@ void qhy_alpaca_camera::chip_info() {
       }
 
       // Set the max width and height based on the effective values
-      // _max_num_x = _effective_num_x;
-      // _max_num_y = _effective_num_y;
+      _max_num_x = _effective_num_x;
+      _max_num_y = _effective_num_y;
 
       // Initialize the image width and height to the effective values
-      // _image_w = _max_num_x;
-      // _image_h = _max_num_y;
+      _image_w = _max_num_x;
+      _image_h = _max_num_y;
 
       // Initialize the start x and y based on the effective values
       _start_x = eff_start_x;
       _start_y = eff_start_y;
 
-      _num_x = _effective_num_x;
-      _num_y = _effective_num_y;
+      _num_x = _effective_num_x / _bin_x;
+      _num_y = _effective_num_y / _bin_x;
 
       _image_w = _num_x;
       _image_h = _num_y;
-
-      spdlog::debug("Final values after updating from chip info: ");
-      spdlog::debug("  _effective_start_x: {}", _effective_start_x);
-      spdlog::debug("  _effective_start_y: {}", _effective_start_y);
-      spdlog::debug("  _effective_num_x:   {}", _effective_num_x);
-      spdlog::debug("  _effective_num_y:   {}", _effective_num_y);
-      spdlog::debug("  _start_x:           {}", _start_x);
-      spdlog::debug("  _start_y:           {}", _start_y);
-      spdlog::debug("  _num_x:             {}", _num_x);
-      spdlog::debug("  _num_y:             {}", _num_y);
-      spdlog::debug("  _max_num_x:         {}", _max_num_x);
-      spdlog::debug("  _max_num_y:         {}", _max_num_y);
-      spdlog::debug("  _image_w:         {}", _image_w);
-      spdlog::debug("  _image_h:         {}", _image_h);
 
     } else {
       _effective_num_x = _image_w;
@@ -243,10 +228,27 @@ void qhy_alpaca_camera::chip_info() {
       _effective_start_x = 0;
       _effective_start_y = 0;
     }
+
+    spdlog::debug("Final values after updating from chip info: ");
+    spdlog::debug("  _effective_start_x: {}", _effective_start_x);
+    spdlog::debug("  _effective_start_y: {}", _effective_start_y);
+    spdlog::debug("  _effective_num_x:   {}", _effective_num_x);
+    spdlog::debug("  _effective_num_y:   {}", _effective_num_y);
+    spdlog::debug("  _start_x:           {}", _start_x);
+    spdlog::debug("  _start_y:           {}", _start_y);
+    spdlog::debug("  _num_x:             {}", _num_x);
+    spdlog::debug("  _num_y:             {}", _num_y);
+    spdlog::debug("  _max_num_x:         {}", _max_num_x);
+    spdlog::debug("  _max_num_y:         {}", _max_num_y);
+    spdlog::debug("  _image_w:         {}", _image_w);
+    spdlog::debug("  _image_h:         {}", _image_h);
   }
 }
 
 void qhy_alpaca_camera::initialize() {
+  if (!_needs_initialization)
+    return;
+
   uint32_t qhy_res = QHYCCD_ERROR;
   spdlog::debug("Calling SetQHYCCDReadMode with {}", _readout_mode);
   qhy_res = SetQHYCCDReadMode(_cam_handle, _readout_mode);
@@ -268,6 +270,13 @@ void qhy_alpaca_camera::initialize() {
   // Probably need to return here or do some kind of invariant for
   // a failed initialization of camera?
   qhy_res = QHYCCD_ERROR;
+
+  spdlog::debug("Setting bin mode in camera to {}. ", _bin_x);
+  qhy_res = QHYCCD_ERROR;
+  qhy_res = SetQHYCCDBinMode(_cam_handle, _bin_x, _bin_y);
+  if (qhy_res != QHYCCD_SUCCESS)
+    spdlog::warn("failed to set bin mode via SDK.");
+
   qhy_res = InitQHYCCD(_cam_handle);
   if (qhy_res == QHYCCD_SUCCESS) {
     spdlog::debug("InitQHYCCD successful");
@@ -278,11 +287,12 @@ void qhy_alpaca_camera::initialize() {
         fmt::format("InitQHYCCD failed, err code: {}", qhy_res));
   }
 
+  chip_info();
   set_gain(_gain);
   set_offset(_offset);
-  _force_bin = true;
-  set_bin_x(_bin_x);
-  _force_bin = false;
+  chip_info();
+
+  SetQHYCCDParam(_cam_handle, CONTROL_ID::CONTROL_TRANSFERBIT, _bpp);
 
   if (IsQHYCCDControlAvailable(_cam_handle, CONTROL_ID::CONTROL_USBTRAFFIC) ==
       QHYCCD_SUCCESS) {
@@ -292,13 +302,15 @@ void qhy_alpaca_camera::initialize() {
     double u_step = 0;
     GetQHYCCDParamMinMaxStep(_cam_handle, CONTROL_ID::CONTROL_USBTRAFFIC,
                              &u_min, &u_max, &u_step);
-    spdlog::trace("USB Traffic Settings - min:{} max:{} step:{}", u_min,
-                  u_max, u_step);
+    spdlog::trace("USB Traffic Settings - min:{} max:{} step:{}", u_min, u_max,
+                  u_step);
     SetQHYCCDParam(_cam_handle, CONTROL_USBTRAFFIC, _usb_traffic);
 
   } else {
     spdlog::trace("CONTROL_USBTRAFFIC is not available");
   }
+
+  _needs_initialization = false;
 }
 
 void qhy_alpaca_camera::initialize_camera_by_camera_id(std::string &camera_id) {
@@ -505,7 +517,8 @@ qhy_alpaca_camera::qhy_alpaca_camera(std::string &camera_id)
       _max_num_y(0), _percent_complete(100), _set_cooler_power(0),
       _can_control_ccd_temp(false), _run_cooler_thread(false),
       _has_filter_wheel(false), _last_camera_temp(0), _last_cooler_power(0),
-      _usb_traffic(20), _force_bin(false), _bpp(16), __t(_io) {
+      _usb_traffic(20), _bpp(16), __t(_io),
+      _needs_initialization(true) {
   initialize_camera_by_camera_id(camera_id);
 };
 
@@ -543,40 +556,43 @@ int qhy_alpaca_camera::set_bin_x(short x) {
   spdlog::debug("setting bin: {}", x);
 
   // no op if binning is already set
-  if (x == _bin_x && !_force_bin)
-    return 0;
+  // if (x == _bin_x && !_force_bin)
+  //   return 0;
 
-  if (x == _bin_x)
-    spdlog::debug("forcing bin to: {}", x);
+  // if (x == _bin_x)
+  //   spdlog::debug("forcing bin to: {}", x);
 
   std::lock_guard lock(_cam_mutex);
 
   if (x > _max_bin || x < 1)
     return -1;
 
-  if (SetQHYCCDBinMode(_cam_handle, x, x) == QHYCCD_SUCCESS) {
-    chip_info();
+  // if (SetQHYCCDBinMode(_cam_handle, x, x) == QHYCCD_SUCCESS) {
+  //   chip_info();
 
-    _bin_x = x;
-    _bin_y = x;
+  if (x != _bin_x)
+    _needs_initialization = true;
 
-    // I'm not sure I should mutate these here.
-    // I think I need to defer any camera calls until after properties are set.
-    // _start_x = _effective_start_x / x;
-    // _start_y = _effective_start_y / x;
-    // _num_x = _effective_num_x / x;
-    // _num_y = _effective_num_y / x;
+  _bin_x = x;
+  _bin_y = x;
 
-    // this is when we are resetting read mode...there is a bug in
-    // the qhy SDK where the effective area returned is incorrect
+  // I'm not sure I should mutate these here.
+  // I think I need to defer any camera calls until after properties are set.
+  // _start_x = _effective_start_x / x;
+  // _start_y = _effective_start_y / x;
+  // _num_x = _effective_num_x / x;
+  // _num_y = _effective_num_y / x;
 
-    // set_resolution(_start_x, _start_y, _num_x, _num_y);
+  // this is when we are resetting read mode...there is a bug in
+  // the qhy SDK where the effective area returned is incorrect
 
-    return 0;
-  } else {
-    spdlog::error("SetQHYCCDBinMode failed");
-    return -1;
-  }
+  // set_resolution(_start_x, _start_y, _num_x, _num_y);
+
+  return 0;
+  // } else {
+  //   spdlog::error("SetQHYCCDBinMode failed");
+  //   return -1;
+  // }
 }
 
 int qhy_alpaca_camera::set_bin_y(short y) {
@@ -1033,6 +1049,9 @@ int qhy_alpaca_camera::start_exposure(double duration_seconds, bool is_light) {
         fmt::format("Exposure duration of {} is not within {} - {} seconds",
                     duration_seconds, exposure_min(), exposure_max()));
 
+  if(_needs_initialization)
+    initialize();
+
   set_resolution(_start_x, _start_y, _num_x, _num_y);
 
   std::lock_guard lock(_cam_mutex);
@@ -1110,18 +1129,17 @@ int qhy_alpaca_camera::set_resolution(const uint32_t start_x,
       "set_resolution called with start_x: {} start_y: {} num_x: {} num_y: {}",
       start_x, start_y, num_x, num_y);
   spdlog::debug(" current bin: {}", _bin_x);
-  spdlog::debug(" current _effective_num_x: {}, _effective_num_y: {}, _effective_start_x: {}, _effective_start_y: {}", _effective_num_x, _effective_num_y, _effective_start_x, _effective_start_y);
+  spdlog::debug(" current _effective_num_x: {}, _effective_num_y: {}, "
+                "_effective_start_x: {}, _effective_start_y: {}",
+                _effective_num_x, _effective_num_y, _effective_start_x,
+                _effective_start_y);
 
-  if(num_x > _effective_num_x) {
-    spdlog::warn(
-        "NumX: {} exceeds maximum of {}", num_x,
-        _effective_num_x);
-    throw alpaca_exception(alpaca_exception::
-                           INVALID_VALUE,
+  if (num_x > _effective_num_x) {
+    spdlog::warn("NumX: {} exceeds maximum of {}", num_x, _effective_num_x);
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
                            fmt::format("NumX: {} exceeds "
                                        "maximum of {}",
-                                       num_x,
-                                       _effective_num_x));
+                                       num_x, _effective_num_x));
   }
 
   if (num_y > _effective_num_y) {
@@ -1130,7 +1148,6 @@ int qhy_alpaca_camera::set_resolution(const uint32_t start_x,
         alpaca_exception::INVALID_VALUE,
         fmt::format("NumY: {} exceeds maximum of {}", num_y, _effective_num_y));
   }
-
 
   if (start_x > _effective_num_x) {
     spdlog::warn("StartX: {} exceeds maximum of {}", start_x, _effective_num_x);
@@ -1211,10 +1228,7 @@ int qhy_alpaca_camera::set_fast_readout(bool fast_readout) {
                          "Fast readout not implemented");
 };
 
-uint32_t qhy_alpaca_camera::gain() {
-
-  return _gain;
-};
+uint32_t qhy_alpaca_camera::gain() { return _gain; };
 
 uint32_t qhy_alpaca_camera::gain_max() {
   throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED,
@@ -1232,9 +1246,7 @@ uint32_t qhy_alpaca_camera::gain_min() {
 // The specification seems to test conformance of min/max vs list
 // of values...I want to support both but need to work through the
 // details.
-std::vector<std::string> qhy_alpaca_camera::gains() {
-  return _gains;
-};
+std::vector<std::string> qhy_alpaca_camera::gains() { return _gains; };
 
 int qhy_alpaca_camera::set_gain(uint32_t gain) {
   std::lock_guard lock(_cam_mutex);
@@ -1246,7 +1258,7 @@ int qhy_alpaca_camera::set_gain(uint32_t gain) {
   // This probably needs to be rewritten to not obfuscate the behavior as I
   // this this does now.
   int gain_val = gain;
-  if(_gains[0] == "1") {
+  if (_gains[0] == "1") {
     gain_val = gain + 1;
   }
 
@@ -1257,8 +1269,9 @@ int qhy_alpaca_camera::set_gain(uint32_t gain) {
       return 0;
     }
   } else {
-    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
-                           fmt::format("attempted to set gain out of range with {}", gain));
+    throw alpaca_exception(
+        alpaca_exception::INVALID_VALUE,
+        fmt::format("attempted to set gain out of range with {}", gain));
   }
   return -1;
 }
@@ -1289,9 +1302,7 @@ int qhy_alpaca_camera::offset_min() {
   return _offset_min;
 };
 
-std::vector<std::string> qhy_alpaca_camera::offsets() {
-  return _offsets;
-}
+std::vector<std::string> qhy_alpaca_camera::offsets() { return _offsets; }
 
 int qhy_alpaca_camera::readout_mode() { return _readout_mode; }
 
@@ -1299,6 +1310,8 @@ int qhy_alpaca_camera::set_readout_mode(int idx) {
   spdlog::debug("set_readout_mode called with {}", idx);
   spdlog::debug("_read_mode_names.size() {}", _read_mode_names.size());
   if (idx < _read_mode_names.size()) {
+    if (idx != _readout_mode)
+      _needs_initialization = true;
     _readout_mode = idx;
     initialize();
   } else {
