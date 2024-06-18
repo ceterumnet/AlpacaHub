@@ -1245,24 +1245,20 @@ int qhy_alpaca_camera::set_gain(uint32_t gain) {
   // gain starts with 1 we must add 1 so that this fixes the off by one issue.
   // This probably needs to be rewritten to not obfuscate the behavior as I
   // this this does now.
+  int gain_val = gain;
   if(_gains[0] == "1") {
-    gain = gain + 1;
+    gain_val = gain + 1;
   }
 
-  if (gain >= _gain_min && gain <= _gain_max) {
-    r = SetQHYCCDParam(_cam_handle, CONTROL_ID::CONTROL_GAIN, gain);
+  if (gain_val >= _gain_min && gain_val <= _gain_max) {
+    r = SetQHYCCDParam(_cam_handle, CONTROL_ID::CONTROL_GAIN, gain_val);
     if (r == QHYCCD_SUCCESS) {
       _gain = gain;
-
-      if (_gains[0] == "1") {
-        _gain = gain - 1;
-      }
-
       return 0;
     }
   } else {
     throw alpaca_exception(alpaca_exception::INVALID_VALUE,
-                           "attempted to set gain out of range");
+                           fmt::format("attempted to set gain out of range with {}", gain));
   }
   return -1;
 }
