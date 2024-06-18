@@ -910,19 +910,6 @@ long qhy_alpaca_camera::num_y() {
 int qhy_alpaca_camera::set_num_x(long num_x) {
   spdlog::debug("set_num_x called with: {}", num_x);
   std::lock_guard lock(_cam_mutex);
-  // if (num_x > _max_num_x / _bin_x || num_x < 1)
-  //   throw alpaca_exception(
-  //       alpaca_exception::INVALID_VALUE,
-  //       fmt::format(
-  //           "Attempt to set image width to {}, which is invalid. It must be "
-  //           "between 1 and {} based on the current bin and readout settings.",
-  //           num_x, _max_num_x));
-  // uint32_t r = QHYCCD_ERROR;
-  // r = set_resolution(_start_x, _start_y, num_x, _num_y);
-  // if (r != QHYCCD_SUCCESS)
-  //   throw alpaca_exception(
-  //       alpaca_exception::DRIVER_ERROR,
-  //       fmt::format("Failed to set num_x with error {}", r));
   _num_x = num_x;
   return 0;
 }
@@ -930,19 +917,6 @@ int qhy_alpaca_camera::set_num_x(long num_x) {
 int qhy_alpaca_camera::set_num_y(long num_y) {
   spdlog::debug("set_num_y called with: {}", num_y);
   std::lock_guard lock(_cam_mutex);
-  // if (num_y > _max_num_y / _bin_y)
-  //   throw alpaca_exception(
-  //       alpaca_exception::INVALID_VALUE,
-  //       fmt::format(
-  //           "Attempt to set image height to {}, which is invalid. It must be "
-  //           "between 1 and {} based on the current bin and readout settings.",
-  //           num_y, _max_num_y));
-  // uint32_t r =
-  //     SetQHYCCDResolution(_cam_handle, _start_x, _start_y, _num_x, num_y);
-  // if (r != QHYCCD_SUCCESS)
-  //   throw alpaca_exception(
-  //       alpaca_exception::DRIVER_ERROR,
-  //       fmt::format("Failed to set num_x with error {}", r));
   _num_y = num_y;
   return 0;
 }
@@ -979,13 +953,6 @@ long qhy_alpaca_camera::start_x() { return _start_x; }
 int qhy_alpaca_camera::set_start_x(long start_x) {
   std::lock_guard lock(_cam_mutex);
   spdlog::debug("set_start_x: {}", start_x);
-  // if (start_x > (_effective_num_x / _bin_x) || start_x < 0)
-  //   throw alpaca_exception(
-  //       alpaca_exception::INVALID_VALUE,
-  //       fmt::format("Attempted to set sub-frame start position x: {}, which "
-  //                   "is not between 0 and {}",
-  //                   start_x, _effective_num_x));
-  //_start_x = (start_x + _effective_start_x) / _bin_x;
   _start_x = start_x;
   return 0;
 }
@@ -996,13 +963,6 @@ long qhy_alpaca_camera::start_y() { return _start_y; }
 int qhy_alpaca_camera::set_start_y(long start_y) {
   std::lock_guard lock(_cam_mutex);
   spdlog::debug("set_start_y: {}", start_y);
-  // if (start_y > (_effective_num_y / _bin_y) || start_y < 0)
-  //   throw alpaca_exception(
-  //       alpaca_exception::INVALID_VALUE,
-  //       fmt::format("Attempted to set sub-frame start position y: {}, which "
-  //                   "is not between 0 and {}",
-  //                   start_y, _effective_num_y));
-  // _start_y = (start_y + _effective_start_y) / _bin_y;
   _start_y = start_y;
   return 0;
 }
@@ -1251,7 +1211,10 @@ int qhy_alpaca_camera::set_fast_readout(bool fast_readout) {
                          "Fast readout not implemented");
 };
 
-uint32_t qhy_alpaca_camera::gain() { return _gain; };
+uint32_t qhy_alpaca_camera::gain() {
+
+  return _gain;
+};
 
 uint32_t qhy_alpaca_camera::gain_max() {
   throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED,
@@ -1276,10 +1239,25 @@ std::vector<std::string> qhy_alpaca_camera::gains() {
 int qhy_alpaca_camera::set_gain(uint32_t gain) {
   std::lock_guard lock(_cam_mutex);
   uint32_t r = QHYCCD_ERROR;
+
+  // Kinda janky - some of the qhy cameras have 0 as a gain option which means
+  // the "index" of the gains matches the gain value. In the case where the
+  // gain starts with 1 we must add 1 so that this fixes the off by one issue.
+  // This probably needs to be rewritten to not obfuscate the behavior as I
+  // this this does now.
+  if(_gains[0] == "1") {
+    gain = gain + 1;
+  }
+
   if (gain >= _gain_min && gain <= _gain_max) {
     r = SetQHYCCDParam(_cam_handle, CONTROL_ID::CONTROL_GAIN, gain);
     if (r == QHYCCD_SUCCESS) {
       _gain = gain;
+
+      if (_gains[0] == "1") {
+        _gain = gain - 1;
+      }
+
       return 0;
     }
   } else {
