@@ -37,6 +37,29 @@ inclined. See the build instructions later in this README for details.
 Please reach out to me through an issue on Github if you have any issues
 compiling the project.
 
+## Running Alpaca Hub
+
+``` bash
+Usage: AlpacaHub [OPTION]...
+Open Source Alpaca Implementation
+
+  -h                     Displays this help message
+
+  -l LEVEL               Set the log to LEVEL:
+                           1 - INFO (default)
+                           2 - DEBUG
+                           3 - TRACE
+                           4 - TRACE +
+
+  -t THREAD_COUNT        Sets the number of concurrent threads
+                         for the web server. 4 threads is the default.
+
+  -d                     Disable Alpaca Discovery
+
+  -p PORT                Sets the web server to listen on
+                         PORT. Default is port 8080
+```
+
 Here are some screen shots of the web interface:
 
 ![Screenshot](docs/images/alpaca_hub_main_web_page.png)

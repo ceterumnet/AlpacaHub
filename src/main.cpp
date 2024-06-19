@@ -78,8 +78,14 @@ void discovery_thread_proc() {
 int main(int argc, char **argv) {
   spdlog::set_default_logger(core_logger);
 
+  bool show_help = false;
+
   std::map<std::string, std::string> cli_args;
   for (int i = 1; i < argc; i++) {
+    if(std::string(argv[i]) == "-h") {
+      show_help = true;
+      break;
+    }
     if (i + 1 < argc) {
       std::string arg = argv[i];
       std::string arg_v = argv[i + 1];
@@ -87,9 +93,7 @@ int main(int argc, char **argv) {
     }
   }
 
-  auto cli_map_iter = cli_args.find("-h");
-
-  if (cli_map_iter != cli_args.end()) {
+  if (show_help) {
     // this is kinda ugly. I may need to add a basic args library to avoid this
     // hand wrapped shit.
     std::cout
@@ -118,7 +122,7 @@ int main(int argc, char **argv) {
     return 0;
   }
 
-  cli_map_iter = cli_args.find("-l");
+  auto cli_map_iter = cli_args.find("-l");
 
   if (cli_map_iter != cli_args.end()) {
     spdlog::info("logging level passed from user");
