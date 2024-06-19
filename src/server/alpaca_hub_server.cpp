@@ -938,76 +938,8 @@ server_handler() {
                                    &i_alpaca_camera::heat_sink_temperature>(
       router, "heatsinktemperature");
 
-  // Handler for imagearray
+    // Handler for imagearray and imagearrayvariant
   auto image_array_handler = [](auto req, auto) {
-    std::string accept_header = req->header().get_field_or(
-        restinio::http_field::accept, "application/imagebytes");
-
-    spdlog::trace("accept_header: {0}", accept_header);
-
-    auto cmp_res = accept_header.compare("application/imagebytes");
-    auto &response_map = req->extra_data().response_map;
-    std::shared_ptr<i_alpaca_camera> the_cam =
-        std::dynamic_pointer_cast<i_alpaca_camera>(req->extra_data().device);
-
-    if (!the_cam->image_ready()) {
-
-      // throw std::runtime_error("Image is not ready");
-      response_map["ErrorNumber"] = alpaca_exception::INVALID_OPERATION;
-      response_map["ErrorMessage"] = "Image is not ready";
-      return init_resp(req->create_response())
-          .set_body(nlohmann::json(response_map).dump())
-          .done();
-    }
-
-    auto i2d = the_cam->image_2d();
-
-    if (cmp_res > -1) {
-      spdlog::debug("Client requested imagebytes via imagearray");
-      std::stringstream stream;
-      image_bytes_t<uint32_t> image_bytes;
-      image_bytes.client_transaction_number =
-        std::get<uint32_t>(response_map["ClientTransactionID"]);
-      image_bytes.server_transaction_number =
-        std::get<uint32_t>(response_map["ServerTransactionID"]);
-      image_bytes.image_element_type = 2;
-      image_bytes.transmission_element_type = 2;
-
-      image_bytes.dimension1 = i2d.size();
-      image_bytes.dimension2 = i2d[0].size();
-
-      size_t size_1d = i2d.size() * i2d[0].size();
-
-      std::vector<uint32_t> img_1d(size_1d);
-
-      uint32_t *p = &img_1d[0];
-
-      for (const auto &row : i2d) {
-        for (auto x : row)
-          *p++ = x;
-      }
-
-      image_bytes.image_data_1d = img_1d;
-      image_bytes.serialize(stream);
-
-      spdlog::debug("Image bytes size: {0}", stream.str().size());
-      return init_resp_imagebytes(req->create_response())
-          .set_body(stream.str())
-          .done();
-    } else {
-      // JSON based response
-      response_map["Value"] = i2d;
-      response_map["Type"] = 2;
-      response_map["Rank"] = 2;
-    }
-
-    return init_resp(req->create_response())
-        .set_body(nlohmann::json(req->extra_data().response_map).dump())
-        .done();
-  };
-
-    // Handler for imagevariant
-  auto image_array_variant_handler = [](auto req, auto) {
     std::string accept_header = req->header().get_field_or(
         restinio::http_field::accept, "application/imagebytes");
 
@@ -1110,12 +1042,12 @@ server_handler() {
 
   // GET imagearray
   router->http_get("/api/v1/camera/:device_number/imagearray",
-                   image_array_variant_handler);
+                   image_array_handler);
 
   // GET imagearrayvariant
   // not sure if I'm gonna have to implement this or not
   router->http_get("/api/v1/camera/:device_number/imagearrayvariant",
-                   image_array_variant_handler);
+                   image_array_handler);
 
   // GET imageready
   api_handler

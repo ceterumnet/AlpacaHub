@@ -166,6 +166,7 @@ private:
   void initialize();
   void init_filterwheel();
   void chip_info();
+  void throw_if_not_connected();
   std::string _camera_id;
   std::string _unique_id;
   bool _connected;
@@ -265,7 +266,7 @@ private:
   std::shared_ptr<qhy_alpaca_filterwheel> _filter_wheel;
 
   bool _needs_initialization;
-
+  bool _reset_num_xy;
 };
 
 #endif
