@@ -20,3 +20,9 @@ TEST_CASE("Serial connection attempt", "[set_connected_pegasus_focuser]") {
     REQUIRE(focuser.connected());
   }
 }
+
+TEST_CASE("Serial Device Listing Tests", "[serial_devices]") {
+  spdlog::set_level(spdlog::level::debug);
+  spdlog::info("running serial devices test");
+  pegasus_alpaca_focuscube3::serial_devices();
+}

@@ -1358,6 +1358,8 @@ int zwo_am5_telescope::sync_to_alt_az(const double &alt, const double &az) {
 
 int zwo_am5_telescope::sync_to_coordinates(const double &ra,
                                            const double &dec) {
+  throw_if_not_connected();
+  throw_if_parked();
   zwor::hh_mm_ss ra_vals(ra);
   zwor::sdd_mm_ss dec_vals(dec);
   _ra_target_set = true;
@@ -1378,6 +1380,7 @@ int zwo_am5_telescope::sync_to_coordinates(const double &ra,
 // TODO: test this properly
 int zwo_am5_telescope::sync_to_target() {
   throw_if_not_connected();
+  throw_if_parked();
   if (!_ra_target_set || !_dec_target_set)
     throw alpaca_exception(alpaca_exception::INVALID_OPERATION,
                            "RA and DEC target must be set");

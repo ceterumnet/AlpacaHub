@@ -1,14 +1,25 @@
 #include "pegasus_alpaca_focuscube3.hpp"
 #include "common/alpaca_exception.hpp"
 #include "common/alpaca_hub_serial.hpp"
+#include <algorithm>
 #include <chrono>
+#include <filesystem>
 #include <mutex>
 #include <regex>
 #include <thread>
 
 std::vector<std::string> pegasus_alpaca_focuscube3::serial_devices() {
-  std::vector<std::string> serial_devices{
-      "/dev/serial/by-id/usb-PegasusAstro_FocusCube3_48:27:e2:44:73:14-if00"};
+  std::vector<std::string> serial_devices;
+  auto fs =
+      std::filesystem::path("/dev/serial/by-id");
+
+  for(auto dir_iter : std::filesystem::directory_iterator{fs}) {
+    if (dir_iter.path().string().find("PegasusAstro_FocusCube3") != std::string::npos) {
+      spdlog::debug("Found focuscube3: {}", dir_iter.path().string());
+      serial_devices.push_back(dir_iter.path().string());
+    }
+  }
+
   return serial_devices;
 }
 

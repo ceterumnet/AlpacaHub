@@ -449,9 +449,9 @@ void qhy_alpaca_camera::initialize_camera_by_camera_id(std::string &camera_id) {
   spdlog::trace("Current chip temp: {}",
                 GetQHYCCDParam(_cam_handle, CONTROL_ID::CONTROL_CURTEMP));
 
-  spdlog::trace("Can control chip temp: {}", can_set_ccd_temperature());
-  spdlog::trace("Can get cooler power: {}", can_get_cooler_power());
-  spdlog::trace("Full well capacity: {}", full_well_capacity());
+  spdlog::trace("Can control chip temp: {}", _can_control_ccd_temp);
+  spdlog::trace("Can get cooler power: {}", _can_control_ccd_temp);
+  // spdlog::trace("Full well capacity: {}", );
 
   // TODO: I really should handle any error that might occur
   GetQHYCCDParamMinMaxStep(_cam_handle, CONTROL_ID::CONTROL_GAIN, &_gain_min,
@@ -586,33 +586,23 @@ int qhy_alpaca_camera::set_connected(bool connected) {
 }
 
 short qhy_alpaca_camera::bin_x() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   return _bin_x;
 };
 
 short qhy_alpaca_camera::bin_y() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   return _bin_y;
 };
 
 int qhy_alpaca_camera::set_bin_x(short x) {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   spdlog::debug("setting bin: {}", x);
-
-  // no op if binning is already set
-  // if (x == _bin_x && !_force_bin)
-  //   return 0;
-
-  // if (x == _bin_x)
-  //   spdlog::debug("forcing bin to: {}", x);
 
   std::lock_guard lock(_cam_mutex);
 
   if (x > _max_bin || x < 1)
     return -1;
-
-  // SetQHYCCDBinMode(_cam_handle, x, x);
-  //   chip_info();
 
   if (x != _bin_x)
     _bin_changed = true;
@@ -620,33 +610,17 @@ int qhy_alpaca_camera::set_bin_x(short x) {
   _bin_x = x;
   _bin_y = x;
 
-  // I'm not sure I should mutate these here.
-  // I think I need to defer any camera calls until after properties are set.
-  // _start_x = _effective_start_x / x;
-  // _start_y = _effective_start_y / x;
-  // _num_x = _effective_num_x / x;
-  // _num_y = _effective_num_y / x;
-
-  // this is when we are resetting read mode...there is a bug in
-  // the qhy SDK where the effective area returned is incorrect
-
-  // set_resolution(_start_x, _start_y, _num_x, _num_y);
-
   return 0;
-  // } else {
-  //   spdlog::error("SetQHYCCDBinMode failed");
-  //   return -1;
-  // }
 }
 
 int qhy_alpaca_camera::set_bin_y(short y) {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   // Making this a no-op for debug purpose
   return set_bin_x(y);
 }
 
 qhy_alpaca_camera::camera_state_enum qhy_alpaca_camera::camera_state() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   // std::lock_guard lock(_cam_mutex);
   return _camera_state;
 };
@@ -654,38 +628,38 @@ qhy_alpaca_camera::camera_state_enum qhy_alpaca_camera::camera_state() {
 // width in unbinned pixels
 // excludes overscan pixels unless inclusion is enabled
 long qhy_alpaca_camera::camera_x_size() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   spdlog::debug("camera_x_size called returning {}", _max_num_x);
   return _max_num_x;
 };
 
 long qhy_alpaca_camera::camera_y_size() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   spdlog::debug("camera_y_size called returning {}", _max_num_y);
   return _max_num_y;
 };
 
 // All QHY Cameras support this according to the SDK
 bool qhy_alpaca_camera::can_abort_exposure() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   return true;
 };
 
 // None of the QHY cameras support asymmetric binning
 bool qhy_alpaca_camera::can_asymmetric_bin() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   return false;
 };
 
 bool qhy_alpaca_camera::can_get_cooler_power() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   return _can_control_cooler_power;
 };
 
 // I don't think cameras ever implement this, or at least I can't
 // think of a scenario.
 bool qhy_alpaca_camera::can_pulse_guide() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   return false;
 };
 
@@ -693,7 +667,7 @@ bool qhy_alpaca_camera::can_pulse_guide() {
 // I'm not sure if this is mutually exclusive with can set cooler power
 // I'm thinking I might be able to get away without a control thread for temp?
 bool qhy_alpaca_camera::can_set_ccd_temperature() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   // return false;
   return _can_control_cooler_power;
 };
@@ -701,12 +675,12 @@ bool qhy_alpaca_camera::can_set_ccd_temperature() {
 // My understanding from the QHY SDK is that all of there cameras support
 // this
 bool qhy_alpaca_camera::can_stop_exposure() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   return true;
 };
 
 double qhy_alpaca_camera::ccd_temperature() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   // spdlog::trace("ccd_temperature() invoked");
 
   // Let's not try to read the temp while downloading
@@ -725,7 +699,7 @@ double qhy_alpaca_camera::ccd_temperature() {
 };
 
 bool qhy_alpaca_camera::cooler_on() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   spdlog::trace("cooler_on() invoked");
   if (!_can_control_cooler_power) {
     throw alpaca_exception(
@@ -765,7 +739,7 @@ void qhy_alpaca_camera::cooler_proc() {
 };
 
 int qhy_alpaca_camera::set_cooler_on(bool cooler_on) {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   if (!_can_control_cooler_power)
     throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED,
                            "Cooler Power Setting not available on this camera");
@@ -797,7 +771,7 @@ int qhy_alpaca_camera::set_cooler_on(bool cooler_on) {
 };
 
 double qhy_alpaca_camera::cooler_power() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   if (!_can_control_cooler_power)
     throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED,
                            "Cooler Power Setting not available on this camera");
@@ -816,7 +790,7 @@ double qhy_alpaca_camera::cooler_power() {
 // TODO: This is one of those weird ones...not sure
 // this is correct or how much it matters?
 double qhy_alpaca_camera::electrons_per_adu() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   // std::lock_guard lock(_cam_mutex);
   // return GetQHYCCDParam(_cam_handle, CONTROL_GAIN);
   return 0.1;
@@ -825,7 +799,7 @@ double qhy_alpaca_camera::electrons_per_adu() {
 // TODO: This is an implementation that I'm not sure is right or not yet.
 // I need to test this.
 double qhy_alpaca_camera::full_well_capacity() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   // std::lock_guard lock(_cam_mutex);
   double fullwell = pow(2, _bpp) - 1;
   // QHYCCD_curveFullWell(_cam_handle, _gain, &fullwell);
@@ -834,12 +808,12 @@ double qhy_alpaca_camera::full_well_capacity() {
 
 // TODO: may want to move this to CTOR
 bool qhy_alpaca_camera::has_shutter() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   return _has_shutter;
 }
 
 double qhy_alpaca_camera::heat_sink_temperature() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   if (!_can_control_cooler_power)
     throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED,
                            "Cooler Power Setting not available on this camera");
@@ -944,7 +918,7 @@ void qhy_alpaca_camera::read_image_from_camera() {
 }
 
 bool qhy_alpaca_camera::image_ready() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   if (_camera_state == camera_state_enum::CAMERA_IDLE &&
       _last_exposure_duration > 0) {
     return true;
@@ -954,7 +928,7 @@ bool qhy_alpaca_camera::image_ready() {
 }
 
 bool qhy_alpaca_camera::is_pulse_guiding() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED,
                          "Pulse guiding is not supported");
   return false;
@@ -963,7 +937,7 @@ bool qhy_alpaca_camera::is_pulse_guiding() {
 std::string qhy_alpaca_camera::last_error() { return _last_cam_error; }
 
 double qhy_alpaca_camera::last_exposure_duration() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   if (_last_exposure_duration == 0)
     throw alpaca_exception(alpaca_exception::INVALID_OPERATION,
                            "No image has been taken");
@@ -971,7 +945,7 @@ double qhy_alpaca_camera::last_exposure_duration() {
 }
 
 std::string qhy_alpaca_camera::last_exposure_start_time() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   if (_last_exposure_duration == 0)
     throw alpaca_exception(alpaca_exception::INVALID_OPERATION,
                            "No image has been taken");
@@ -979,32 +953,35 @@ std::string qhy_alpaca_camera::last_exposure_start_time() {
 }
 
 long qhy_alpaca_camera::max_adu() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   return pow(2, _bpp) - 1;
 }
 
 short qhy_alpaca_camera::max_bin_x() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   return _max_bin;
 }
 
-short qhy_alpaca_camera::max_bin_y() { return max_bin_x(); }
+short qhy_alpaca_camera::max_bin_y() {
+  throw_if_not_connected();
+  return max_bin_x();
+}
 
 long qhy_alpaca_camera::num_x() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   spdlog::debug("num_x() invoked and returning: {}", _num_x);
   return _num_x;
 }
 
 long qhy_alpaca_camera::num_y() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   spdlog::debug("num_y() invoked and returning: {}", _num_y);
   return _num_y;
 }
 
 // TODO: refactor this code as it is a common call to the SetQHYCCDResolution
 int qhy_alpaca_camera::set_num_x(long num_x) {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   spdlog::debug("set_num_x called with: {}", num_x);
   std::lock_guard lock(_cam_mutex);
   _num_x = num_x;
@@ -1012,7 +989,7 @@ int qhy_alpaca_camera::set_num_x(long num_x) {
 }
 
 int qhy_alpaca_camera::set_num_y(long num_y) {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   spdlog::debug("set_num_y called with: {}", num_y);
   std::lock_guard lock(_cam_mutex);
   _num_y = num_y;
@@ -1020,19 +997,17 @@ int qhy_alpaca_camera::set_num_y(long num_y) {
 }
 
 double qhy_alpaca_camera::pixel_size_x() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   return _pixel_w;
 }
 
 double qhy_alpaca_camera::pixel_size_y() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   return _pixel_h;
 }
 
 int qhy_alpaca_camera::set_ccd_temperature(double temp) {
-  void throw_if_not_connected();
-  // throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED, "This is an open
-  // loop cooler. PWM can be controlled, but temp can not be set directly. ");
+  throw_if_not_connected();
   if (!_can_control_ccd_temp)
     throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED,
                            "this device does not support setting temp");
@@ -1043,24 +1018,18 @@ int qhy_alpaca_camera::set_ccd_temperature(double temp) {
 }
 
 double qhy_alpaca_camera::get_set_ccd_temperature() {
-  void throw_if_not_connected();
-  // throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED,
-  //                        "This is an open loop cooler. PWM can be controlled,
-  //                        " "but temp can not be set directly. ");
-  // std::lock_guard lock(_cam_mutex);
+  throw_if_not_connected();
   return _current_set_temp;
-  // throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED,
-  //                        "automatic temperature control not implemented");
 }
 
 // Subframe start x coordinate
 long qhy_alpaca_camera::start_x() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   return _start_x;
 }
 
 int qhy_alpaca_camera::set_start_x(long start_x) {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   std::lock_guard lock(_cam_mutex);
   spdlog::debug("set_start_x: {}", start_x);
   _start_x = start_x;
@@ -1069,12 +1038,12 @@ int qhy_alpaca_camera::set_start_x(long start_x) {
 
 // Subframe start y coordinate
 long qhy_alpaca_camera::start_y() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   return _start_y;
 }
 
 int qhy_alpaca_camera::set_start_y(long start_y) {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   std::lock_guard lock(_cam_mutex);
   spdlog::debug("set_start_y: {}", start_y);
   _start_y = start_y;
@@ -1082,7 +1051,7 @@ int qhy_alpaca_camera::set_start_y(long start_y) {
 }
 
 int qhy_alpaca_camera::abort_exposure() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   std::lock_guard lock(_cam_mutex);
   uint32_t r = QHYCCD_ERROR;
   r = CancelQHYCCDExposingAndReadout(_cam_handle);
@@ -1100,7 +1069,7 @@ int qhy_alpaca_camera::abort_exposure() {
 
 int qhy_alpaca_camera::pulse_guide(qhy_alpaca_camera::guide_direction,
                                    long duration) {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED,
                          "Pulse guiding not supported");
 };
@@ -1133,10 +1102,6 @@ int qhy_alpaca_camera::start_exposure_proc() {
   spdlog::error("Failed to start exposing frame: {}", r);
   uint8_t cam_status_buf[4] = {};
 
-  // I don't think this call is officially supported in the QHYCCD SDK
-  // GetQHYCCDCameraStatus(_cam_handle, cam_status_buf);
-  // spdlog::trace("Camera Status: {}, {}, {}, {}", cam_status_buf[0],
-  //               cam_status_buf[1], cam_status_buf[3], cam_status_buf[3]);
   return -1;
 }
 
@@ -1144,7 +1109,7 @@ int qhy_alpaca_camera::start_exposure_proc() {
 // TODO: need to clean up the implementation
 // The threading code is a little kludgy at the moment
 int qhy_alpaca_camera::start_exposure(double duration_seconds, bool is_light) {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   if (duration_seconds < exposure_min() || duration_seconds > exposure_max())
     throw alpaca_exception(
         alpaca_exception::INVALID_VALUE,
@@ -1152,10 +1117,6 @@ int qhy_alpaca_camera::start_exposure(double duration_seconds, bool is_light) {
                     duration_seconds, exposure_min(), exposure_max()));
   spdlog::debug("start_exposure invoked with duration:{}, is_light:{}",
                 duration_seconds, is_light);
-
-  // This _can_ be an expensive call if the readout mode or binning mode
-  // have changed. Unfortunately, I've been unable to eliminate the need
-  // for this.
 
   initialize();
 
@@ -1201,7 +1162,7 @@ int qhy_alpaca_camera::start_exposure(double duration_seconds, bool is_light) {
 
 // TODO: need to interrupt the exposing thread...
 int qhy_alpaca_camera::stop_exposure() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   uint32_t r = CancelQHYCCDExposing(_cam_handle);
   _camera_state = camera_state_enum::CAMERA_IDLE;
   if (r == QHYCCD_SUCCESS) {
@@ -1215,7 +1176,7 @@ int qhy_alpaca_camera::stop_exposure() {
 
 // TODO: implement color specifics
 int qhy_alpaca_camera::sensor_type() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   uint32_t r = QHYCCD_ERROR;
   // r = IsQHYCCDControlAvailable(_cam_handle, CONTROL_ID::CAM_COLOR);
   // if(r != QHYCCD_ERROR) {
@@ -1229,11 +1190,12 @@ int qhy_alpaca_camera::sensor_type() {
 }
 
 std::string qhy_alpaca_camera::sensor_name() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   return _sensor_name;
 }
 
 std::string qhy_alpaca_camera::get_camera_model_name() {
+  throw_if_not_connected();
   return _qhy_model_name;
 }
 
@@ -1241,7 +1203,6 @@ int qhy_alpaca_camera::set_resolution(const uint32_t start_x,
                                       const uint32_t start_y,
                                       const uint32_t num_x,
                                       const uint32_t num_y) {
-  // std::lock_guard lock(_cam_mutex);
   uint32_t set_result = QHYCCD_ERROR;
 
   spdlog::debug(
@@ -1302,44 +1263,43 @@ int qhy_alpaca_camera::set_resolution(const uint32_t start_x,
 
 // TODO: implement a better description
 std::string qhy_alpaca_camera::description() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   return "QHY CCD Astronomy Camera";
 }
 
 // TODO: implement a better driver info
 std::string qhy_alpaca_camera::driverinfo() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   return "Driver Information";
 }
 
-// TODO: implement an actual name value
 std::string qhy_alpaca_camera::name() {
-  void throw_if_not_connected();
+  // throw_if_not_connected();
   return _qhy_model_name;
 }
 
 double qhy_alpaca_camera::exposure_max() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   return _exposure_max / 1000000;
 }
 
 double qhy_alpaca_camera::exposure_min() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   return _exposure_min / 1000000;
 }
 
 double qhy_alpaca_camera::exposure_resolution() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   return _exposure_step_size / 1000000;
 };
 
 double qhy_alpaca_camera::subexposure_duration() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   return _subexposure_duration;
 }
 
 int qhy_alpaca_camera::set_subexposure_duration(double duration_seconds) {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   std::lock_guard lock(_cam_mutex);
   double u_seconds = duration_seconds * 1000000;
   spdlog::trace("Exposure time in uSeconds: {}", u_seconds);
@@ -1355,37 +1315,37 @@ int qhy_alpaca_camera::set_subexposure_duration(double duration_seconds) {
 
 bool qhy_alpaca_camera::can_fast_readout() {
   // throw std::runtime_error("Fast readout not implemented");
-  void throw_if_not_connected();
+  throw_if_not_connected();
   return false; //_can_fast_readout;
 };
 
 bool qhy_alpaca_camera::fast_readout() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED,
                          "Fast readout not implemented");
   // return _fast_readout;
 };
 
 int qhy_alpaca_camera::set_fast_readout(bool fast_readout) {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED,
                          "Fast readout not implemented");
 };
 
 uint32_t qhy_alpaca_camera::gain() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   return _gain;
 };
 
 uint32_t qhy_alpaca_camera::gain_max() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED,
                          "Use Gains properties");
   return _gain_max;
 };
 
 uint32_t qhy_alpaca_camera::gain_min() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED,
                          "Use Gains properties");
   return _gain_min;
@@ -1396,12 +1356,12 @@ uint32_t qhy_alpaca_camera::gain_min() {
 // of values...I want to support both but need to work through the
 // details.
 std::vector<std::string> qhy_alpaca_camera::gains() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   return _gains;
 };
 
 int qhy_alpaca_camera::set_gain(uint32_t gain) {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   std::lock_guard lock(_cam_mutex);
   uint32_t r = QHYCCD_ERROR;
 
@@ -1430,6 +1390,7 @@ int qhy_alpaca_camera::set_gain(uint32_t gain) {
 }
 
 int qhy_alpaca_camera::set_offset(int offset_v) {
+  throw_if_not_connected();
   std::lock_guard lock(_cam_mutex);
   if (offset_v < _offset_min || offset_v > _offset_max)
     throw alpaca_exception(
@@ -1444,34 +1405,35 @@ int qhy_alpaca_camera::set_offset(int offset_v) {
 }
 
 int qhy_alpaca_camera::offset() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   return _offset;
 }
 int qhy_alpaca_camera::offset_max() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED,
                          "Use offsets properties");
   return _offset_max;
 };
 int qhy_alpaca_camera::offset_min() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED,
                          "Use offsets properties");
   return _offset_min;
 };
 
 std::vector<std::string> qhy_alpaca_camera::offsets() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   return _offsets;
 }
 
 int qhy_alpaca_camera::readout_mode() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   return _readout_mode;
 }
 
 int qhy_alpaca_camera::set_readout_mode(int idx) {
-  void throw_if_not_connected();
+  throw_if_not_connected();
+  std::lock_guard lock(_cam_mutex);
   spdlog::debug("set_readout_mode called with {}", idx);
   if (idx < _read_mode_names.size()) {
     if (idx != _readout_mode) {
@@ -1490,39 +1452,39 @@ int qhy_alpaca_camera::set_readout_mode(int idx) {
 }
 
 std::vector<std::string> qhy_alpaca_camera::readout_modes() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   return _read_mode_names;
 }
 
 uint8_t qhy_alpaca_camera::bpp() { return _bpp; }
 
 int qhy_alpaca_camera::percent_complete() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   return _percent_complete;
 }
 
 int qhy_alpaca_camera::bayer_offset_x() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED,
                          "This is a monochrome camera");
   return _bayer_offset_x;
 }
 
 int qhy_alpaca_camera::bayer_offset_y() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED,
                          "This is a monochrome camera");
   return _bayer_offset_y;
 }
 
 std::vector<std::string> qhy_alpaca_camera::supported_actions() {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   return std::vector<std::string>();
 }
 
 // I think this needs to be removed
 int qhy_alpaca_camera::set_cooler_power(double cooler_power) {
-  void throw_if_not_connected();
+  throw_if_not_connected();
   std::lock_guard lock(_cam_mutex);
   double qhy_cooler_power = cooler_power / 100.0 * 255.0;
   uint32_t r = QHYCCD_ERROR;
@@ -1568,12 +1530,13 @@ device_variant_t qhy_alpaca_camera::details() {
   detail_map["Offset Max"] = _offset_max;
   // detail_map["Offsets"] = _offsets;
   detail_map["Status"] = _camera_state;
-  if (_can_control_cooler_power) {
+  if (_can_control_cooler_power && _connected) {
     detail_map["CoolerPower"] = cooler_power();
     detail_map["CoolerOn"] = cooler_power();
     detail_map["SetTemp"] = _current_set_temp;
   }
-  detail_map["Temp"] = ccd_temperature();
+  if(_connected)
+    detail_map["Temp"] = ccd_temperature();
 
   return detail_map;
 };
