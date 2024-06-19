@@ -39,7 +39,7 @@ compiling the project.
 
 ## Running Alpaca Hub
 
-``` bash
+``` 
 Usage: AlpacaHub [OPTION]...
 Open Source Alpaca Implementation
 
