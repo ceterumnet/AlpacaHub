@@ -157,7 +157,7 @@ void qhy_alpaca_camera::chip_info() {
   }
 
   // Initialize subframe width and height to the values returned for the chip
-  if (_num_x == 0 || _reset_num_xy) {
+  if (_num_x == 0 || _read_mode_changed) {
     _num_x = _image_w / _bin_x;
     _num_y = _image_h / _bin_x;
   }
@@ -247,7 +247,7 @@ void qhy_alpaca_camera::chip_info() {
       _start_x = eff_start_x;
       _start_y = eff_start_y;
 
-      if (_reset_num_xy) {
+      if (_read_mode_changed) {
         _num_x = _effective_num_x / _bin_x;
         _num_y = _effective_num_y / _bin_x;
       }
@@ -270,7 +270,7 @@ void qhy_alpaca_camera::chip_info() {
 }
 
 void qhy_alpaca_camera::initialize() {
-  if (!_needs_initialization) {
+  if (!_read_mode_changed) {
     spdlog::debug(
         "initialize invoked, but we are skipping since it is not needed.");
     return;
@@ -316,10 +316,11 @@ void qhy_alpaca_camera::initialize() {
   if (qhy_res != QHYCCD_SUCCESS)
     spdlog::warn("failed to set bin mode via SDK.");
 
+  _bin_changed = false;
   SetQHYCCDParam(_cam_handle, CONTROL_ID::CONTROL_TRANSFERBIT, _bpp);
 
   chip_info();
-  _reset_num_xy = false;
+  _read_mode_changed = false;
   set_gain(_gain);
   set_offset(_offset);
   // chip_info();
@@ -340,7 +341,7 @@ void qhy_alpaca_camera::initialize() {
     spdlog::trace("CONTROL_USBTRAFFIC is not available");
   }
 
-  _needs_initialization = false;
+  _read_mode_changed = false;
 }
 
 void qhy_alpaca_camera::initialize_camera_by_camera_id(std::string &camera_id) {
@@ -547,8 +548,8 @@ qhy_alpaca_camera::qhy_alpaca_camera(std::string &camera_id)
       _max_num_y(0), _percent_complete(100), _set_cooler_power(0),
       _can_control_ccd_temp(false), _run_cooler_thread(false),
       _has_filter_wheel(false), _last_camera_temp(0), _last_cooler_power(0),
-      _usb_traffic(5), _bpp(16), __t(_io), _needs_initialization(true),
-      _reset_num_xy(true) {
+      _usb_traffic(5), _bpp(16), __t(_io), _read_mode_changed(true),
+      _bin_changed(true) {
   initialize_camera_by_camera_id(camera_id);
 };
 
@@ -576,7 +577,7 @@ int qhy_alpaca_camera::set_connected(bool connected) {
     _last_exposure_duration = 0;
     _num_x = 0;
     _readout_mode = 0;
-    _needs_initialization = true;
+    _read_mode_changed = true;
   }
   _connected = connected;
   if (_connected)
@@ -614,7 +615,7 @@ int qhy_alpaca_camera::set_bin_x(short x) {
   //   chip_info();
 
   if (x != _bin_x)
-    _needs_initialization = true;
+    _bin_changed = true;
 
   _bin_x = x;
   _bin_y = x;
@@ -1139,6 +1140,7 @@ int qhy_alpaca_camera::start_exposure_proc() {
   return -1;
 }
 
+
 // TODO: need to clean up the implementation
 // The threading code is a little kludgy at the moment
 int qhy_alpaca_camera::start_exposure(double duration_seconds, bool is_light) {
@@ -1151,7 +1153,19 @@ int qhy_alpaca_camera::start_exposure(double duration_seconds, bool is_light) {
   spdlog::debug("start_exposure invoked with duration:{}, is_light:{}",
                 duration_seconds, is_light);
 
+  // This _can_ be an expensive call if the readout mode or binning mode
+  // have changed. Unfortunately, I've been unable to eliminate the need
+  // for this.
+
   initialize();
+
+  int qhy_res = QHYCCD_ERROR;
+  if(_bin_changed) {
+    qhy_res = SetQHYCCDBinMode(_cam_handle, _bin_x, _bin_x);
+    if(qhy_res == QHYCCD_ERROR)
+      spdlog::warn("failed to set bin mode");
+    _bin_changed = false;
+  }
 
   set_resolution(_start_x, _start_y, _num_x, _num_y);
 
@@ -1461,11 +1475,11 @@ int qhy_alpaca_camera::set_readout_mode(int idx) {
   spdlog::debug("set_readout_mode called with {}", idx);
   if (idx < _read_mode_names.size()) {
     if (idx != _readout_mode) {
-      _needs_initialization = true;
-      _reset_num_xy = true;
+      _read_mode_changed = true;
       _num_x = 0;
     } else
       spdlog::debug("skipping initialization as read mode is not changed");
+
     _readout_mode = idx;
     initialize();
   } else {
