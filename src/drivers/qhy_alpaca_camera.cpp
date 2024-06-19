@@ -151,8 +151,10 @@ void qhy_alpaca_camera::chip_info() {
   }
 
   // Initialize subframe width and height to the values returned for the chip
-  _num_x = _image_w;
-  _num_y = _image_h;
+  if(_num_x == 0) {
+    _num_x = _image_w / _bin_x;
+    _num_y = _image_h / _bin_x;
+  }
 
   // Let's initialize max width and height to the values returned for the chip
   _max_num_x = _image_w;
@@ -222,27 +224,21 @@ void qhy_alpaca_camera::chip_info() {
       _image_w = _num_x;
       _image_h = _num_y;
 
-    } else {
-      _effective_num_x = _image_w;
-      _effective_num_y = _image_h;
-      _effective_start_x = 0;
-      _effective_start_y = 0;
     }
-
-    spdlog::debug("Final values after updating from chip info: ");
-    spdlog::debug("  _effective_start_x: {}", _effective_start_x);
-    spdlog::debug("  _effective_start_y: {}", _effective_start_y);
-    spdlog::debug("  _effective_num_x:   {}", _effective_num_x);
-    spdlog::debug("  _effective_num_y:   {}", _effective_num_y);
-    spdlog::debug("  _start_x:           {}", _start_x);
-    spdlog::debug("  _start_y:           {}", _start_y);
-    spdlog::debug("  _num_x:             {}", _num_x);
-    spdlog::debug("  _num_y:             {}", _num_y);
-    spdlog::debug("  _max_num_x:         {}", _max_num_x);
-    spdlog::debug("  _max_num_y:         {}", _max_num_y);
-    spdlog::debug("  _image_w:         {}", _image_w);
-    spdlog::debug("  _image_h:         {}", _image_h);
   }
+  spdlog::debug("Final values after updating from chip info: ");
+  spdlog::debug("  _effective_start_x: {}", _effective_start_x);
+  spdlog::debug("  _effective_start_y: {}", _effective_start_y);
+  spdlog::debug("  _effective_num_x:   {}", _effective_num_x);
+  spdlog::debug("  _effective_num_y:   {}", _effective_num_y);
+  spdlog::debug("  _start_x:           {}", _start_x);
+  spdlog::debug("  _start_y:           {}", _start_y);
+  spdlog::debug("  _num_x:             {}", _num_x);
+  spdlog::debug("  _num_y:             {}", _num_y);
+  spdlog::debug("  _max_num_x:         {}", _max_num_x);
+  spdlog::debug("  _max_num_y:         {}", _max_num_y);
+  spdlog::debug("  _image_w:         {}", _image_w);
+  spdlog::debug("  _image_h:         {}", _image_h);
 }
 
 void qhy_alpaca_camera::initialize() {
@@ -271,12 +267,6 @@ void qhy_alpaca_camera::initialize() {
   // a failed initialization of camera?
   qhy_res = QHYCCD_ERROR;
 
-  spdlog::debug("Setting bin mode in camera to {}. ", _bin_x);
-  qhy_res = QHYCCD_ERROR;
-  qhy_res = SetQHYCCDBinMode(_cam_handle, _bin_x, _bin_y);
-  if (qhy_res != QHYCCD_SUCCESS)
-    spdlog::warn("failed to set bin mode via SDK.");
-
   qhy_res = InitQHYCCD(_cam_handle);
   if (qhy_res == QHYCCD_SUCCESS) {
     spdlog::debug("InitQHYCCD successful");
@@ -287,12 +277,18 @@ void qhy_alpaca_camera::initialize() {
         fmt::format("InitQHYCCD failed, err code: {}", qhy_res));
   }
 
+  spdlog::debug("Setting bin mode in camera to {}. ", _bin_x);
+  qhy_res = QHYCCD_ERROR;
+  qhy_res = SetQHYCCDBinMode(_cam_handle, _bin_x, _bin_y);
+  if (qhy_res != QHYCCD_SUCCESS)
+    spdlog::warn("failed to set bin mode via SDK.");
+
+  SetQHYCCDParam(_cam_handle, CONTROL_ID::CONTROL_TRANSFERBIT, _bpp);
+
   chip_info();
   set_gain(_gain);
   set_offset(_offset);
-  chip_info();
-
-  SetQHYCCDParam(_cam_handle, CONTROL_ID::CONTROL_TRANSFERBIT, _bpp);
+  // chip_info();
 
   if (IsQHYCCDControlAvailable(_cam_handle, CONTROL_ID::CONTROL_USBTRAFFIC) ==
       QHYCCD_SUCCESS) {
@@ -513,7 +509,7 @@ qhy_alpaca_camera::qhy_alpaca_camera(std::string &camera_id)
       _max_bin(1), _fast_readout(false), _readout_mode(0),
       _last_exposure_duration(0), _can_control_cooler_power(false),
       _effective_num_x(0), _effective_num_y(0), _effective_start_x(0),
-      _effective_start_y(0), _include_overscan(false), _max_num_x(0),
+      _effective_start_y(0), _include_overscan(true), _max_num_x(0),
       _max_num_y(0), _percent_complete(100), _set_cooler_power(0),
       _can_control_ccd_temp(false), _run_cooler_thread(false),
       _has_filter_wheel(false), _last_camera_temp(0), _last_cooler_power(0),
@@ -567,7 +563,7 @@ int qhy_alpaca_camera::set_bin_x(short x) {
   if (x > _max_bin || x < 1)
     return -1;
 
-  // if (SetQHYCCDBinMode(_cam_handle, x, x) == QHYCCD_SUCCESS) {
+  // SetQHYCCDBinMode(_cam_handle, x, x);
   //   chip_info();
 
   if (x != _bin_x)
@@ -867,11 +863,8 @@ void qhy_alpaca_camera::read_image_from_camera() {
     spdlog::trace("Successfully executed GetQHYCCDSingleFrame with {} size",
                   img_size);
     spdlog::trace("setting camera state to idle");
-    _camera_state = camera_state_enum::CAMERA_IDLE;
-  } else {
-    // TODO: push last error here
-    _camera_state = camera_state_enum::CAMERA_ERROR;
   }
+  _camera_state = camera_state_enum::CAMERA_IDLE;
 }
 
 bool qhy_alpaca_camera::image_ready() {
@@ -1134,7 +1127,7 @@ int qhy_alpaca_camera::set_resolution(const uint32_t start_x,
                 _effective_num_x, _effective_num_y, _effective_start_x,
                 _effective_start_y);
 
-  if (num_x > _effective_num_x) {
+  if (num_x > _effective_num_x / _bin_x) {
     spdlog::warn("NumX: {} exceeds maximum of {}", num_x, _effective_num_x);
     throw alpaca_exception(alpaca_exception::INVALID_VALUE,
                            fmt::format("NumX: {} exceeds "
@@ -1142,21 +1135,21 @@ int qhy_alpaca_camera::set_resolution(const uint32_t start_x,
                                        num_x, _effective_num_x));
   }
 
-  if (num_y > _effective_num_y) {
+  if (num_y > _effective_num_y / _bin_x) {
     spdlog::warn("NumY: {} exceeds maximum of {}", num_y, _effective_num_y);
     throw alpaca_exception(
         alpaca_exception::INVALID_VALUE,
         fmt::format("NumY: {} exceeds maximum of {}", num_y, _effective_num_y));
   }
 
-  if (start_x > _effective_num_x) {
+  if (start_x > _effective_num_x / _bin_x) {
     spdlog::warn("StartX: {} exceeds maximum of {}", start_x, _effective_num_x);
     throw alpaca_exception(alpaca_exception::INVALID_VALUE,
                            fmt::format("StartX: {} exceeds maximum of {}",
                                        start_x, _effective_num_x));
   }
 
-  if (start_y > _effective_num_y) {
+  if (start_y > _effective_num_y / _bin_x) {
     spdlog::warn("StartY: {} exceeds maximum of {}", start_y, _effective_num_y);
     throw alpaca_exception(alpaca_exception::INVALID_VALUE,
                            fmt::format("StartY: {} exceeds maximum of {}",
@@ -1308,10 +1301,13 @@ int qhy_alpaca_camera::readout_mode() { return _readout_mode; }
 
 int qhy_alpaca_camera::set_readout_mode(int idx) {
   spdlog::debug("set_readout_mode called with {}", idx);
-  spdlog::debug("_read_mode_names.size() {}", _read_mode_names.size());
   if (idx < _read_mode_names.size()) {
-    if (idx != _readout_mode)
+    if (idx != _readout_mode) {
       _needs_initialization = true;
+      _num_x = 0;
+    }
+    else
+      spdlog::debug("skipping initialization as read mode is not changed");
     _readout_mode = idx;
     initialize();
   } else {
