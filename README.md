@@ -26,6 +26,12 @@ written drivers for the hardware I have at home:
 - ZWO AM5/AM3 Mount
 - Pegasus FocusCube 3
 
+Everything that I've implemented so far has passed the Alpaca Conform tests
+without issues except for guiding on the declination axis on the AM5. I
+believe that I am emulating the behavior of the official ZWO ASCOM driver on
+this, so I'm not sure if this is a specific issue related to how ZWO has
+implemented their firmware.
+
 Alpaca Hub also implements the discovery protocol as well which is one
 of my favorite parts of the Alpaca protocol.
 
@@ -39,7 +45,7 @@ compiling the project.
 
 ## Running Alpaca Hub
 
-``` 
+```
 Usage: AlpacaHub [OPTION]...
 Open Source Alpaca Implementation
 
@@ -131,13 +137,62 @@ necessarily think it needs to compulsively adhered to.
 
 ### Architecture
 
-### Name ideas for the project
+Alpaca Hub aims to keep things as simple as possible. I have laid out
+the project as follows:
 
-I don't necessarily know if "Alpaca Hub" is the right name.
+#### Server
 
-- Alpacapus
-- Starmada
-- AlpacaBerry
+The web server is implemented on top of
+[Restinio](https://stiffstream.com/en/docs/restinio/0.7/) which is a
+C++ project for building HTTP based web servers. I have blended a
+combination of leveraging the Express style routing along with the
+Easy Parser approach. This allows Alpaca Hub to easily map rest calls
+to the interface design of the various Alpaca interfaces along with
+the usual paramater parsing and general http plumbing in a way that
+I believe is pretty straight forward and easy to understand.
+
+#### Interfaces
+There are 4 key "interfaces" defined as abstract c++ classes for
+Alpaca Hub as it sits today:
+- Camera
+- Filterwheel
+- Telescope
+- Focuser
+
+The interface generally mimics what Alpaca / ASCOM prescribe.
+
+They all live in the `src/interfaces` directory of the project.
+
+Anyone that wants to provide a specific implementation will need
+to implement these abstract classes for their specific hardware.
+
+#### Drivers
+
+The drivers are all implemented as concrete classes against the
+interfaces. They all live in the `src/drivers` folder.
+
+#### General "theory of operation"
+
+The overall intent of the system was to provide a common web interface
+that implements the requisite Alpaca endpoints. The web endpoints tie
+back to the generic interface specification as described by each of
+the interfaces in the `src/interfaces` directory.
+
+Currently, the concrete implementations expose a class level static
+method that is used to interrogate what devices are available and then
+populates the list of devices connected. In the future, this may need
+to be revisited in order to support a more sophisticated approach to
+having multiple concrete implementations against the interfaces.
+
+The current code is fairly static at the moment in that it
+interrogates each of the implementations for what devices are
+available.
+
+As previously mentioned in the usage - there is a static number of
+threads configured for the web server that responds and dispatches to
+the concrete implementations of the drivers. However, it is intended
+that the server implementation does not "know" any implementation
+specific details about how a device operates.
 
 ### Other Alpaca devices
 - What is the pattern for another remote alpaca device?
@@ -229,6 +284,9 @@ cmake -B build src
 Note: I need to move these to an issues list / tickets in Github
 
  - [ ] Create web page for project with documentation on usage
+ - [ ] Go through all settings that are currently hard-coded and
+       ensure that they are exposed as configuration
+ - [ ] Implement persistent configuration
  - [ ] Build a downloadable version of this and create a release
  - [ ] Add github actions for build / execution of unit tests
        aka basic CI (Continuous Integration)
@@ -239,14 +297,15 @@ Note: I need to move these to an issues list / tickets in Github
    - Note: I really need a QHY color camera to test this with...
  - [x] Implement QHY Camera driver (mono only)
     - [x] Achieve conformance with ASCOM Conform Tool
-    - [ ] Refactor implementation to clean up weirdness around
+    - [x] Refactor implementation to clean up weirdness around
           initialization and general clumsyness of the code
  - [x] Implement QHY filter wheel driver
    - [x] Achieve conformance with ASCOM Conform Tool
  - [x] Implement Alpaca discovery
  - [x] Implement telescope mount driver
     - [x] Achieve conformance with ASCOM Conform Tool (there are a few
-      issues to work through on this)
+          issues to work through on this regarding pulseguide in dec
+          axis)
  - [x] Implement focuser driver
  - [ ] Implement better descriptions in device driver implementations
  - [ ] Implement firmware version to data pulled into the device
