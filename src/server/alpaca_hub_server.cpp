@@ -103,8 +103,6 @@ restinio::request_handling_status_t api_v1_handler::on_get_device_common(
   }
 
   try {
-    // TODO: This is camera specific as written, but this code should
-    // work for all device types as far as a generic device pre-handler
     if (!device_map[device_type].empty()) {
       auto the_device = std::dynamic_pointer_cast<i_alpaca_device>(
           device_map[device_type][device_num]);

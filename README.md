@@ -23,6 +23,10 @@ reason I decided to implement this!
 At the moment, the list of hardware supported is not huge, but I have
 written drivers for the hardware I have at home:
 - QHY cameras (mono) and attached Filterwheels
+  - Specific QHY Hardware I've tested:
+    - QHY9 + FW
+    - QHY5II-L-M
+    - QHYIII-568M
 - ZWO AM5/AM3 Mount
 - Pegasus FocusCube 3
 
@@ -283,7 +287,7 @@ cmake -B build src
 
 Note: I need to move these to an issues list / tickets in Github
 
- - [ ] Create web page for project with documentation on usage
+ - [x] Create web page for project with documentation on usage
  - [ ] Go through all settings that are currently hard-coded and
        ensure that they are exposed as configuration
  - [ ] Implement persistent configuration
