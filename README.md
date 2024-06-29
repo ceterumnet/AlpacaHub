@@ -4,22 +4,120 @@
 
 With a focus on astrophotography use cases, Alpaca Hub is an open
 source ASCOM Alpaca server that provides structure and implementation
-for running one or more devices as exposed and discoverable via the
-Alpaca Protocol specified here -
+for running one or more devices directly connected via USB or Serial
+as exposed and discoverable via the Alpaca Protocol specified here -
 https://www.ascom-standards.org/AlpacaDeveloper/Index.htm.
 
-One of the goals of this project is to make sure that ASCOM Alpaca is
-more generally available for people that want to leverage network
-attached astronomy gear. I really think that the folks over at ASCOM
-have done an amazing job of carrying the torch around interoperability
-in Astronomy equipment for a long time now.
+One of the broader goals of this project is to make sure that ASCOM
+Alpaca is more generally available for people that want to leverage
+network attached astronomy gear. I really think that the folks over at
+ASCOM have done an amazing job of carrying the torch around
+interoperability in Astronomy equipment for a long time now.
 
 For example, my favorite astrophotography software is
 [NINA](https://nighttime-imaging.eu/). NINA has excellent support for
 ASCOM and also the Alpaca protocol which is actually the original
 reason I decided to implement this!
 
-## What is supported now?
+But this is certainly not the only useful situation where one might
+want to use Alpaca Hub.
+
+In order to understand where Alpaca Hub sits in the landscape of
+software for astrophotography, I will walk through a bit more of the
+potential scenarios that people may have.
+
+## Use cases and where Alpaca Hub fits in the ecosystem
+
+In general, all devices that an astrophotographer wants to control
+and/or automate, we need the ability to connect such a device to a
+computer / appliance that has USB and/or serial ports. The computer /
+appliance that the device is connected must be have a driver which is
+a piece of software that understands the devices native protocol. Many
+of the vendors provide native SDKs, ASCOM / Alpaca, INDI, or Indigo
+drivers. Additionally, the open source communities also provide such
+drivers when the vendor does not.
+
+We are definitely living in an era where there are so many different
+options that most use cases _are_ be supported.
+
+For many, simply running a Windows laptop connected to the imaging
+equipment will be the easiest and most simple approach. If this is
+you, there probably is not a need to complicate things by adding
+network based connectivity such as Alpaca Hub.
+
+However, for many of us, we want / need to run our equipment attached
+to one or more devices which introduces the "networked" aspect.
+
+There are already a lot of options for those that have the networked
+use case for their astrophotography gear. For example, if one is happy
+running Windows on all of the devices that their equipment connects -
+there is no need for Alpaca Hub. This is fully supported now through
+ASCOM Remote. ASCOM Remote allows the all of the various ASCOM native
+drivers to be exposed as Alpaca devices today.
+
+And also, if folks are wanting to run Linux on their devices - INDI
+and Indigo also support network based solutions. These are also
+amazing initiatives that have done a phenomenal job of expanding the
+amount of possible ways we can connect and manage / automate our gear.
+
+But I found that there is a particular set of use cases which none of
+these options seem to provide at the moment. I really want an Operating
+System agnostic solution where I can pick and choose what I want to run
+for my automation and acquisition vs which operating system is running
+on the devices I'm connecting my equipment.
+
+As I mentioned earlier, I _love_ NINA as a platform for automating my
+imaging. It currently only runs on Windows. What I found is that NINA
+has strong support for Native Drivers via the Vendors' SDKs, ASCOM,
+and ASCOM Alpaca. However, native Alpaca support for devices was
+lacking. I will give a shout out to Pegasus Astro
+on this one as they have definitely embraced implementing the
+different standards on their devices to maximize support for these use
+cases.
+
+However, for those that _love_ Kstars / EKOS, Alpaca Hub is not for
+you. The INDI folks have absolutely solved this in a cross platform
+way.
+
+Where Alpaca Hub aims to provide additional coverage is for use cases
+where a vendor has not provided native Alpaca support AND a user wants
+to run their devices attached to a Linux based device such as
+Raspberry Pi or many other potential options as opposed to being
+directly attached to Windows native device.
+
+Additionally, I mentioned before, I'd like to make supporting the
+general use case of native Alpaca support easier for vendors
+potentially through this commercially friendly open source project.
+Vendors are free to use this project however it may benefit
+them. But since they already provide SDKs, I also want it to be really
+easy for the community to provide Alpaca support as well.
+
+## FAQ
+
+If anything is missing from this list, please don't hesitate to file
+a GitHub issue requesting an answer to a question.
+
+### How is this different from ASCOM Remote?
+
+ASCOM remote is a Windows based application that allows one to easily
+expose any device that supports ASCOM as an Alpaca device. Therefore,
+if one is running Windows as the operating system which their devices
+are attached, I strongly recommend using ASCOM Remote to expose these
+devices as it is very mature and will get the job done.
+
+Where Alpaca Hub differs is that it is intended to be hub that exposes
+non-ASCOM native or non-Windows connected devices as Alpaca devices.
+
+### How do I get support added for my device?
+
+1. I am happy to actually implement drivers for devices I do not
+   own. Please submit a GitHub issue if you have a desire for a
+   specific device to be supported.
+2. If you are a coder and want to implement support, please reach out
+   to me and I'm happy to help / walk through questions and accept PRs
+   for device support.
+
+### What is supported now?
 At the moment, the list of hardware supported is not huge, but I have
 written drivers for the hardware I have at home:
 - QHY cameras (mono) and attached Filterwheels
