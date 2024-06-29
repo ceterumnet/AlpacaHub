@@ -38,7 +38,7 @@ drivers. Additionally, the open source communities also provide such
 drivers when the vendor does not.
 
 We are definitely living in an era where there are so many different
-options that most use cases _are_ be supported.
+options that most use cases _are_ supported with current options.
 
 For many, simply running a Windows laptop connected to the imaging
 equipment will be the easiest and most simple approach. If this is
