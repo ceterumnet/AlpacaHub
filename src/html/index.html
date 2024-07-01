@@ -94,7 +94,7 @@
                  },
                  fetchDeviceDetails(device) {
                      console.log("fetching device details, busy? ", device.busy);
-                     fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/details")
+                     fetch("/api/v1/" + device.DeviceType.toLowerCase() + "/" + device.DeviceNumber + "/details")
                          .then((_res) => {
                              return _res.json()
                          }).catch((e) => {console.log("_res e: ", e)})
@@ -112,7 +112,7 @@
                                  if(!device.Position) {
                                      device.Position = _data.Value["Position"];
                                  }
-                                 if(device.DeviceType == 'focuser' && device.Details.Moving) {
+                                 if(device.DeviceType.toLowerCase() == 'focuser' && device.Details.Moving) {
                                      device.busy = true;
                                  } else {
                                      device.busy = false;
@@ -128,7 +128,7 @@
                      let connected_value = "True";
                      if(device.Connected == true)
                          connected_value = "False"
-                     fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/connected", {
+                     fetch("/api/v1/" + device.DeviceType.toLowerCase() + "/" + device.DeviceNumber + "/connected", {
                          method: 'PUT',
                          headers: {
                              'Content-Type': 'application/json'
@@ -157,7 +157,7 @@
                      device.busy = true;
                      let date_now = new Date();
                      var date_iso_str = date_now.toISOString();
-                     fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/utcdate", {
+                     fetch("/api/v1/" + device.DeviceType.toLowerCase() + "/" + device.DeviceNumber + "/utcdate", {
                          method: 'PUT',
                          headers: {
                              'Content-Type': 'application/json'
@@ -182,7 +182,7 @@
                  },
                  setLatitude(device) {
                      device.busy = true;
-                     fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/sitelatitude", {
+                     fetch("/api/v1/" + device.DeviceType.toLowerCase() + "/" + device.DeviceNumber + "/sitelatitude", {
                          method: 'PUT',
                          headers: {
                              'Content-Type': 'application/json'
@@ -208,7 +208,7 @@
                  },
                  setLongitude(device) {
                      device.busy = true;
-                     fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/sitelongitude", {
+                     fetch("/api/v1/" + device.DeviceType.toLowerCase() + "/" + device.DeviceNumber + "/sitelongitude", {
                          method: 'PUT',
                          headers: {
                              'Content-Type': 'application/json'
@@ -234,7 +234,7 @@
                  },
                  setElevation(device) {
                      device.busy = true;
-                     fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/siteelevation", {
+                     fetch("/api/v1/" + device.DeviceType.toLowerCase() + "/" + device.DeviceNumber + "/siteelevation", {
                          method: 'PUT',
                          headers: {
                              'Content-Type': 'application/json'
@@ -259,7 +259,7 @@
                          });
                  },
                  moveNorth(device) {
-                     fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/moveaxis", {
+                     fetch("/api/v1/" + device.DeviceType.toLowerCase() + "/" + device.DeviceNumber + "/moveaxis", {
                          method: 'PUT',
                          headers: {
                              'Content-Type': 'application/json'
@@ -281,7 +281,7 @@
                          });
                  },
                  stopMoveNorth(device) {
-                     fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/moveaxis", {
+                     fetch("/api/v1/" + device.DeviceType.toLowerCase() + "/" + device.DeviceNumber + "/moveaxis", {
                          method: 'PUT',
                          headers: {
                              'Content-Type': 'application/json'
@@ -303,7 +303,7 @@
                          });
                  },
                  moveSouth(device) {
-                     fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/moveaxis", {
+                     fetch("/api/v1/" + device.DeviceType.toLowerCase() + "/" + device.DeviceNumber + "/moveaxis", {
                          method: 'PUT',
                          headers: {
                              'Content-Type': 'application/json'
@@ -325,7 +325,7 @@
                          });
                  },
                  stopMoveSouth(device) {
-                     fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/moveaxis", {
+                     fetch("/api/v1/" + device.DeviceType.toLowerCase() + "/" + device.DeviceNumber + "/moveaxis", {
                          method: 'PUT',
                          headers: {
                              'Content-Type': 'application/json'
@@ -347,7 +347,7 @@
                          });
                  },
                  moveEast(device) {
-                     fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/moveaxis", {
+                     fetch("/api/v1/" + device.DeviceType.toLowerCase() + "/" + device.DeviceNumber + "/moveaxis", {
                          method: 'PUT',
                          headers: {
                              'Content-Type': 'application/json'
@@ -369,7 +369,7 @@
                          });
                  },
                  stopMoveEast(device) {
-                     fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/moveaxis", {
+                     fetch("/api/v1/" + device.DeviceType.toLowerCase() + "/" + device.DeviceNumber + "/moveaxis", {
                          method: 'PUT',
                          headers: {
                              'Content-Type': 'application/json'
@@ -391,7 +391,7 @@
                          });
                  },
                  moveWest(device) {
-                     fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/moveaxis", {
+                     fetch("/api/v1/" + device.DeviceType.toLowerCase() + "/" + device.DeviceNumber + "/moveaxis", {
                          method: 'PUT',
                          headers: {
                              'Content-Type': 'application/json'
@@ -413,7 +413,7 @@
                          });
                  },
                  stopMoveWest(device) {
-                     fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/moveaxis", {
+                     fetch("/api/v1/" + device.DeviceType.toLowerCase() + "/" + device.DeviceNumber + "/moveaxis", {
                          method: 'PUT',
                          headers: {
                              'Content-Type': 'application/json'
@@ -435,7 +435,7 @@
                          });
                  },
                  homeTelescope(device) {
-                     fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/findhome", {
+                     fetch("/api/v1/" + device.DeviceType.toLowerCase() + "/" + device.DeviceNumber + "/findhome", {
                          method: 'PUT',
                          headers: {
                              'Content-Type': 'application/json'
@@ -457,7 +457,7 @@
                  },
                  setFocuserPosition(device) {
                      device.busy = true;
-                     fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/move", {
+                     fetch("/api/v1/" + device.DeviceType.toLowerCase() + "/" + device.DeviceNumber + "/move", {
                          method: 'PUT',
                          headers: {
                              'Content-Type': 'application/json'
@@ -484,7 +484,7 @@
                  },
                  haltFocuser(device) {
                      device.busy = true;
-                     fetch("/api/v1/" + device.DeviceType + "/" + device.DeviceNumber + "/halt", {
+                     fetch("/api/v1/" + device.DeviceType.toLowerCase() + "/" + device.DeviceNumber + "/halt", {
                          method: 'PUT',
                          headers: {
                              'Content-Type': 'application/json'
@@ -616,7 +616,7 @@
                                 </div>
                                 <div v-show="device.Connected"
                                      class="col s4"
-                                     v-if="device.DeviceType == 'telescope'">
+                                     v-if="device.DeviceType.toLowerCase() == 'telescope'">
                                     <div class="row">
                                         <div class="col s4 center"></div>
                                         <div class="col s4 center">
@@ -734,7 +734,7 @@
                                                     Set Longitude
                                                 </button>
                                             </div>
-                                            <div class="input-field" v-if="key === 'Position' && device.DeviceType == 'focuser'">
+                                            <div class="input-field" v-if="key === 'Position' && device.DeviceType.toLowerCase() == 'focuser'">
                                                 <input
                                                     v-model="device.Position"
                                                     id="focuser_position"
