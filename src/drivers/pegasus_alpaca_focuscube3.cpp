@@ -10,14 +10,18 @@
 
 std::vector<std::string> pegasus_alpaca_focuscube3::serial_devices() {
   std::vector<std::string> serial_devices;
-  auto fs =
-      std::filesystem::path("/dev/serial/by-id");
+  try {
+    auto fs = std::filesystem::path("/dev/serial/by-id");
 
-  for(auto dir_iter : std::filesystem::directory_iterator{fs}) {
-    if (dir_iter.path().string().find("PegasusAstro_FocusCube3") != std::string::npos) {
-      spdlog::debug("Found focuscube3: {}", dir_iter.path().string());
-      serial_devices.push_back(dir_iter.path().string());
+    for (auto dir_iter : std::filesystem::directory_iterator{fs}) {
+      if (dir_iter.path().string().find("PegasusAstro_FocusCube3") !=
+          std::string::npos) {
+        spdlog::debug("Found focuscube3: {}", dir_iter.path().string());
+        serial_devices.push_back(dir_iter.path().string());
+      }
     }
+  } catch (std::exception &e) {
+    spdlog::error("Problem enumerating serial by id: {}", e.what());
   }
 
   return serial_devices;
