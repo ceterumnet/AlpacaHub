@@ -40,7 +40,7 @@
                          }
 
                          if(visibility.match(/edit/)) {
-                             let chunks = visibility.match(/edit\/(telescope|camera|filterwheel|focuser)\/([0-9]+)/);
+                             let chunks = visibility.match(/edit\/(telescope|camera|filterwheel|focuser)\/([0-9]+)/i);
                              if(chunks.length > 2) {
                                  this.devicesSelected = true;
                                  this.setupSelected = false;
