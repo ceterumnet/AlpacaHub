@@ -358,6 +358,39 @@ and enumerate them here
 1. Download and install QHY SDK
 2. Checkout Alpaca Hub locally
 
+### Additional dependencies that must be installed
+
+Alpaca Hub also requires the following development libraries:
+
+``` bash
+sudo apt-get install uuid-dev
+sudo apt-get install libcurl4-gnutls-dev
+```
+
+### CMake
+
+Alpaca Hub requires a at least CMake version 3.24 or newer. Some
+distributions are on older versions, so here is the easiest way to
+run a newer distribution of CMake:
+
+In a directory of your choice, download the binary distribution of cmake:
+
+``` bash
+wget https://github.com/Kitware/CMake/releases/download/v3.28.6/cmake-3.28.6-linux-x86_64.sh
+```
+
+There is more than one way to do this, but one example is:
+
+``` bash
+cd /usr/local
+# execute the sh file - it will prompt you with a couple of y/n questions.
+#
+# specifically, for the question about the path - I chose 'n' in order to
+# install in /usr/local
+```
+
+## Build
+
 Generate makefiles
 ``` bash
 cmake -B build src
