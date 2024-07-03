@@ -104,11 +104,11 @@
                                  device.Details = _data;
                                  device.Connected = _data.connected || _data.Connected;
                                  if(!device.Latitude)
-                                     device.Latitude = _data["Site Latitude"];
+                                     device.Latitude = _data["SiteLatitude"];
                                  if(!device.Longitude)
-                                     device.Longitude = _data["Site Longitude"];
+                                     device.Longitude = _data["SiteLongitude"];
                                  if(!device.Elevation)
-                                     device.Elevation = _data["Site Elevation"];
+                                     device.Elevation = _data["SiteElevation"];
                                  if(!device.Position) {
                                      device.Position = _data["Position"];
                                  }

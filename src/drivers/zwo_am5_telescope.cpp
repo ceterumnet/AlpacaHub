@@ -1430,16 +1430,16 @@ zwo_am5_telescope::details() {
   detail_map["Serial Device"] = _serial_device_path;
   if (_connected) {
     // try {
-      detail_map["UTC Date"] = utc_date();
-      detail_map["Right Ascension"] = right_ascension();
+      detail_map["UTCDate"] = utc_date();
+      detail_map["RightAscension"] = right_ascension();
       detail_map["Declination"] = declination();
       detail_map["Azimuth"] = azimuth();
       detail_map["Altitude"] = altitude();
-      detail_map["Site Latitude"] = _site_latitude;
-      detail_map["Site Longitude"] = _site_longitude;
-      detail_map["Site Elevation"] = _site_elevation;
-      detail_map["Sidereal Time"] = sidereal_time();
-      detail_map["Side of Pier"] = side_of_pier();
+      detail_map["SiteLatitude"] = _site_latitude;
+      detail_map["SiteLongitude"] = _site_longitude;
+      detail_map["SiteElevation"] = _site_elevation;
+      detail_map["SiderealTime"] = sidereal_time();
+      detail_map["SideOfPier"] = side_of_pier();
     // } catch (alpaca_exception &e) {
     //   spdlog::warn("problem fetching details: ", e.what());
     // }
