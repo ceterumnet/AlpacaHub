@@ -1514,8 +1514,9 @@ std::shared_ptr<qhy_alpaca_filterwheel> qhy_alpaca_camera::filter_wheel() {
 
 std::string qhy_alpaca_camera::unique_id() { return _camera_id; }
 
-device_variant_t qhy_alpaca_camera::details() {
-  std::map<std::string, device_variant_intermediate_t> detail_map;
+std::map<std::string, device_variant_t>
+qhy_alpaca_camera::details() {
+  std::map<std::string, device_variant_t> detail_map;
   detail_map["Connected"] = _connected;
   detail_map["FilterWheel"] = _has_filter_wheel;
   detail_map["Gain"] = _gain;

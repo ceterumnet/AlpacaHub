@@ -37,7 +37,7 @@ public:
   static void on_camera_unplugged(char *);
   static void on_camera_plugged(char *);
 
-  device_variant_t details();
+  std::map<std::string, device_variant_t> details();
   bool connected();
 
   std::string unique_id();

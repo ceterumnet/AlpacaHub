@@ -11,7 +11,7 @@ public:
 
   pegasus_alpaca_focuscube3();
   ~pegasus_alpaca_focuscube3();
-  device_variant_t details();
+  std::map<std::string, device_variant_t> details();
   bool connected();
   int set_connected(bool);
 

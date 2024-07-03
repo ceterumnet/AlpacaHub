@@ -11,7 +11,7 @@ class qhy_alpaca_camera;
 
 class qhy_alpaca_filterwheel : public i_alpaca_filterwheel {
 public:
-  device_variant_t details();
+  std::map<std::string, device_variant_t> details();
   bool connected();
   int set_connected(bool);
   std::string description();

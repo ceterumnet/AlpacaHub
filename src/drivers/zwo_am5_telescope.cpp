@@ -1423,8 +1423,9 @@ std::string zwo_am5_telescope::get_serial_number() {
   return resp.substr(0, resp.size() - 1);
 }
 
-device_variant_t zwo_am5_telescope::details() {
-  std::map<std::string, device_variant_intermediate_t> detail_map;
+std::map<std::string, device_variant_t>
+zwo_am5_telescope::details() {
+  std::map<std::string, device_variant_t> detail_map;
   detail_map["Connected"] = _connected;
   detail_map["Serial Device"] = _serial_device_path;
   if (_connected) {

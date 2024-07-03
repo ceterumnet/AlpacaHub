@@ -756,8 +756,58 @@ server_handler() {
   // This isn't an official alpaca api, but I wanted a streamlined call
   // so that my web editor can avoid making a dozen calls every time
   // it wants a basic update of information
-  api_handler->add_route_to_router<i_alpaca_device, &i_alpaca_device::details>(
-      router, "details");
+
+  // api_handler->add_route_to_router<i_alpaca_device, &i_alpaca_device::details>(
+  //     router, "details");
+
+  router->http_get(
+      "/api/v1/:device_type/:device_number/details", [](auto req, auto params) {
+        std::shared_ptr<i_alpaca_device> the_device = req->extra_data().device;
+
+        if (!the_device) {
+          spdlog::error("device pointer is null. aborting request");
+          return init_resp(req->create_response(restinio::status_bad_request()))
+              .set_body("major fault occurred.")
+              .done();
+        }
+
+        auto &response_map = req->extra_data().response_map;
+
+        auto raw_qp = restinio::parse_query(req->header().query());
+
+        std::map<std::string, std::string> qp;
+        // device_param_t response_map;
+
+        for (auto &query_param : raw_qp) {
+          std::string key(lowercase(std::string(query_param.first)));
+          qp[key] = query_param.second;
+        }
+
+        response_map["ServerTransactionID"] = get_next_transaction_number();
+
+        try {
+          response_map["ClientID"] =
+              restinio::cast_to<uint32_t>(qp["clientid"]);
+          response_map["ClientTransactionID"] =
+              restinio::cast_to<uint32_t>(qp["clienttransactionid"]);
+        } catch (std::exception &ex) {
+          spdlog::warn("problem with request: {0}", ex.what());
+        }
+
+        auto device_details = the_device->details();
+
+        device_variant_t x = "foobar";
+
+        for(auto device_detail_entry : device_details) {
+          // auto x = device_detail_entry.second;
+
+          response_map[device_detail_entry.first] = device_detail_entry.second;
+        }
+
+        return init_resp(req->create_response())
+            .set_body(nlohmann::json(response_map).dump())
+            .done();
+      });
 
   // GET connected
   api_handler
@@ -2263,9 +2313,11 @@ server_handler() {
       router, "temperature");
 
   // GET details
-  api_handler
-      ->add_route_to_router<i_alpaca_focuser, &i_alpaca_focuser::details>(
-          router, "details");
+  // api_handler
+  //     ->add_route_to_router<i_alpaca_focuser, &i_alpaca_focuser::details>(
+  //         router, "details");
+
+  // router->http_get("/api/v1/")
 
   // PUT tempcomp
   router->http_put(

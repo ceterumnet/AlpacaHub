@@ -122,7 +122,7 @@ public:
   virtual ~i_alpaca_device(){};
   virtual std::vector<std::string> supported_actions() = 0;
   virtual std::string unique_id() = 0;
-  virtual device_variant_t details() = 0;
+  virtual std::map<std::string, device_variant_t> details() = 0;
 };
 
 #endif

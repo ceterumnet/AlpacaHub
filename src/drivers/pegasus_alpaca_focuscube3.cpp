@@ -285,8 +285,9 @@ int pegasus_alpaca_focuscube3::move(const int &pos) {
   return 0;
 }
 
-device_variant_t pegasus_alpaca_focuscube3::details() {
-  std::map<std::string, device_variant_intermediate_t> detail_map;
+std::map<std::string, device_variant_t>
+pegasus_alpaca_focuscube3::details() {
+  std::map<std::string, device_variant_t> detail_map;
   detail_map["Connected"] = _connected;
   detail_map["Serial Device"] = _serial_device_path;
 

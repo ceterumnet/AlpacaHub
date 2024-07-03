@@ -101,16 +101,15 @@
                          .then((_data) => {
                              if(_data.ErrorNumber === 0) {
                                  device.ErrorNumber = 0;
-                                 device.Details = _data.Value;
-                                 device.Connected = _data.Value.Connected;
+                                 device.Details = _data;
                                  if(!device.Latitude)
-                                     device.Latitude = _data.Value["Site Latitude"];
+                                     device.Latitude = _data["Site Latitude"];
                                  if(!device.Longitude)
-                                     device.Longitude = _data.Value["Site Longitude"];
+                                     device.Longitude = _data["Site Longitude"];
                                  if(!device.Elevation)
-                                     device.Elevation = _data.Value["Site Elevation"];
+                                     device.Elevation = _data["Site Elevation"];
                                  if(!device.Position) {
-                                     device.Position = _data.Value["Position"];
+                                     device.Position = _data["Position"];
                                  }
                                  if(device.DeviceType.toLowerCase() == 'focuser' && device.Details.Moving) {
                                      device.busy = true;
