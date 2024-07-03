@@ -102,6 +102,7 @@
                              if(_data.ErrorNumber === 0) {
                                  device.ErrorNumber = 0;
                                  device.Details = _data;
+                                 device.Connected = _data.connected || _data.Connected;
                                  if(!device.Latitude)
                                      device.Latitude = _data["Site Latitude"];
                                  if(!device.Longitude)
