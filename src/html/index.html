@@ -87,6 +87,7 @@
                  editDevice(device) {
                      this.editingDevice = true;
                      this.device = device;
+                     this.device.Details = {};
                      console.log("editing device: ", device);
                  },
                  mounted() {
@@ -97,7 +98,7 @@
                      fetch("/api/v1/" + device.DeviceType.toLowerCase() + "/" + device.DeviceNumber + "/details")
                          .then((_res) => {
                              return _res.json()
-                         }).catch((e) => {console.log("_res e: ", e)})
+                         }).catch((e) => { console.log("_res e: ", e) })
                          .then((_data) => {
                              if(_data.ErrorNumber === 0) {
                                  device.ErrorNumber = 0;
@@ -165,6 +166,26 @@
                              'Content-Type': 'application/json'
                          },
                          body: `Tracking=${tracking_value}`
+                     })
+                             .then((_res) => _res.json())
+                             .then((_data) => {
+                                 device.busy = false;
+                                 if(_data.ErrorNumber === 0) {
+                                     console.log("response: ", _data);
+                                     this.fetchDeviceDetails(device);
+                                 } else {
+                                     device.ErrorNumber = _data.ErrorNumber;
+                                     device.ErrorMessage = _data.ErrorMessage;
+                                 }
+                             });
+                 },
+                 abortSlew(device) {
+                     device.busy = true;
+                     fetch("/api/v1/" + device.DeviceType.toLowerCase() + "/" + device.DeviceNumber + "/abortslew", {
+                         method: 'PUT',
+                         headers: {
+                             'Content-Type': 'application/json'
+                         },
                      })
                              .then((_res) => _res.json())
                              .then((_data) => {
@@ -624,7 +645,9 @@
                         <!-- end error panel -->
 
                         <!-- properties panel  -->
-                        <div class="col s12" v-if="device.Details">
+                        <div class="col s12"
+                             v-if="device && device.Details"
+                             v-effect="device.Details">
                             <div class="row" style="text-size: .75em">
                                 <div class="col s8 valign-wrapper">
                                     <button :class="{ disabled: device.busy }"
@@ -638,14 +661,20 @@
                                           class="black-text green lighten-3 badge right">
                                         {{ device.busy ? 'working...' : '' }}
                                     </span>
+                                    <span v-if="device.Details && device.Details.Slewing"
+                                          style="font-size: .75em"
+                                          class="black-text green lighten-3 badge right">
+                                        {{ device.Details.Slewing ? 'slewing' : ''}}
+                                    </span>
                                 </div>
                                 <div v-show="device.Connected"
                                      class="col s4"
                                      v-if="device.DeviceType.toLowerCase() == 'telescope'">
 
-                                    <div class="row">
+                                    <div class="row" v-if="device && device.Details">
                                         <div class="col s4 center" style="font-size: 11px">
                                             <button @click="setTracking(device)"
+                                                    v-if="device && device.Details"
                                                     class="red lighten-1 btn-small waves-effect waves-light"
                                                     :class="{ green: device.Details.Tracking }">
                                                 <i class="material-icons" style="font-size: 14px">
@@ -661,7 +690,14 @@
                                                     @mouseout="stopMoveNorth(device)">^</button>
                                         </div>
                                         <div class="col s4 center">
-                                            Slewing? {{ device.Details.Slewing }}
+                                            <button style="font-size: 10px;"
+                                                    class="blue lighten-1 btn-small waves-effect waves-light"
+                                                    :class="{ green: device.Details.Slewing }"
+                                                    @click="abortSlew(device)">
+                                                <i class="material-icons" style="font-size: 12px">
+                                                    stop
+                                                </i>
+                                            </button>
                                         </div>
                                     </div>
                                     <div class="row">
