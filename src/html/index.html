@@ -590,7 +590,7 @@
                         </a>
                         <a :class="{ 'blue-grey lighten-4' : setupSelected }"
                            class="blue-grey-text collection-item" href="#">
-                            Setup
+                            Properties
                         </a>
                         <a :class="{ 'blue-grey lighten-4' : logsSelected }"
                            class="blue-grey-text collection-item" href="#/logs">
@@ -856,7 +856,7 @@
                                     <td>{{device.DeviceName}}</td>
                                     <td>{{device.Connected}}</td>
                                     <td>
-                                        <a :href="'#/edit/' + device.DeviceType + '/' + device.DeviceNumber" @click="editDevice(device)" class="blue-grey waves-effect waves-light btn">Setup</a>
+                                        <a :href="'#/edit/' + device.DeviceType + '/' + device.DeviceNumber" @click="editDevice(device)" class="blue-grey waves-effect waves-light btn">Properties</a>
                                     </td>
                                 </tr>
                             </tbody>
