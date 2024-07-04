@@ -103,6 +103,7 @@
                                  device.ErrorNumber = 0;
                                  device.Details = _data;
                                  device.Connected = _data.connected || _data.Connected;
+                                 // device.Tracking = _data.tracking || _data.Tracking;
                                  if(!device.Latitude)
                                      device.Latitude = _data["SiteLatitude"];
                                  if(!device.Longitude)
@@ -152,6 +153,30 @@
                      device.ErrorNumber = null;
                      device.ErrorMessage = null;
                      this.connect(device);
+                 },
+                 setTracking(device) {
+                     device.busy = true;
+                     let tracking_value = "True";
+                     if(device.Details.Tracking == true)
+                         tracking_value = "False"
+                     fetch("/api/v1/" + device.DeviceType.toLowerCase() + "/" + device.DeviceNumber + "/tracking", {
+                         method: 'PUT',
+                         headers: {
+                             'Content-Type': 'application/json'
+                         },
+                         body: `Tracking=${tracking_value}`
+                     })
+                             .then((_res) => _res.json())
+                             .then((_data) => {
+                                 device.busy = false;
+                                 if(_data.ErrorNumber === 0) {
+                                     console.log("response: ", _data);
+                                     this.fetchDeviceDetails(device);
+                                 } else {
+                                     device.ErrorNumber = _data.ErrorNumber;
+                                     device.ErrorMessage = _data.ErrorMessage;
+                                 }
+                             });
                  },
                  setMountTimeFromPC(device) {
                      device.busy = true;
@@ -599,7 +624,7 @@
                         <!-- end error panel -->
 
                         <!-- properties panel  -->
-                        <div class="col s12">
+                        <div class="col s12" v-if="device.Details">
                             <div class="row" style="text-size: .75em">
                                 <div class="col s8 valign-wrapper">
                                     <button :class="{ disabled: device.busy }"
@@ -617,8 +642,17 @@
                                 <div v-show="device.Connected"
                                      class="col s4"
                                      v-if="device.DeviceType.toLowerCase() == 'telescope'">
+
                                     <div class="row">
-                                        <div class="col s4 center"></div>
+                                        <div class="col s4 center" style="font-size: 11px">
+                                            <button @click="setTracking(device)"
+                                                    class="red lighten-1 btn-small waves-effect waves-light"
+                                                    :class="{ green: device.Details.Tracking }">
+                                                <i class="material-icons" style="font-size: 14px">
+                                                    adjust
+                                                </i>
+                                            </button>
+                                        </div>
                                         <div class="col s4 center">
                                             <button style="font-size: 10px;"
                                                     class="blue-grey darken-2 btn-small waves-effect waves-light"
@@ -626,7 +660,9 @@
                                                     @mouseup="stopMoveNorth(device)"
                                                     @mouseout="stopMoveNorth(device)">^</button>
                                         </div>
-                                        <div class="col s4 center"></div>
+                                        <div class="col s4 center">
+                                            Slewing? {{ device.Details.Slewing }}
+                                        </div>
                                     </div>
                                     <div class="row">
                                         <div class="col s4 center">

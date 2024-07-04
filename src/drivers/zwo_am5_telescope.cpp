@@ -1440,6 +1440,8 @@ zwo_am5_telescope::details() {
       detail_map["SiteElevation"] = _site_elevation;
       detail_map["SiderealTime"] = sidereal_time();
       detail_map["SideOfPier"] = side_of_pier();
+      detail_map["Tracking"] = _tracking_enabled;
+      detail_map["Slewing"] = _moving;
     // } catch (alpaca_exception &e) {
     //   spdlog::warn("problem fetching details: ", e.what());
     // }
