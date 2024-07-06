@@ -1,12 +1,12 @@
 #ifndef ALPACA_HUB_SERVER_HPP
 #define ALPACA_HUB_SERVER_HPP
 
-#include "common/alpaca_hub_common.hpp"
 #include "common/alpaca_exception.hpp"
+#include "common/alpaca_hub_common.hpp"
+#include "common/image_bytes.hpp"
 #include "drivers/qhy_alpaca_camera.hpp"
 #include "drivers/qhy_alpaca_filterwheel.hpp"
 #include "http_server_logger.hpp"
-#include "common/image_bytes.hpp"
 #include "interfaces/i_alpaca_camera.hpp"
 #include "interfaces/i_alpaca_device.hpp"
 #include "interfaces/i_alpaca_telescope.hpp"
@@ -47,8 +47,7 @@ static auto core_logger =
     std::make_shared<spdlog::logger>("CORE", console_sink);
 
 namespace alpaca_hub_server {
-
-// Move all of this below to the implementation file
+void enable_client_id_warnings();
 namespace rr = restinio::router;
 using router_t = rr::express_router_t<>;
 

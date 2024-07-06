@@ -1,6 +1,6 @@
 #include "alpaca_hub_server.hpp"
-#include "interfaces/i_alpaca_telescope.hpp"
 #include "interfaces/i_alpaca_focuser.hpp"
+#include "interfaces/i_alpaca_telescope.hpp"
 #include "restinio/cast_to.hpp"
 #include "restinio/request_handler.hpp"
 #include "restinio/router/express.hpp"
@@ -23,6 +23,11 @@ void to_json(nlohmann::json &j, const axis_rate &p) {
 } // namespace nlohmann
 
 namespace alpaca_hub_server {
+
+bool _show_client_id_warnings = false;
+
+void enable_client_id_warnings() { _show_client_id_warnings = true; }
+
 template <typename RESP> RESP init_resp(RESP resp) {
   resp.append_header("Server", "AlpacaHub /v.0.1");
   resp.append_header_date_field().append_header(
@@ -128,7 +133,8 @@ restinio::request_handling_status_t api_v1_handler::on_get_device_common(
         response_map["ClientID"] = restinio::cast_to<uint32_t>(qp["clientid"]);
 
       } catch (std::exception &ex) {
-        spdlog::warn("ClientID not provided or not formatted correctly");
+        if(_show_client_id_warnings)
+          spdlog::warn("ClientID not provided or not formatted correctly");
       }
 
       try {
@@ -136,8 +142,9 @@ restinio::request_handling_status_t api_v1_handler::on_get_device_common(
             restinio::cast_to<uint32_t>(qp["clienttransactionid"]);
 
       } catch (std::exception &ex) {
-        spdlog::warn(
-            "ClientTransactionID not provided or not formatted correctly");
+        if (_show_client_id_warnings)
+          spdlog::warn(
+              "ClientTransactionID not provided or not formatted correctly");
       }
 
       response_map["ServerTransactionID"] = get_next_transaction_number();
@@ -206,14 +213,17 @@ restinio::request_handling_status_t api_v1_handler::on_put_device_common(
   try {
     response_map["ClientID"] = restinio::cast_to<uint32_t>(qp["ClientID"]);
   } catch (std::exception &ex) {
-    spdlog::warn("ClientID not provided or not formatted correctly");
+    if(_show_client_id_warnings)
+      spdlog::warn("ClientID not provided or not formatted correctly");
   }
 
   try {
     response_map["ClientTransactionID"] =
         restinio::cast_to<uint32_t>(qp["ClientTransactionID"]);
   } catch (std::exception &ex) {
-    spdlog::warn("ClientTransactionID not provided or not formatted correctly");
+    if (_show_client_id_warnings)
+      spdlog::warn(
+          "ClientTransactionID not provided or not formatted correctly");
   }
 
   return restinio::request_not_handled();
@@ -230,7 +240,7 @@ device_request_handler_t api_v1_handler::create_handler(std::string hint) {
 template <typename Device_T, auto F>
 restinio::request_handling_status_t
 api_v1_handler::device_get_handler(const device_request_handle_t &req,
-                               std::string hint) {
+                                   std::string hint) {
   std::shared_ptr<Device_T> the_device =
       std::dynamic_pointer_cast<Device_T>(req->extra_data().device);
 
@@ -277,9 +287,9 @@ api_v1_handler::device_put_handler(std::string parameter_key,
       try {
         auto raw_value = qp[parameter_key];
         input_variant = false;
-        if (raw_value == "True")
+        if (raw_value == "True" || raw_value == "true")
           input_variant = true;
-        else if (raw_value == "False")
+        else if (raw_value == "False" || raw_value == "false")
           input_variant = false;
         else {
           response_map["ErrorNumber"] = alpaca_exception::INVALID_VALUE;
@@ -566,8 +576,9 @@ server_handler() {
       response_map["ClientTransactionID"] =
           restinio::cast_to<uint32_t>(qp["clienttransactionid"]);
     } catch (std::exception &ex) {
-      spdlog::warn("problem with request: {} {}", req->header().query(),
-                   ex.what());
+      if(_show_client_id_warnings)
+        spdlog::warn("problem with request: {} {}", req->header().query(),
+                     ex.what());
     }
 
     return init_resp(req->create_response())
@@ -599,7 +610,8 @@ server_handler() {
       response_map["ClientTransactionID"] =
           restinio::cast_to<uint32_t>(qp["clienttransactionid"]);
     } catch (std::exception &ex) {
-      spdlog::warn("problem with request: {0}", ex.what());
+      if(_show_client_id_warnings)
+        spdlog::warn("problem with request: {0}", ex.what());
     }
 
     return init_resp(req->create_response())
@@ -627,7 +639,8 @@ server_handler() {
       response_map["ClientTransactionID"] =
           restinio::cast_to<uint32_t>(qp["clienttransactionid"]);
     } catch (std::exception &ex) {
-      spdlog::warn("problem with request: {0}", ex.what());
+      if(_show_client_id_warnings)
+        spdlog::warn("problem with request: {0}", ex.what());
     }
 
     for (auto d_type_iter : device_map) {
@@ -695,7 +708,8 @@ server_handler() {
     try {
       response_map["ClientID"] = restinio::cast_to<uint32_t>(qp["clientid"]);
     } catch (std::exception &ex) {
-      spdlog::warn("ClientID not provided or not formatted correctly");
+      if(_show_client_id_warnings)
+        spdlog::warn("ClientID not provided or not formatted correctly");
     }
 
     try {
@@ -703,8 +717,9 @@ server_handler() {
           restinio::cast_to<uint32_t>(qp["clienttransactionid"]);
 
     } catch (std::exception &ex) {
-      spdlog::warn(
-          "ClientTransactionID not provided or not formatted correctly");
+      if (_show_client_id_warnings)
+        spdlog::warn(
+            "ClientTransactionID not provided or not formatted correctly");
     }
 
     response_map["ServerTransactionID"] = get_next_transaction_number();
@@ -730,7 +745,8 @@ server_handler() {
     try {
       response_map["ClientID"] = restinio::cast_to<uint32_t>(qp["clientid"]);
     } catch (std::exception &ex) {
-      spdlog::warn("ClientID not provided or not formatted correctly");
+      if (_show_client_id_warnings)
+        spdlog::warn("ClientID not provided or not formatted correctly");
     }
 
     try {
@@ -738,8 +754,9 @@ server_handler() {
           restinio::cast_to<uint32_t>(qp["clienttransactionid"]);
 
     } catch (std::exception &ex) {
-      spdlog::warn(
-          "ClientTransactionID not provided or not formatted correctly");
+      if (_show_client_id_warnings)
+        spdlog::warn(
+            "ClientTransactionID not provided or not formatted correctly");
     }
 
     response_map["ServerTransactionID"] = get_next_transaction_number();
@@ -757,7 +774,8 @@ server_handler() {
   // so that my web editor can avoid making a dozen calls every time
   // it wants a basic update of information
 
-  // api_handler->add_route_to_router<i_alpaca_device, &i_alpaca_device::details>(
+  // api_handler->add_route_to_router<i_alpaca_device,
+  // &i_alpaca_device::details>(
   //     router, "details");
 
   router->http_get(
@@ -791,14 +809,15 @@ server_handler() {
           response_map["ClientTransactionID"] =
               restinio::cast_to<uint32_t>(qp["clienttransactionid"]);
         } catch (std::exception &ex) {
-          spdlog::warn("problem with request: {0}", ex.what());
+          if(_show_client_id_warnings)
+            spdlog::warn("problem with request: {0}", ex.what());
         }
 
         auto device_details = the_device->details();
 
         device_variant_t x = "foobar";
 
-        for(auto device_detail_entry : device_details) {
+        for (auto device_detail_entry : device_details) {
           // auto x = device_detail_entry.second;
 
           response_map[device_detail_entry.first] = device_detail_entry.second;
@@ -986,7 +1005,7 @@ server_handler() {
                                    &i_alpaca_camera::heat_sink_temperature>(
       router, "heatsinktemperature");
 
-    // Handler for imagearray and imagearrayvariant
+  // Handler for imagearray and imagearrayvariant
   auto image_array_handler = [](auto req, auto) {
     std::string accept_header = req->header().get_field_or(
         restinio::http_field::accept, "application/imagebytes");
@@ -1018,10 +1037,17 @@ server_handler() {
         spdlog::debug("8bpp for imagebytes");
         // Different
         image_bytes_t<uint8_t> image_bytes;
-        image_bytes.client_transaction_number =
-            std::get<uint32_t>(response_map["ClientTransactionID"]);
+        try {
+          image_bytes.client_transaction_number =
+              std::get<uint32_t>(response_map["ClientTransactionID"]);
+        } catch(std::exception &ex) {
+          spdlog::warn("problem getting ClientTransactionID");
+          image_bytes.client_transaction_number = 99999;
+        }
+
         image_bytes.server_transaction_number =
             std::get<uint32_t>(response_map["ServerTransactionID"]);
+
         image_bytes.image_element_type = 2;
         // Different
         image_bytes.transmission_element_type = 6;
@@ -1048,8 +1074,13 @@ server_handler() {
       } else {
         spdlog::debug("16bpp for imagebytes");
         image_bytes_t<uint16_t> image_bytes;
-        image_bytes.client_transaction_number =
-            std::get<uint32_t>(response_map["ClientTransactionID"]);
+        try {
+          image_bytes.client_transaction_number =
+              std::get<uint32_t>(response_map["ClientTransactionID"]);
+        } catch (std::exception &ex) {
+          spdlog::warn("problem getting ClientTransactionID");
+          image_bytes.client_transaction_number = 99999;
+        }
         image_bytes.server_transaction_number =
             std::get<uint32_t>(response_map["ServerTransactionID"]);
         image_bytes.image_element_type = 2;
@@ -1355,9 +1386,9 @@ server_handler() {
           .done();
     }
 
-    if (is_light_value == "True")
+    if (is_light_value == "True" || is_light_value == "true")
       conv_is_light_value = true;
-    else if (is_light_value == "False")
+    else if (is_light_value == "False" || is_light_value == "false")
       conv_is_light_value = false;
     else {
       response_map["ErrorNumber"] = alpaca_exception::INVALID_VALUE;
@@ -2308,9 +2339,9 @@ server_handler() {
       router, "tempcompavailable");
 
   // GET temperature
-  api_handler->add_route_to_router<i_alpaca_focuser,
-                                   &i_alpaca_focuser::temperature>(
-      router, "temperature");
+  api_handler
+      ->add_route_to_router<i_alpaca_focuser, &i_alpaca_focuser::temperature>(
+          router, "temperature");
 
   // GET details
   // api_handler
@@ -2324,7 +2355,7 @@ server_handler() {
       "/api/v1/focuser/:device_number/tempcomp",
       api_handler->device_put_handler<bool, i_alpaca_focuser,
                                       &i_alpaca_focuser::set_temp_comp>(
-                                        "TempComp", true));
+          "TempComp", true));
 
   // PUT halt
   router->http_put("/api/v1/focuser/:device_number/halt",

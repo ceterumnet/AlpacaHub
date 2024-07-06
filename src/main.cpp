@@ -93,6 +93,23 @@ int main(int argc, char **argv) {
     }
   }
 
+  bool auto_connect_devices = false;
+  for (int i = 1; i < argc; i++) {
+    if (std::string(argv[i]) == "-cw") {
+      alpaca_hub_server::enable_client_id_warnings();
+    }
+
+    if (std::string(argv[i]) == "-ac") {
+      auto_connect_devices = true;
+    }
+
+    else if (i + 1 < argc) {
+      std::string arg = argv[i];
+      std::string arg_v = argv[i + 1];
+      cli_args[arg] = arg_v;
+    }
+  }
+
   if (show_help) {
     // this is kinda ugly. I may need to add a basic args library to avoid this
     // hand wrapped shit.
@@ -184,6 +201,15 @@ int main(int argc, char **argv) {
     telescope_ptr->set_serial_device(iter);
     spdlog::info("Adding ZWO mount at {}", iter);
     alpaca_hub_server::device_map["telescope"].push_back(telescope_ptr);
+
+    if (auto_connect_devices) {
+      spdlog::info("Attempting to autoconnect: {}", iter);
+      try {
+        telescope_ptr->set_connected(true);
+      } catch (std::exception &ex) {
+        spdlog::error("Failed to autoconnect device: {}", iter);
+      }
+    }
   }
 
   for (auto iter : pegasus_alpaca_focuscube3::serial_devices()) {
@@ -191,6 +217,15 @@ int main(int argc, char **argv) {
     focuser_ptr->set_serial_device(iter);
     spdlog::info("Adding Pegasus Focuser at {}", iter);
     alpaca_hub_server::device_map["focuser"].push_back(focuser_ptr);
+
+    if (auto_connect_devices) {
+      spdlog::info("Attempting to autoconnect: {}", iter);
+      try {
+        focuser_ptr->set_connected(true);
+      } catch (std::exception &ex) {
+        spdlog::error("Failed to autoconnect device: {}", iter);
+      }
+    }
   }
 
   try {
@@ -213,6 +248,15 @@ int main(int argc, char **argv) {
 
       alpaca_hub_server::device_map["camera"].push_back(cam_ptr);
 
+      if(auto_connect_devices) {
+        spdlog::info("Attempting to autoconnect: {}", camera_item);
+        try {
+          cam_ptr->set_connected(true);
+        } catch(std::exception &ex) {
+          spdlog::error("Failed to autoconnect device: {}", camera_item);
+        }
+      }
+
       // This is for QHY camera attached filter wheels
       if (cam_ptr->has_filter_wheel()) {
         auto fw_ptr = cam_ptr->filter_wheel();
@@ -222,6 +266,14 @@ int main(int argc, char **argv) {
         spdlog::debug(
             "                     connected:{0}",
             alpaca_hub_server::device_map["filterwheel"][0]->connected());
+        if (auto_connect_devices) {
+          spdlog::info("Attempting to autoconnect attached filterwheel");
+          try {
+            cam_ptr->filter_wheel()->set_connected(true);
+          } catch (std::exception &ex) {
+            spdlog::error("Failed to autoconnect attached filterwheel");
+          }
+        }
       }
     }
 

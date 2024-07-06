@@ -413,13 +413,13 @@ int zwo_am5_telescope::set_guide_rate_ascension(const double &rate) {
 }
 
 bool zwo_am5_telescope::is_pulse_guiding() {
-  spdlog::debug("is_pulse_guiding() invoked");
+  spdlog::trace("is_pulse_guiding() invoked");
   return _is_pulse_guiding;
 }
 
 double zwo_am5_telescope::right_ascension() {
   throw_if_not_connected();
-  spdlog::debug("right_ascension() invoked");
+  spdlog::trace("right_ascension() invoked");
   std::string resp = send_command_to_mount(zwoc::cmd_get_current_ra());
   spdlog::trace("ra returned: {0}", resp);
   auto parsed_resp = zwor::parse_hh_mm_ss_response(resp);
