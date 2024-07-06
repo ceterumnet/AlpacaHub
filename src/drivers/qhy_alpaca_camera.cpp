@@ -1433,7 +1433,7 @@ int qhy_alpaca_camera::readout_mode() {
 
 int qhy_alpaca_camera::set_readout_mode(int idx) {
   throw_if_not_connected();
-  std::lock_guard lock(_cam_mutex);
+  // std::lock_guard lock(_cam_mutex);
   spdlog::debug("set_readout_mode called with {}", idx);
   if (idx < _read_mode_names.size()) {
     if (idx != _readout_mode) {
