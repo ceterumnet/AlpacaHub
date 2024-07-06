@@ -78,5 +78,11 @@ std::string qhy_alpaca_filterwheel::unique_id() {
 std::map<std::string, device_variant_t>
 qhy_alpaca_filterwheel::details() {
   std::map<std::string, device_variant_t> detail_map;
+  detail_map["Connected"] = _connected;
+  if (_connected) {
+    detail_map["Position"] = position();
+    detail_map["Names"] = names();
+    detail_map["FocusOffsets"] = focus_offsets();
+  }
   return detail_map;
 };
