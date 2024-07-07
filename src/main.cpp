@@ -115,15 +115,16 @@ int main(int argc, char **argv) {
     // hand wrapped shit.
     std::cout
         << "Usage: AlpacaHub [OPTION]..." << std::endl
-        << "Open Source Alpaca Implementation "
-        << std::endl << std::endl
+        << "Open Source Alpaca Implementation " << std::endl
+        << std::endl
         << "  -h                     Displays this help message" << std::endl
         << std::endl
         << "  -l LEVEL               Set the log to LEVEL:" << std::endl
         << "                           1 - INFO (default)" << std::endl
         << "                           2 - DEBUG" << std::endl
         << "                           3 - TRACE" << std::endl
-        << "                           4 - TRACE +" << std::endl << std::endl
+        << "                           4 - TRACE +" << std::endl
+        << std::endl
         << "  -t THREAD_COUNT        Sets the number of concurrent threads "
         << std::endl
         << "                         for the web server. 4 threads is the "
@@ -135,6 +136,11 @@ int main(int argc, char **argv) {
         << "  -p PORT                Sets the web server to listen on "
         << std::endl
         << "                         PORT. Default is port 8080" << std::endl
+        << "  -cw                    Enable ClientID and ClientTransactionID "
+           "warnings"
+        << std::endl
+        << "  -ac                    Auto-connect devices on startup "
+        << std::endl
         << std::endl;
     return 0;
   }

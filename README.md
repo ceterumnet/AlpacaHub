@@ -166,6 +166,8 @@ Open Source Alpaca Implementation
 
   -p PORT                Sets the web server to listen on
                          PORT. Default is port 8080
+  -cw                    Enable ClientID and ClientTransactionID warnings
+  -ac                    Auto-connect devices on startup warnings
 ```
 
 Here are some screen shots of the web interface:
