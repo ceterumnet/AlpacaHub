@@ -161,6 +161,9 @@ public:
   bool has_filter_wheel();
   std::shared_ptr<qhy_alpaca_filterwheel> filter_wheel();
 
+  int enable_gains_value_mode();
+  int enable_offsets_value_mode();
+
 private:
   void initialize_camera_by_camera_id(std::string &camera_id);
   void initialize();
@@ -267,6 +270,9 @@ private:
 
   bool _bin_changed;
   bool _read_mode_changed;
+
+  std::string _gains_mode;
+  std::string _offsets_mode;
 };
 
 #endif

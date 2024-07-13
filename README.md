@@ -122,9 +122,11 @@ At the moment, the list of hardware supported is not huge, but I have
 written drivers for the hardware I have at home:
 - QHY cameras (mono) and attached Filterwheels
   - Specific QHY Hardware I've tested:
-    - QHY9 + FW
+    - QHY9M + FW
     - QHY5II-L-M
     - QHYIII-568M
+    - QHY268M (pending testing)
+    - QHY Filterwheel 3 (pending testing)
 - ZWO AM5/AM3 Mount
 - Pegasus FocusCube 3
 
@@ -165,9 +167,15 @@ Open Source Alpaca Implementation
   -d                     Disable Alpaca Discovery
 
   -p PORT                Sets the web server to listen on
+
                          PORT. Default is port 8080
   -cw                    Enable ClientID and ClientTransactionID warnings
-  -ac                    Auto-connect devices on startup warnings
+
+  -ac                    Auto-connect devices on startup
+
+  -ov                    Force camera offset value mode
+
+  -gv                    Force camera gain value mode
 ```
 
 Here are some screen shots of the web interface:

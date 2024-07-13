@@ -243,7 +243,7 @@ void qhy_alpaca_camera::chip_info() {
       _max_num_x = _effective_num_x;
       _max_num_y = _effective_num_y;
 
-         // Initialize the start x and y based on the effective values
+      // Initialize the start x and y based on the effective values
       _start_x = eff_start_x;
       _start_y = eff_start_y;
 
@@ -549,7 +549,8 @@ qhy_alpaca_camera::qhy_alpaca_camera(std::string &camera_id)
       _can_control_ccd_temp(false), _run_cooler_thread(false),
       _has_filter_wheel(false), _last_camera_temp(0), _last_cooler_power(0),
       _usb_traffic(5), _bpp(16), __t(_io), _read_mode_changed(true),
-      _bin_changed(true) {
+      _bin_changed(true), _gains_mode("gains_index_mode"),
+      _offsets_mode("offsets_index_mode") {
   initialize_camera_by_camera_id(camera_id);
 };
 
@@ -1105,7 +1106,6 @@ int qhy_alpaca_camera::start_exposure_proc() {
   return -1;
 }
 
-
 // TODO: need to clean up the implementation
 // The threading code is a little kludgy at the moment
 int qhy_alpaca_camera::start_exposure(double duration_seconds, bool is_light) {
@@ -1121,9 +1121,9 @@ int qhy_alpaca_camera::start_exposure(double duration_seconds, bool is_light) {
   initialize();
 
   int qhy_res = QHYCCD_ERROR;
-  if(_bin_changed) {
+  if (_bin_changed) {
     qhy_res = SetQHYCCDBinMode(_cam_handle, _bin_x, _bin_x);
-    if(qhy_res == QHYCCD_ERROR)
+    if (qhy_res == QHYCCD_ERROR)
       spdlog::warn("failed to set bin mode");
     _bin_changed = false;
   }
@@ -1178,12 +1178,6 @@ int qhy_alpaca_camera::stop_exposure() {
 int qhy_alpaca_camera::sensor_type() {
   throw_if_not_connected();
   uint32_t r = QHYCCD_ERROR;
-  // r = IsQHYCCDControlAvailable(_cam_handle, CONTROL_ID::CAM_COLOR);
-  // if(r != QHYCCD_ERROR) {
-  //     switch (r) {
-  //     case: CONTROL_ID
-  //     }
-  // }
 
   // Monochrome
   return 0;
@@ -1339,15 +1333,17 @@ uint32_t qhy_alpaca_camera::gain() {
 
 uint32_t qhy_alpaca_camera::gain_max() {
   throw_if_not_connected();
-  throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED,
-                         "Use Gains properties");
+  if (_gains_mode == "gains_index_mode")
+    throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED,
+                           "Use Gains properties");
   return _gain_max;
 };
 
 uint32_t qhy_alpaca_camera::gain_min() {
   throw_if_not_connected();
-  throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED,
-                         "Use Gains properties");
+  if (_gains_mode == "gains_index_mode")
+    throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED,
+                           "Use Gains properties");
   return _gain_min;
 };
 
@@ -1357,6 +1353,9 @@ uint32_t qhy_alpaca_camera::gain_min() {
 // details.
 std::vector<std::string> qhy_alpaca_camera::gains() {
   throw_if_not_connected();
+  if (_gains_mode == "gains_value_mode")
+    throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED,
+                           fmt::format("Camera is in GAIN INDEX MODE"));
   return _gains;
 };
 
@@ -1371,7 +1370,7 @@ int qhy_alpaca_camera::set_gain(uint32_t gain) {
   // This probably needs to be rewritten to not obfuscate the behavior as I
   // this this does now.
   int gain_val = gain;
-  if (_gains[0] == "1") {
+  if (_gains[0] == "1" && _gains_mode == "gains_index_mode") {
     gain_val = gain + 1;
   }
 
@@ -1384,7 +1383,7 @@ int qhy_alpaca_camera::set_gain(uint32_t gain) {
   } else {
     throw alpaca_exception(
         alpaca_exception::INVALID_VALUE,
-        fmt::format("attempted to set gain out of range with {}", gain));
+        fmt::format("attempted to set gain out of range with {}", gain_val));
   }
   return -1;
 }
@@ -1408,21 +1407,29 @@ int qhy_alpaca_camera::offset() {
   throw_if_not_connected();
   return _offset;
 }
+
 int qhy_alpaca_camera::offset_max() {
   throw_if_not_connected();
-  throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED,
-                         "Use offsets properties");
+  if (_offsets_mode == "offsets_index_mode")
+    throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED,
+                           "Use offsets properties");
   return _offset_max;
 };
+
 int qhy_alpaca_camera::offset_min() {
   throw_if_not_connected();
-  throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED,
-                         "Use offsets properties");
+  if (_offsets_mode == "offsets_index_mode")
+    throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED,
+                           "Use offsets properties");
   return _offset_min;
 };
 
 std::vector<std::string> qhy_alpaca_camera::offsets() {
   throw_if_not_connected();
+  if (_offsets_mode == "offsets_value_mode")
+    throw alpaca_exception(
+        alpaca_exception::NOT_IMPLEMENTED,
+        "Camera is in offset value mode. Use offset min and max");
   return _offsets;
 }
 
@@ -1479,7 +1486,9 @@ int qhy_alpaca_camera::bayer_offset_y() {
 
 std::vector<std::string> qhy_alpaca_camera::supported_actions() {
   throw_if_not_connected();
-  return std::vector<std::string>();
+  std::vector<std::string> supported_actions;
+  supported_actions.push_back("usbtraffic");
+  return supported_actions;
 }
 
 // I think this needs to be removed
@@ -1514,30 +1523,47 @@ std::shared_ptr<qhy_alpaca_filterwheel> qhy_alpaca_camera::filter_wheel() {
 
 std::string qhy_alpaca_camera::unique_id() { return _camera_id; }
 
-std::map<std::string, device_variant_t>
-qhy_alpaca_camera::details() {
+int qhy_alpaca_camera::enable_gains_value_mode() {
+  _gains_mode = "gains_value_mode";
+  return 0;
+}
+
+int qhy_alpaca_camera::enable_offsets_value_mode() {
+  _offsets_mode = "offsets_value_mode";
+  return 0;
+}
+
+std::map<std::string, device_variant_t> qhy_alpaca_camera::details() {
   std::map<std::string, device_variant_t> detail_map;
   detail_map["Connected"] = _connected;
   detail_map["FilterWheel"] = _has_filter_wheel;
   detail_map["Gain"] = _gain;
-  // detail_map["Gains"] = _gains;
-  detail_map["GainMax"] = _gain_max;
-  detail_map["GainMin"] = _gain_min;
+  if (_gains_mode == "gains_index_mode") {
+    detail_map["Gains"] = _gains;
+  } else {
+    detail_map["GainMax"] = _gain_max;
+    detail_map["GainMin"] = _gain_min;
+  }
   detail_map["BinX"] = _bin_x;
   detail_map["BinY"] = _bin_y;
   detail_map["ImageW"] = _image_w;
   detail_map["ImageH"] = _image_h;
-  detail_map["Offset"] = _offset;
-  detail_map["Offset Max"] = _offset_max;
-  // detail_map["Offsets"] = _offsets;
+  if (_offsets_mode == "offsets_index_mode") {
+    detail_map["Offsets"] = _offsets;
+  } else {
+    detail_map["Offset"] = _offset;
+    detail_map["Offset Max"] = _offset_max;
+  }
   detail_map["Status"] = _camera_state;
   if (_can_control_cooler_power && _connected) {
     detail_map["CoolerPower"] = cooler_power();
     detail_map["CoolerOn"] = cooler_power();
     detail_map["SetTemp"] = _current_set_temp;
   }
-  if(_connected)
+  if (_connected) {
     detail_map["Temp"] = ccd_temperature();
-
+  }
+  detail_map["USBTraffic"] = _usb_traffic;
+  detail_map["ReadMode"] = _readout_mode;
   return detail_map;
 };

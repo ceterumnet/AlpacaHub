@@ -94,6 +94,9 @@ int main(int argc, char **argv) {
   }
 
   bool auto_connect_devices = false;
+  bool gains_value_mode = false;
+  bool offsets_value_mode = false;
+
   for (int i = 1; i < argc; i++) {
     if (std::string(argv[i]) == "-cw") {
       alpaca_hub_server::enable_client_id_warnings();
@@ -101,6 +104,14 @@ int main(int argc, char **argv) {
 
     if (std::string(argv[i]) == "-ac") {
       auto_connect_devices = true;
+    }
+
+    if (std::string(argv[i]) == "-ov") {
+      offsets_value_mode = true;
+    }
+
+    if (std::string(argv[i]) == "-gv") {
+      gains_value_mode = true;
     }
 
     else if (i + 1 < argc) {
@@ -135,13 +146,22 @@ int main(int argc, char **argv) {
         << std::endl
         << "  -p PORT                Sets the web server to listen on "
         << std::endl
+        << std::endl
         << "                         PORT. Default is port 8080" << std::endl
         << "  -cw                    Enable ClientID and ClientTransactionID "
            "warnings"
         << std::endl
+        << std::endl
         << "  -ac                    Auto-connect devices on startup "
         << std::endl
+        << std::endl
+        << "  -ov                    Force camera offset value mode "
+        << std::endl
+        << std::endl
+        << "  -gv                    Force camera gain value mode "
+        << std::endl
         << std::endl;
+
     return 0;
   }
 
@@ -250,9 +270,19 @@ int main(int argc, char **argv) {
     spdlog::info("List of QHY Cameras Found: ");
     for (auto &camera_item : camera_list) {
       auto cam_ptr = std::make_shared<qhy_alpaca_camera>(camera_item);
-      spdlog::info("  camera: [{0}] added", camera_item);
+
+      if(gains_value_mode) {
+        spdlog::info("Enabling gain value mode for: {}", camera_item);
+        cam_ptr->enable_gains_value_mode();
+      }
+
+      if (offsets_value_mode) {
+        spdlog::info("Enabling offset value mode for: {}", camera_item);
+        cam_ptr->enable_offsets_value_mode();
+      }
 
       alpaca_hub_server::device_map["camera"].push_back(cam_ptr);
+      spdlog::info("  camera: [{0}] added", camera_item);
 
       if(auto_connect_devices) {
         spdlog::info("Attempting to autoconnect: {}", camera_item);
