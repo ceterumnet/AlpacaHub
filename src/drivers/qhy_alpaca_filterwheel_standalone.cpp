@@ -108,7 +108,7 @@ std::string qhy_alpaca_filterwheel_standalone::send_command_to_filterwheel(
     if (n_chars_to_read > 0) {
       _io_context.reset();
       // TODO: we may need to make the read timeout configurable here
-      alpaca_hub_serial::blocking_reader reader(cmd, _serial_port, 1000,
+      alpaca_hub_serial::blocking_reader reader(cmd, _serial_port, 250,
                                                 _io_context, false);
       char c;
       int n_chars_read = 0;
@@ -175,17 +175,18 @@ void qhy_alpaca_filterwheel_standalone::update_properties_proc() {
     if (!_busy) {
       resp = send_command_to_filterwheel("NOW", 1);
       _position = std::atoi(resp.data());
+      std::this_thread::sleep_for(1000ms);
     } else {
       // TODO: the mechanics of this are a little janky...needs some
       // rework
-      spdlog::debug("Filterwheel is busy...waiting for idle");
+      spdlog::trace("Filterwheel is busy...waiting for idle");
 
       std::string rsp;
 
       _io_context.reset();
       // TODO: we may need to make the read timeout configurable here
       alpaca_hub_serial::blocking_reader reader("CHECKING RECV", _serial_port,
-                                                500, _io_context);
+                                                100, _io_context, false);
       char c;
       int n_chars_to_read = 1;
       int n_chars_read = 0;
@@ -201,7 +202,6 @@ void qhy_alpaca_filterwheel_standalone::update_properties_proc() {
       if (rsp.length() > 0)
         _busy = false;
     }
-    std::this_thread::sleep_for(500ms);
   }
 }
 

@@ -342,9 +342,14 @@ api_v1_handler::device_put_handler(std::string parameter_key,
         response_map["ErrorNumber"] = alpaca_exception::INVALID_VALUE;
         response_map["ErrorMessage"] =
             fmt::format("Invalid Value for {0} passed", parameter_key);
-        return init_resp(req->create_response(restinio::status_bad_request()))
+
+        return init_resp(req->create_response())
             .set_body(nlohmann::json(response_map).dump())
             .done();
+
+        // return init_resp(req->create_response(restinio::status_bad_request()))
+        //     .set_body(nlohmann::json(response_map).dump())
+        //     .done();
       }
     }
 

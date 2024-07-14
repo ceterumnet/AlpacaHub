@@ -47,7 +47,7 @@ void blocking_reader::time_out(const asio::error_code &error) {
         "explicit if they expect a response or not. Command associated: {}",
         _command);
   else
-    spdlog::debug("Serial timeout for {}", _command);
+    spdlog::trace("Serial timeout for cmd: \"{}\"", _command);
   port.cancel();
 }
 
