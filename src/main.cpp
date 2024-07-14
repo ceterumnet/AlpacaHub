@@ -1,4 +1,5 @@
 #include "drivers/pegasus_alpaca_focuscube3.hpp"
+#include "drivers/qhy_alpaca_filterwheel_standalone.hpp"
 #include "drivers/zwo_am5_telescope.hpp"
 #include "server/alpaca_hub_server.hpp"
 #include <ostream>
@@ -82,7 +83,7 @@ int main(int argc, char **argv) {
 
   std::map<std::string, std::string> cli_args;
   for (int i = 1; i < argc; i++) {
-    if(std::string(argv[i]) == "-h") {
+    if (std::string(argv[i]) == "-h") {
       show_help = true;
       break;
     }
@@ -158,8 +159,7 @@ int main(int argc, char **argv) {
         << "  -ov                    Force camera offset value mode "
         << std::endl
         << std::endl
-        << "  -gv                    Force camera gain value mode "
-        << std::endl
+        << "  -gv                    Force camera gain value mode " << std::endl
         << std::endl;
 
     return 0;
@@ -271,7 +271,7 @@ int main(int argc, char **argv) {
     for (auto &camera_item : camera_list) {
       auto cam_ptr = std::make_shared<qhy_alpaca_camera>(camera_item);
 
-      if(gains_value_mode) {
+      if (gains_value_mode) {
         spdlog::info("Enabling gain value mode for: {}", camera_item);
         cam_ptr->enable_gains_value_mode();
       }
@@ -284,11 +284,11 @@ int main(int argc, char **argv) {
       alpaca_hub_server::device_map["camera"].push_back(cam_ptr);
       spdlog::info("  camera: [{0}] added", camera_item);
 
-      if(auto_connect_devices) {
+      if (auto_connect_devices) {
         spdlog::info("Attempting to autoconnect: {}", camera_item);
         try {
           cam_ptr->set_connected(true);
-        } catch(std::exception &ex) {
+        } catch (std::exception &ex) {
           spdlog::error("Failed to autoconnect device: {}", camera_item);
         }
       }
@@ -314,7 +314,16 @@ int main(int argc, char **argv) {
     }
 
     // TODO: Add standalone filter wheels here
-
+    auto filterwheel_list =
+        qhy_alpaca_filterwheel_standalone::get_connected_filterwheels();
+    for (auto &fw_item : filterwheel_list) {
+      auto fw_ptr = std::make_shared<qhy_alpaca_filterwheel_standalone>(fw_item);
+      alpaca_hub_server::device_map["filterwheel"].push_back(fw_ptr);
+      spdlog::info("filterwheel added at {}", fw_item);
+      if (auto_connect_devices) {
+        fw_ptr->set_connected(true);
+      }
+    }
     // END Implementation specific initialization of various device types:
 
     std::thread discovery_thread;
@@ -358,7 +367,6 @@ int main(int argc, char **argv) {
       discovery_thread.join();
       spdlog::trace("discovery thread joined");
     }
-
   } catch (const std::exception &ex) {
     std::cerr << "Error: " << ex.what() << std::endl;
     return 1;

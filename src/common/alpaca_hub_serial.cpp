@@ -2,10 +2,13 @@
 
 namespace alpaca_hub_serial {
 
-  blocking_reader::blocking_reader(const std::string &command, asio::serial_port &port, size_t timeout,
-                                 asio::io_context &io_ctx)
+blocking_reader::blocking_reader(const std::string &command,
+                                 asio::serial_port &port, size_t timeout,
+                                 asio::io_context &io_ctx,
+                                 bool warn_on_serial_timeout)
     : port(port), timeout(timeout), _io_ctx(io_ctx), timer(port.get_executor()),
-      read_error(true), _command(command) {}
+      read_error(true), _command(command),
+      _warn_on_serial_timeout(warn_on_serial_timeout) {}
 
 void blocking_reader::read_complete(const asio::error_code &error,
                                     size_t bytes_transferred) {
@@ -38,8 +41,13 @@ void blocking_reader::time_out(const asio::error_code &error) {
   // the read operation
   // The read callback will be called
   // with an error
-  spdlog::warn("calling port.cancel() - ensure that all telescope commands are "
-               "explicit if they expect a response or not. Command associated: {}", _command);
+  if (_warn_on_serial_timeout)
+    spdlog::warn(
+        "calling port.cancel() - ensure that all serial commands are "
+        "explicit if they expect a response or not. Command associated: {}",
+        _command);
+  else
+    spdlog::debug("Serial timeout for {}", _command);
   port.cancel();
 }
 

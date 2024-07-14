@@ -41,10 +41,10 @@ class blocking_reader {
   void read_complete(const asio::error_code &error, size_t bytes_transferred);
   // Called when the timer's deadline expires.
   void time_out(const asio::error_code &error);
-
+  bool _warn_on_serial_timeout;
 public:
   blocking_reader(const std::string &command, asio::serial_port &port, size_t timeout,
-                  asio::io_context &io_ctx);
+                  asio::io_context &io_ctx, bool warn_on_serial_timeout = true);
   bool read_char(char &val);
 };
 } // namespace alpaca_hub_serial
