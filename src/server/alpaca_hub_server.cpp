@@ -1,5 +1,6 @@
 #include "alpaca_hub_server.hpp"
 #include "interfaces/i_alpaca_focuser.hpp"
+#include "interfaces/i_alpaca_switch.hpp"
 #include "interfaces/i_alpaca_telescope.hpp"
 #include "restinio/cast_to.hpp"
 #include "restinio/request_handler.hpp"
@@ -65,12 +66,13 @@ restinio::request_handling_status_t api_v1_handler::on_get_device_common(
   auto device_data = req->extra_data();
 
   if (device_type != "camera" && device_type != "telescope" &&
-      device_type != "focuser" && device_type != "filterwheel") {
-    std::string err_msg =
-        fmt::format("Unsupported device_type: {0}\nDetails: [device "
-                    "parameter in path must "
-                    "be one of camera, telescope, filterwheel, or focuser.]",
-                    device_type);
+      device_type != "focuser" && device_type != "filterwheel" &&
+      device_type != "switch") {
+    std::string err_msg = fmt::format(
+        "Unsupported device_type: {0}\nDetails: [device "
+        "parameter in path must "
+        "be one of camera, telescope, filterwheel, focuser, or switch.]",
+        device_type);
 
     return init_resp(req->create_response(restinio::status_bad_request()))
         .set_body(err_msg)
@@ -133,7 +135,7 @@ restinio::request_handling_status_t api_v1_handler::on_get_device_common(
         response_map["ClientID"] = restinio::cast_to<uint32_t>(qp["clientid"]);
 
       } catch (std::exception &ex) {
-        if(_show_client_id_warnings)
+        if (_show_client_id_warnings)
           spdlog::warn("ClientID not provided or not formatted correctly");
       }
 
@@ -163,12 +165,13 @@ restinio::request_handling_status_t api_v1_handler::on_put_device_common(
   spdlog::trace("hitting common PUT device handler {}", rest_of_path);
 
   if (device_type != "camera" && device_type != "telescope" &&
-      device_type != "focuser" && device_type != "filterwheel") {
-    std::string err_msg =
-        fmt::format("Unsupported device_type: {0}\nDetails: [device "
-                    "parameter in path must "
-                    "be one of camera, telescope, filterwheel, or focuser.]",
-                    device_type);
+      device_type != "focuser" && device_type != "filterwheel" &&
+      device_type != "switch") {
+    std::string err_msg = fmt::format(
+        "Unsupported device_type: {0}\nDetails: [device "
+        "parameter in path must "
+        "be one of camera, telescope, filterwheel, switch, or focuser.]",
+        device_type);
 
     return init_resp(req->create_response(restinio::status_bad_request()))
         .set_body(err_msg)
@@ -213,7 +216,7 @@ restinio::request_handling_status_t api_v1_handler::on_put_device_common(
   try {
     response_map["ClientID"] = restinio::cast_to<uint32_t>(qp["ClientID"]);
   } catch (std::exception &ex) {
-    if(_show_client_id_warnings)
+    if (_show_client_id_warnings)
       spdlog::warn("ClientID not provided or not formatted correctly");
   }
 
@@ -347,7 +350,8 @@ api_v1_handler::device_put_handler(std::string parameter_key,
             .set_body(nlohmann::json(response_map).dump())
             .done();
 
-        // return init_resp(req->create_response(restinio::status_bad_request()))
+        // return
+        // init_resp(req->create_response(restinio::status_bad_request()))
         //     .set_body(nlohmann::json(response_map).dump())
         //     .done();
       }
@@ -431,10 +435,14 @@ void api_v1_handler::add_route_to_router(
     device_type_regex = "focuser";
   }
 
+  if (std::is_same<T, i_alpaca_switch>::value) {
+    device_type_regex = "switch";
+  }
+
   // I think this is a bug...when I do the format, I don't believe it correctly
   // generates a valid regex.
   if (std::is_same<T, i_alpaca_device>::value) {
-    device_type_regex = "telescope|camera|focuser|filterwheel";
+    device_type_regex = "telescope|camera|focuser|filterwheel|switch";
   }
 
   std::string base_route_path = fmt::format(
@@ -444,6 +452,46 @@ void api_v1_handler::add_route_to_router(
 
   router->http_get(route_path, this->create_handler<T, F>(route_action));
 };
+
+// Handler for all GETs that require a switch ID
+template <auto F>
+device_request_handler_t switch_by_id_get_handler() {
+  return [=](auto req, auto) {
+    uint32_t switch_p = 0;
+    std::map<std::string, std::string> qp;
+    auto raw_qp = restinio::parse_query(req->header().query());
+    auto &response_map = req->extra_data().response_map;
+
+    std::shared_ptr<i_alpaca_switch> the_switch =
+        std::dynamic_pointer_cast<i_alpaca_switch>(req->extra_data().device);
+
+    for (auto &query_param : raw_qp) {
+      std::string key(lowercase(std::string(query_param.first)));
+      qp[key] = query_param.second;
+    }
+
+    try {
+      switch_p = restinio::cast_to<uint32_t>(qp["id"]);
+    } catch (std::exception &ex) {
+      return init_resp(req->create_response(restinio::status_bad_request()))
+          .set_body(fmt::format("Problem with Id parameter: {}",
+                                ex.what()))
+          .done();
+    }
+
+    try {
+      auto f = std::bind(F, the_switch, switch_p);
+      auto resp = response_map["Value"] = f();
+    } catch (alpaca_exception &ex) {
+      response_map["ErrorNumber"] = ex.error_code();
+      response_map["ErrorMessage"] = ex.what();
+    }
+
+    return init_resp(req->create_response())
+        .set_body(nlohmann::json(response_map).dump())
+        .done();
+  };
+}
 
 std::function<restinio::request_handling_status_t(device_request_handle_t)>
 create_device_api_handler() {
@@ -581,7 +629,7 @@ server_handler() {
       response_map["ClientTransactionID"] =
           restinio::cast_to<uint32_t>(qp["clienttransactionid"]);
     } catch (std::exception &ex) {
-      if(_show_client_id_warnings)
+      if (_show_client_id_warnings)
         spdlog::warn("problem with request: {} {}", req->header().query(),
                      ex.what());
     }
@@ -615,7 +663,7 @@ server_handler() {
       response_map["ClientTransactionID"] =
           restinio::cast_to<uint32_t>(qp["clienttransactionid"]);
     } catch (std::exception &ex) {
-      if(_show_client_id_warnings)
+      if (_show_client_id_warnings)
         spdlog::warn("problem with request: {0}", ex.what());
     }
 
@@ -644,7 +692,7 @@ server_handler() {
       response_map["ClientTransactionID"] =
           restinio::cast_to<uint32_t>(qp["clienttransactionid"]);
     } catch (std::exception &ex) {
-      if(_show_client_id_warnings)
+      if (_show_client_id_warnings)
         spdlog::warn("problem with request: {0}", ex.what());
     }
 
@@ -713,7 +761,7 @@ server_handler() {
     try {
       response_map["ClientID"] = restinio::cast_to<uint32_t>(qp["clientid"]);
     } catch (std::exception &ex) {
-      if(_show_client_id_warnings)
+      if (_show_client_id_warnings)
         spdlog::warn("ClientID not provided or not formatted correctly");
     }
 
@@ -814,7 +862,7 @@ server_handler() {
           response_map["ClientTransactionID"] =
               restinio::cast_to<uint32_t>(qp["clienttransactionid"]);
         } catch (std::exception &ex) {
-          if(_show_client_id_warnings)
+          if (_show_client_id_warnings)
             spdlog::warn("problem with request: {0}", ex.what());
         }
 
@@ -1012,6 +1060,7 @@ server_handler() {
 
   // Handler for imagearray and imagearrayvariant
   auto image_array_handler = [](auto req, auto) {
+    spdlog::debug("Image Array Handler started");
     std::string accept_header = req->header().get_field_or(
         restinio::http_field::accept, "application/imagebytes");
 
@@ -1045,7 +1094,7 @@ server_handler() {
         try {
           image_bytes.client_transaction_number =
               std::get<uint32_t>(response_map["ClientTransactionID"]);
-        } catch(std::exception &ex) {
+        } catch (std::exception &ex) {
           spdlog::warn("problem getting ClientTransactionID");
           image_bytes.client_transaction_number = 99999;
         }
@@ -1119,6 +1168,7 @@ server_handler() {
       response_map["Rank"] = 2;
     }
 
+    spdlog::debug("Image Array Handler ended");
     return init_resp(req->create_response())
         .set_body(nlohmann::json(req->extra_data().response_map).dump())
         .done();
@@ -2375,6 +2425,227 @@ server_handler() {
 
   // END focuser routes
 
+  // BEGIN switch routes
+
+  // GET maxswitch
+  api_handler
+      ->add_route_to_router<i_alpaca_switch, &i_alpaca_switch::max_switch>(
+          router, "maxswitch");
+
+  // GET canwrite
+  router->http_get("/api/v1/switch/:device_number/canwrite",
+                   switch_by_id_get_handler<&i_alpaca_switch::can_write>());
+
+  // GET getswitch
+  router->http_get("/api/v1/switch/:device_number/getswitch",
+                   switch_by_id_get_handler<&i_alpaca_switch::get_switch>());
+
+  // GET getswitchdescription
+  router->http_get("/api/v1/switch/:device_number/getswitchdescription",
+                   switch_by_id_get_handler<&i_alpaca_switch::get_switch_description>());
+
+  // GET getswitchname
+  router->http_get(
+      "/api/v1/switch/:device_number/getswitchname",
+      switch_by_id_get_handler<&i_alpaca_switch::get_switch_name>());
+
+  // GET getswitchvalue
+  router->http_get(
+      "/api/v1/switch/:device_number/getswitchvalue",
+      switch_by_id_get_handler<&i_alpaca_switch::get_switch_value>());
+
+  // GET minswitchvalue
+  router->http_get(
+      "/api/v1/switch/:device_number/minswitchvalue",
+      switch_by_id_get_handler<&i_alpaca_switch::min_switch_value>());
+
+  // GET maxswitchvalue
+  router->http_get(
+      "/api/v1/switch/:device_number/maxswitchvalue",
+      switch_by_id_get_handler<&i_alpaca_switch::max_switch_value>());
+
+  // GET switchstep
+  router->http_get(
+      "/api/v1/switch/:device_number/switchstep",
+      switch_by_id_get_handler<&i_alpaca_switch::switch_step>());
+
+  // PUT setswitch
+  router->http_put("/api/v1/switch/:device_number/setswitch", [](auto req,
+                                                                 auto) {
+    auto raw_request_params = restinio::parse_query(req->header().query());
+
+    std::map<std::string, std::string> request_params;
+    for (auto &query_param : raw_request_params) {
+      std::string key(lowercase(std::string(query_param.first)));
+      request_params[key] = query_param.second;
+    }
+
+    auto &response_map = req->extra_data().response_map;
+
+    const auto qp = restinio::parse_query(req->body());
+    uint32_t switch_idx;
+    bool state;
+    try {
+      auto state_raw = restinio::cast_to<std::string>(qp["State"]);
+      switch_idx = restinio::cast_to<uint32_t>(qp["Id"]);
+
+      if(state_raw == "True") {
+        state = true;
+      } else if (state_raw == "False") {
+        state = false;
+      } else {
+        throw std::runtime_error("Problem with state value - must be True or False");
+      }
+
+    } catch (std::exception &ex) {
+      response_map["ErrorNumber"] = alpaca_exception::INVALID_VALUE;
+      response_map["ErrorMessage"] =
+          fmt::format("Invalid Value passed for State");
+      return init_resp(req->create_response(restinio::status_bad_request()))
+          .set_body(nlohmann::json(response_map).dump())
+          .done();
+    }
+
+    std::shared_ptr<i_alpaca_switch> the_switch =
+        std::dynamic_pointer_cast<i_alpaca_switch>(req->extra_data().device);
+    std::string response("");
+
+    try {
+      response = the_switch->set_switch(switch_idx, state);
+      response_map["Value"] = response;
+    } catch (alpaca_exception &ex) {
+      response_map["ErrorNumber"] = ex.error_code();
+      response_map["ErrorMessage"] = ex.what();
+    }
+    return init_resp(req->create_response())
+        .set_body(nlohmann::json(response_map).dump())
+        .done();
+  });
+
+    // PUT setswitchname
+  router->http_put("/api/v1/switch/:device_number/setswitchname", [](auto req,
+                                                                 auto) {
+    auto raw_request_params = restinio::parse_query(req->header().query());
+
+    std::map<std::string, std::string> request_params;
+    for (auto &query_param : raw_request_params) {
+      std::string key(lowercase(std::string(query_param.first)));
+      request_params[key] = query_param.second;
+    }
+
+    auto &response_map = req->extra_data().response_map;
+
+    const auto qp = restinio::parse_query(req->body());
+    uint32_t switch_idx;
+    std::string switch_name;
+    try {
+      switch_name = restinio::cast_to<std::string>(qp["Name"]);
+      switch_idx = restinio::cast_to<uint32_t>(qp["Id"]);
+    } catch (std::exception &ex) {
+      response_map["ErrorNumber"] = alpaca_exception::INVALID_VALUE;
+      response_map["ErrorMessage"] =
+          fmt::format("Invalid Value passed for Name");
+      return init_resp(req->create_response(restinio::status_bad_request()))
+          .set_body(nlohmann::json(response_map).dump())
+          .done();
+    }
+
+    std::shared_ptr<i_alpaca_switch> the_switch =
+        std::dynamic_pointer_cast<i_alpaca_switch>(req->extra_data().device);
+    std::string response("");
+
+    try {
+      response = the_switch->set_switch_name(switch_idx, switch_name);
+      response_map["Value"] = response;
+    } catch (alpaca_exception &ex) {
+      response_map["ErrorNumber"] = ex.error_code();
+      response_map["ErrorMessage"] = ex.what();
+    }
+    return init_resp(req->create_response())
+        .set_body(nlohmann::json(response_map).dump())
+        .done();
+  });
+
+  // PUT setswitchvalue
+  router->http_put("/api/v1/switch/:device_number/setswitchvalue", [](auto req,
+                                                                 auto) {
+    auto raw_request_params = restinio::parse_query(req->header().query());
+
+    std::map<std::string, std::string> request_params;
+    for (auto &query_param : raw_request_params) {
+      std::string key(lowercase(std::string(query_param.first)));
+      request_params[key] = query_param.second;
+    }
+
+    auto &response_map = req->extra_data().response_map;
+
+    const auto qp = restinio::parse_query(req->body());
+    uint32_t switch_idx;
+    double value;
+
+    try {
+      value = restinio::cast_to<double>(qp["Value"]);
+      switch_idx = restinio::cast_to<uint32_t>(qp["Id"]);
+    } catch (std::exception &ex) {
+      response_map["ErrorNumber"] = alpaca_exception::INVALID_VALUE;
+      response_map["ErrorMessage"] =
+          fmt::format("Invalid Value passed for Value");
+      return init_resp(req->create_response(restinio::status_bad_request()))
+          .set_body(nlohmann::json(response_map).dump())
+          .done();
+    }
+
+    std::shared_ptr<i_alpaca_switch> the_switch =
+        std::dynamic_pointer_cast<i_alpaca_switch>(req->extra_data().device);
+    std::string response("");
+
+    try {
+      response = the_switch->set_switch_value(switch_idx, value);
+      response_map["Value"] = response;
+    } catch (alpaca_exception &ex) {
+      response_map["ErrorNumber"] = ex.error_code();
+      response_map["ErrorMessage"] = ex.what();
+    }
+    return init_resp(req->create_response())
+        .set_body(nlohmann::json(response_map).dump())
+        .done();
+  });
+
+  // PUT sendserialcommand
+  router->http_put("/api/v1/switch/:device_number/sendserialcommand", [](auto req,
+                                                                      auto) {
+    auto &response_map = req->extra_data().response_map;
+    const auto qp = restinio::parse_query(req->body());
+    std::string serial_command;
+    try {
+      serial_command = restinio::cast_to<std::string>(qp["SerialCommand"]);
+    } catch (std::exception &ex) {
+      response_map["ErrorNumber"] = alpaca_exception::INVALID_VALUE;
+      response_map["ErrorMessage"] =
+          fmt::format("Invalid Value passed for serial command");
+      return init_resp(req->create_response(restinio::status_bad_request()))
+          .set_body(nlohmann::json(response_map).dump())
+          .done();
+    }
+
+    std::shared_ptr<i_alpaca_switch> the_switch =
+        std::dynamic_pointer_cast<i_alpaca_switch>(req->extra_data().device);
+    std::string response("");
+
+    try {
+      response = the_switch->send_command_to_switch(serial_command, true, '\n');
+      response_map["Value"] = response;
+    } catch (alpaca_exception &ex) {
+      response_map["ErrorNumber"] = ex.error_code();
+      response_map["ErrorMessage"] = ex.what();
+    }
+    return init_resp(req->create_response())
+        .set_body(nlohmann::json(response_map).dump())
+        .done();
+  });
+
+  // END switch routes
+
   router->non_matched_request_handler([](auto req) {
     return req->create_response(restinio::status_not_found())
         .append_header_date_field()
@@ -2386,7 +2657,8 @@ server_handler() {
   return
       [_handler = std::move(router)](
           const restinio::generic_request_handle_t<device_data_factory::data_t>
-              &req) { return (*_handler)(req); };
+              &req) {
+    return (*_handler)(req); };
 }
 
 }; // namespace alpaca_hub_server

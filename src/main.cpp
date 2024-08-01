@@ -1,4 +1,5 @@
 #include "drivers/pegasus_alpaca_focuscube3.hpp"
+#include "drivers/pegasus_alpaca_ppba.hpp"
 #include "drivers/qhy_alpaca_filterwheel_standalone.hpp"
 #include "drivers/zwo_am5_telescope.hpp"
 #include "server/alpaca_hub_server.hpp"
@@ -254,6 +255,22 @@ int main(int argc, char **argv) {
     }
   }
 
+  for (auto iter : pegasus_alpaca_ppba::serial_devices()) {
+    auto switch_ptr = std::make_shared<pegasus_alpaca_ppba>();
+    switch_ptr->set_serial_device(iter);
+    spdlog::info("Adding Pegasus Pocket Powerbox Advanced at {}", iter);
+    alpaca_hub_server::device_map["switch"].push_back(switch_ptr);
+
+    if (auto_connect_devices) {
+      spdlog::info("Attempting to autoconnect: {}", iter);
+      try {
+        switch_ptr->set_connected(true);
+      } catch (std::exception &ex) {
+        spdlog::error("Failed to autoconnect device: {}", iter);
+      }
+    }
+  }
+
   try {
     using namespace std::chrono;
 
@@ -321,7 +338,11 @@ int main(int argc, char **argv) {
       alpaca_hub_server::device_map["filterwheel"].push_back(fw_ptr);
       spdlog::info("filterwheel added at {}", fw_item);
       if (auto_connect_devices) {
-        fw_ptr->set_connected(true);
+        try {
+          fw_ptr->set_connected(true);
+        } catch (std::exception &ex) {
+          spdlog::warn("Failed to autoconnect QHY filterwheel");
+        }
       }
     }
     // END Implementation specific initialization of various device types:

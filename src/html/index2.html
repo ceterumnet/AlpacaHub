@@ -3,14 +3,20 @@
         <link type="text/css" rel="stylesheet" href="/html/materialize/css/materialize.min.css"  media="screen,projection"/>
         <link type="text/css" rel="stylesheet" href="/html/css/icons.css">
         <style>
-         body {
-             display: flex;
-             min-height: 100vh;
-             flex-direction: column;
-         }
+         /* body {
+            display: flex;
+            min-height: 100vh;
+            flex-direction: column;
+            } */
 
-         main {
-             flex: 1 0 auto;
+         /* main {
+            flex: 1 0 auto;
+            } */
+
+         .panel {
+             border: 1px solid #eee;
+             height: 300px;
+             padding: 4px;
          }
 
         </style>
@@ -561,320 +567,28 @@
         </script>
     </head>
     <body v-scope="App()" @vue:mounted="setupRouting">
-        <header>
-            <nav class="blue-grey lighten-1">
-                <div class="nav-wrapper" >
-                    <a href="#" class="brand-logo" style="margin-left: 10px">Dave's Alpaca Hub</a>
-                    <ul id="nav-mobile" class="right hide-on-med-and-down">
-                        <li><a href="">About</a></li>
-                        <li><a href="">Documentation</a></li>
-                    </ul>
-                </div>
-            </nav>
-        </header>
-
         <main>
-            <!-- first div in main -->
-            <div class="row" v-effect="fetchData()">
-                <!-- Left hand nav -->
-                <div class="col s2" style="padding:0; margin: 0">
-                    <div class="collection with-header" style="padding:0; margin: 0">
-                        <div class="z-depth-5 valign-wrapper blue-grey lighten-3 white-text collection-header"
-                             style="height: 65px">
-                            Menu
+            <div class="container">
+                Container
+                <div class="row">
+                    <div class="col s12 m6 l4">
+                        <div class="z-depth-2 grey panel">
+                            panel
                         </div>
-
-                        <a :class="{ 'blue-grey lighten-4' : devicesSelected }"
-                           class="blue-grey-text collection-item" href="#/devices">
-                            Devices
-                        </a>
-                        <a :class="{ 'blue-grey lighten-4' : setupSelected }"
-                           class="blue-grey-text collection-item" href="#">
-                            Properties
-                        </a>
-                        <a :class="{ 'blue-grey lighten-4' : logsSelected }"
-                           class="blue-grey-text collection-item" href="#/logs">
-                            Logs
-                        </a>
+                    </div>
+                    <div class="col s12 m6 l4">
+                        <div class="z-depth-2 grey panel">
+                            panel
+                        </div>
+                    </div>
+                    <div class="col s12 m6 l4">
+                        <div class="z-depth-2 grey panel">
+                            panel
+                        </div>
                     </div>
                 </div>
-                <!-- end left hand nav -->
-
-                <!-- Main app panel -->
-                <div class="col s10" id="app_main">
-                    <!-- breadcrumb -->
-                    <div class="row">
-                        <nav class="grey">
-                            <div class="nav-wrapper">
-                                <div class="col s12">
-                                    <a class="breadcrumb" href="#">
-                                        Devices
-                                    </a>
-                                    <a v-if="editingDevice" class="breadcrumb" :href="'#/edit/' + device.DeviceType + '/' + device.DeviceNumber">
-                                        {{device.DeviceType}} #{{device.DeviceNumber}}
-                                    </a>
-
-                                </div>
-                            </div>
-                        </nav>
-                    </div>
-                    <!-- end breadcrumb -->
-
-                    <!-- deviceeditor panel -->
-                    <div class="row"
-                         id="deviceeditor"
-                         v-if="editingDevice"
-                         v-effect="fetchDeviceDetails(device)">
-
-                        <!-- error panel -->
-                        <div class="card-panel red-text lighten-2"
-                             v-if="device && device.ErrorNumber ">
-                            <div>
-                                Error Number: {{device.ErrorNumber}}
-                            </div>
-                            <div>
-                                Error Message: {{device.ErrorMessage}}
-                            </div>
-                            <div>
-                                <button class="blue-grey waves-effect waves-light btn"
-                                        @click="reconnectDevice(device)">
-                                    Try reconnecting
-                                </button>
-                            </div>
-                        </div>
-                        <!-- end error panel -->
-
-                        <!-- properties panel  -->
-                        <div class="col s12"
-                             v-if="device && device.Details"
-                             v-effect="device.Details">
-                            <div class="row" style="text-size: .75em">
-                                <div class="col s8 valign-wrapper">
-                                    <button :class="{ disabled: device.busy }"
-                                            class="blue-grey darken-2 waves-effect waves-light btn"
-                                            @click="connect(device)"
-                                            style="font-size: 10px;">
-                                        {{ device.Connected ? 'Disconnect' : 'Connect'}}
-                                    </button>
-                                    <span v-if="device.busy"
-                                          style="font-size: .75em"
-                                          class="black-text green lighten-3 badge right">
-                                        {{ device.busy ? 'working...' : '' }}
-                                    </span>
-                                    <span v-if="device.Details && device.Details.Slewing"
-                                          style="font-size: .75em"
-                                          class="black-text green lighten-3 badge right">
-                                        {{ device.Details.Slewing ? 'slewing' : ''}}
-                                    </span>
-                                </div>
-                                <div v-show="device.Connected"
-                                     class="col s4"
-                                     v-if="device.DeviceType.toLowerCase() == 'telescope'">
-
-                                    <div class="row" v-if="device && device.Details">
-                                        <div class="col s4 center" style="font-size: 11px">
-                                            <button @click="setTracking(device)"
-                                                    v-if="device && device.Details"
-                                                    class="red lighten-1 btn-small waves-effect waves-light"
-                                                    :class="{ green: device.Details.Tracking }">
-                                                <i class="material-icons" style="font-size: 14px">
-                                                    adjust
-                                                </i>
-                                            </button>
-                                        </div>
-                                        <div class="col s4 center">
-                                            <button style="font-size: 10px;"
-                                                    class="blue-grey darken-2 btn-small waves-effect waves-light"
-                                                    @mousedown="moveNorth(device)"
-                                                    @mouseup="stopMoveNorth(device)"
-                                                    @mouseout="stopMoveNorth(device)">^</button>
-                                        </div>
-                                        <div class="col s4 center">
-                                            <button style="font-size: 10px;"
-                                                    class="blue lighten-1 btn-small waves-effect waves-light"
-                                                    :class="{ green: device.Details.Slewing }"
-                                                    @click="abortSlew(device)">
-                                                <i class="material-icons" style="font-size: 12px">
-                                                    stop
-                                                </i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="row">
-                                        <div class="col s4 center">
-                                            <button style="font-size: 10px;"
-                                                    class="blue-grey darken-2 btn-small waves-effect waves-light"
-                                                    @mousedown="moveEast(device)"
-                                                    @mouseup="stopMoveEast(device)"
-                                                    @mouseout="stopMoveEast(device)">&lt;</button>
-                                        </div>
-                                        <div class="col s4 center">
-                                            <button style="font-size: 8px;"
-                                                    class="blue-grey darken-2 center btn-small waves-effect waves-light"
-                                                    @click="homeTelescope(device)">home</button>
-                                        </div>
-                                        <div class="col s4 center">
-                                            <button style="font-size: 10px;"
-                                                    class="blue-grey darken-2 btn-small waves-effect waves-light"
-                                                    @mousedown="moveWest(device)"
-                                                    @mouseup="stopMoveWest(device)"
-                                                    @mouseout="stopMoveWest(device)">&gt;</button>
-                                        </div>
-                                    </div>
-                                    <div class="row">
-                                        <div class="col s4 center"></div>
-                                        <div class="col s4 center">
-                                            <button style="font-size: 10px; text-transform: lowercase;"
-                                                    class="blue-grey darken-2 btn-small waves-effect waves-light"
-                                                    @mousedown="moveSouth(device)"
-                                                    @mouseup="stopMoveSouth(device)"
-                                                    @mouseout="stopMoveSouth(device)">v</button>
-                                        </div>
-                                        <div class="col s4 center"></div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Properties table -->
-                            <table v-show="!device.ErrorNumber">
-                                <thead>
-                                    <tr>
-                                        <th>Property</th>
-                                        <th>Value</th>
-                                        <th></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr
-                                        v-for="(value, key) in device.Details" :key="key">
-                                        <td>{{key}}</td>
-                                        <td>
-                                            <span>{{value}}</span>
-                                        </td>
-                                        <td>
-                                            <div class="" v-if="key === 'UTCDate'">
-                                                <button @click="setMountTimeFromPC(device)"
-                                                        style="font-size: .75em"
-                                                        :class="{ disabled: device.busy }"
-                                                        class="blue-grey darken-2 waves-effect waves-light btn-small">
-                                                    Sync from PC to Mount
-                                                </button>
-                                                <div style="padding-top: 5px; font-size: .7em">(currently: {{pc_time}})</div>
-                                            </div>
-                                            <div class="input-field" v-if="key === 'SiteElevation'">
-                                                <input
-                                                    v-model="device.Elevation"
-                                                    id="site_elevation"
-                                                    type="text"
-                                                    class="validate right"
-                                                    @keyup.enter="setElevation(device)">
-                                                <label for="site_elevation"></label>
-                                                <button :class="{ disabled: device.busy }"
-                                                        @click="setElevation(device)"
-                                                        style="font-size: .75em"
-                                                        class="blue-grey darken-2 waves-effect waves-light btn-small">
-                                                    Set Elevation (meters)
-                                                </button>
-                                            </div>
-                                            <div class="input-field" v-if="key === 'SiteLatitude'">
-                                                <input
-                                                    v-model="device.Latitude"
-                                                    id="site_latitude"
-                                                    type="text"
-                                                    class="validate right"
-                                                    @keyup.enter="setLatitude(device)">
-                                                <label for="site_latitude"></label>
-                                                <button :class="{ disabled: device.busy }"
-                                                        @click="setLatitude(device)"
-                                                        style="font-size: .75em"
-                                                        class="blue-grey darken-2 waves-effect waves-light btn-small">
-                                                    Set Latitude
-                                                </button>
-                                            </div>
-                                            <div class="input-field" v-if="key === 'SiteLongitude'">
-                                                <input
-                                                    v-model="device.Longitude"
-                                                    id="site_longitude"
-                                                    type="text"
-                                                    class="validate right"
-                                                    @keyup.enter="setLongitude(device)">
-                                                <label for="site_longitude"></label>
-                                                <button :class="{ disabled: device.busy }"
-                                                        @click="setLongitude(device)"
-                                                        style="font-size: .75em"
-                                                        class="blue-grey darken-2 waves-effect waves-light btn-small">
-                                                    Set Longitude
-                                                </button>
-                                            </div>
-                                            <div class="input-field" v-if="key === 'Position' && device.DeviceType.toLowerCase() == 'focuser'">
-                                                <input
-                                                    v-model="device.Position"
-                                                    id="focuser_position"
-                                                    type="text"
-                                                    class="validate right"
-                                                    @keyup.enter="setFocuserPosition(device)">
-                                                <label for="focuser_position"></label>
-                                                <button :class="{ disabled: device.busy }"
-                                                        @click="setFocuserPosition(device)"
-                                                        style="font-size: .75em"
-                                                        class="blue-grey darken-2 waves-effect waves-light btn-small">
-                                                    Set Focuser Position
-                                                </button>
-                                                <button @click="haltFocuser(device)"
-                                                        style="font-size: .75em"
-                                                        class="blue-grey darken-2 waves-effect waves-light btn-small">
-                                                    Halt Focuser
-                                                </button>
-                                            </div>
-
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <!-- end properties panel -->
-                    </div>
-                    <!-- end deviceeditor panel -->
-
-                    <!-- device list -->
-                    <div>
-                        <table id="device_table" v-if="!editingDevice" >
-                            <thead>
-                                <tr>
-                                    <th>Type</th>
-                                    <th>Number</th>
-                                    <th>Unique ID</th>
-                                    <th>Name</th>
-                                    <th>Connected</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-for="device in Devices" v-effect="fetchDeviceDetails(device)">
-                                    <td>{{device.DeviceType}}</td>
-                                    <td>{{device.DeviceNumber}}</td>
-                                    <td>{{device.UniqueID}}</td>
-                                    <td>{{device.DeviceName}}</td>
-                                    <td>{{device.Connected}}</td>
-                                    <td>
-                                        <a :href="'#/edit/' + device.DeviceType + '/' + device.DeviceNumber" @click="editDevice(device)" class="blue-grey waves-effect waves-light btn">Properties</a>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <!-- end device list -->
-
-                </div>
-                <!-- end main app panel -->
             </div>
-            <!-- end first div in main -->
         </main>
-        <footer class="page-footer blue-grey">
-            <div class="row">
-                <div class="col s3">&#169; 2024 Copyright Dave Raphael</div>
-                <div class="col right"><a class="grey-text text-lighten-4 right" href="https://github.com/ceterumnet/AlpacaHub">Github</a></div>
-            </div>
-        </footer>
         <script type="text/javascript" src="/html/materialize/js/materialize.min.js"></script>
     </body>
 </html>
