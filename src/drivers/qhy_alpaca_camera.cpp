@@ -327,13 +327,13 @@ void qhy_alpaca_camera::initialize() {
 
   if (IsQHYCCDControlAvailable(_cam_handle, CONTROL_ID::CONTROL_USBTRAFFIC) ==
       QHYCCD_SUCCESS) {
-    spdlog::trace("CONTROL_USBTRAFFIC is available");
+    spdlog::debug("CONTROL_USBTRAFFIC is available");
     double u_min = 0;
     double u_max = 0;
     double u_step = 0;
     GetQHYCCDParamMinMaxStep(_cam_handle, CONTROL_ID::CONTROL_USBTRAFFIC,
                              &u_min, &u_max, &u_step);
-    spdlog::trace("USB Traffic Settings - min:{} max:{} step:{}", u_min, u_max,
+    spdlog::debug("USB Traffic Settings - min:{} max:{} step:{}", u_min, u_max,
                   u_step);
     SetQHYCCDParam(_cam_handle, CONTROL_USBTRAFFIC, _usb_traffic);
 
@@ -424,7 +424,7 @@ void qhy_alpaca_camera::initialize_camera_by_camera_id(std::string &camera_id) {
   if (is_qhy_control_available(_cam_handle, CONTROL_ID::CONTROL_COOLER) ==
       QHYCCD_SUCCESS) {
     _can_control_cooler_power = true;
-
+    _can_control_ccd_temp = true;
     // The QHYSDK _may_ have an issue that's outside of my control here.
     // The first time that CONTROL_COOLER is set, there is an uninitialized
     // buffer error reported from valgrind
@@ -449,8 +449,8 @@ void qhy_alpaca_camera::initialize_camera_by_camera_id(std::string &camera_id) {
   spdlog::trace("Current chip temp: {}",
                 GetQHYCCDParam(_cam_handle, CONTROL_ID::CONTROL_CURTEMP));
 
-  spdlog::trace("Can control chip temp: {}", _can_control_ccd_temp);
-  spdlog::trace("Can get cooler power: {}", _can_control_ccd_temp);
+  spdlog::debug("Can control chip temp: {}", _can_control_ccd_temp);
+  spdlog::debug("Can get cooler power: {}", _can_control_ccd_temp);
   // spdlog::trace("Full well capacity: {}", );
 
   // TODO: I really should handle any error that might occur
@@ -493,14 +493,15 @@ void qhy_alpaca_camera::initialize_camera_by_camera_id(std::string &camera_id) {
   spdlog::trace("Determining max binning");
   _max_bin = 1;
 
-  if (IsQHYCCDControlAvailable(_cam_handle, CAM_BIN8X8MODE) == QHYCCD_SUCCESS)
-    _max_bin = 8;
-  if (IsQHYCCDControlAvailable(_cam_handle, CAM_BIN6X6MODE) == QHYCCD_SUCCESS)
-    _max_bin = 6;
-  if (IsQHYCCDControlAvailable(_cam_handle, CAM_BIN4X4MODE) == QHYCCD_SUCCESS)
-    _max_bin = 4;
   if (IsQHYCCDControlAvailable(_cam_handle, CAM_BIN2X2MODE) == QHYCCD_SUCCESS)
     _max_bin = 2;
+  if (IsQHYCCDControlAvailable(_cam_handle, CAM_BIN4X4MODE) == QHYCCD_SUCCESS)
+    _max_bin = 4;
+  if (IsQHYCCDControlAvailable(_cam_handle, CAM_BIN6X6MODE) == QHYCCD_SUCCESS)
+    _max_bin = 6;
+  if (IsQHYCCDControlAvailable(_cam_handle, CAM_BIN8X8MODE) == QHYCCD_SUCCESS)
+    _max_bin = 8;
+
   spdlog::trace("     max bin: {}", _max_bin);
   _has_shutter = false;
   _has_shutter = IsQHYCCDControlAvailable(_cam_handle,
@@ -548,7 +549,7 @@ qhy_alpaca_camera::qhy_alpaca_camera(std::string &camera_id)
       _max_num_y(0), _percent_complete(100), _set_cooler_power(0),
       _can_control_ccd_temp(false), _run_cooler_thread(false),
       _has_filter_wheel(false), _last_camera_temp(0), _last_cooler_power(0),
-      _usb_traffic(5), _bpp(16), __t(_io), _read_mode_changed(true),
+      _usb_traffic(60), _bpp(16), __t(_io), _read_mode_changed(true),
       _bin_changed(true), _gains_mode("gains_index_mode"),
       _offsets_mode("offsets_index_mode") {
   initialize_camera_by_camera_id(camera_id);

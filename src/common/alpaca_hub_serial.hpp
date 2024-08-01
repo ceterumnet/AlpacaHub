@@ -8,6 +8,9 @@
 #include "spdlog/spdlog.h"
 #include <memory>
 
+std::vector<std::string> split(const std::string &input,
+                               const std::string &regex);
+
 namespace alpaca_hub_serial {
 
 // This is an attempt to summarize how this works with the ASIO weirdness

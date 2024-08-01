@@ -129,15 +129,6 @@ void pegasus_alpaca_focuscube3::throw_if_not_connected() {
 
 bool pegasus_alpaca_focuscube3::connected() { return _connected; }
 
-std::vector<std::string> split(const std::string &input,
-                               const std::string &regex) {
-  // passing -1 as the submatch index parameter performs splitting
-  std::regex pattern(regex);
-  std::sregex_token_iterator first{input.begin(), input.end(), pattern, -1},
-      last;
-  return {first, last};
-}
-
 void pegasus_alpaca_focuscube3::update_properties() {
   auto resp = send_command_to_focuser("FA\n");
 

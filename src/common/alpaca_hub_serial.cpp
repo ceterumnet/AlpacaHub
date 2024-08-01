@@ -1,4 +1,14 @@
 #include "alpaca_hub_serial.hpp"
+#include <regex>
+
+std::vector<std::string> split(const std::string &input,
+                               const std::string &regex) {
+  // passing -1 as the submatch index parameter performs splitting
+  std::regex pattern(regex);
+  std::sregex_token_iterator first{input.begin(), input.end(), pattern, -1},
+      last;
+  return {first, last};
+}
 
 namespace alpaca_hub_serial {
 
