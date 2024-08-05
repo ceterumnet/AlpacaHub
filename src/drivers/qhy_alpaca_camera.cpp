@@ -549,7 +549,7 @@ qhy_alpaca_camera::qhy_alpaca_camera(std::string &camera_id)
       _max_num_y(0), _percent_complete(100), _set_cooler_power(0),
       _can_control_ccd_temp(false), _run_cooler_thread(false),
       _has_filter_wheel(false), _last_camera_temp(0), _last_cooler_power(0),
-      _usb_traffic(60), _bpp(16), __t(_io), _read_mode_changed(true),
+      _usb_traffic(20), _bpp(16), __t(_io), _read_mode_changed(true),
       _bin_changed(true), _gains_mode("gains_index_mode"),
       _offsets_mode("offsets_index_mode") {
   initialize_camera_by_camera_id(camera_id);

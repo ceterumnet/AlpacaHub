@@ -124,11 +124,12 @@ written drivers for the hardware I have at home:
   - Specific QHY Hardware I've tested:
     - QHY9M + FW
     - QHY5II-L-M
-    - QHYIII-568M
-    - QHY268M (pending testing)
-    - QHY Filterwheel 3 (pending testing)
+    - QHYIII568M
+    - QHY268M
+    - QHY Filterwheel 3
 - ZWO AM5/AM3 Mount
 - Pegasus FocusCube 3
+- Pegasus Pocket Power Box Advanced (gen2 tested)
 
 Everything that I've implemented so far has passed the Alpaca Conform tests
 without issues except for guiding on the declination axis on the AM5. I
