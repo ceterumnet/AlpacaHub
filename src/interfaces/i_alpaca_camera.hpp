@@ -116,6 +116,13 @@ public:
   virtual int percent_complete() = 0;
   virtual int bayer_offset_x() = 0;
   virtual int bayer_offset_y() = 0;
+
+  // To support generic actions supported by driver implementations:
+  // I probably need to move this to i_alpaca_device...but I'm not
+  // sure this is the way I want to implement it
+  virtual std::string
+  invoke_action(const std::string &action_name,
+                const std::map<std::string, std::string> &action_params) = 0;
 };
 
 #endif

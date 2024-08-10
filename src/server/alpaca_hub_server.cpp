@@ -1484,6 +1484,48 @@ server_handler() {
       api_handler->device_put_handler<void, i_alpaca_camera,
                                       &i_alpaca_camera::stop_exposure>());
 
+  auto camera_action_handler = [](std::string action, auto req) {
+    const auto parsed_qp = restinio::parse_query(req->body());
+    auto &response_map = req->extra_data().response_map;
+
+    std::map<std::string, std::string> qp;
+    // device_param_t response_map;
+
+    for (auto &query_param : parsed_qp) {
+      std::string key(std::string(query_param.first));
+      qp[key] = query_param.second;
+    }
+
+    std::shared_ptr<i_alpaca_camera> the_camera =
+        std::dynamic_pointer_cast<i_alpaca_camera>(req->extra_data().device);
+
+    try {
+      auto res = the_camera->invoke_action(action, qp);
+      response_map["Value"] = res;
+    } catch (std::exception &ex) {
+      return init_resp(req->create_response(restinio::status_bad_request()))
+          .set_body(
+              fmt::format("Problem with calling setusbtraffic: {}", ex.what()))
+          .done();
+    }
+
+    return init_resp(req->create_response())
+        .set_body(nlohmann::json(response_map).dump())
+        .done();
+  };
+
+  // PUT setusbtraffic
+  router->http_put("/api/v1/camera/:device_number/setusbtraffic",
+                   [&](auto req, auto params) {
+                     return camera_action_handler("setusbtraffic", req);
+                   });
+
+  // PUT getusbtraffic
+  router->http_put("/api/v1/camera/:device_number/getusbtraffic",
+                   [&](auto req, auto params) {
+                     return camera_action_handler("getusbtraffic", req);
+                   });
+
   // END camera routes
 
   // BEGIN filterwheel routes

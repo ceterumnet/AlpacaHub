@@ -164,8 +164,11 @@ public:
   int enable_gains_value_mode();
   int enable_offsets_value_mode();
 
-private:
-  void initialize_camera_by_camera_id(std::string &camera_id);
+  std::string
+  invoke_action(const std::string &action_name,
+                const std::map<std::string, std::string> &action_params);
+private
+      : void initialize_camera_by_camera_id(std::string &camera_id);
   void initialize();
   void init_filterwheel();
   void chip_info();

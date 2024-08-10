@@ -94,7 +94,7 @@ int is_qhy_control_available(qhyccd_handle *_cam_handle,
 
 void qhy_alpaca_camera::init_filterwheel() {
   uint32_t qhy_res = QHYCCD_ERROR;
-  qhy_res = QHYCCD_ERROR;
+
   qhy_res = IsQHYCCDCFWPlugged(_cam_handle);
 
   if (qhy_res == QHYCCD_SUCCESS) {
@@ -378,7 +378,21 @@ void qhy_alpaca_camera::initialize_camera_by_camera_id(std::string &camera_id) {
   }
 
   qhy_res = QHYCCD_ERROR;
+  std::vector<uint8_t> fw_buf(32, 0);
+  qhy_res = GetQHYCCDFWVersion(_cam_handle, &fw_buf[0]);
 
+  if (qhy_res == QHYCCD_SUCCESS) {
+    if ((fw_buf[0] >> 4) <= 9) {
+      spdlog::debug("FW Version: 20{:02d}-{:02d}-{:02d}", (fw_buf[0] >> 4) + 0x10,
+                    fw_buf[0] & ~0xf0, fw_buf[1]);
+    } else {
+      spdlog::debug("FW Version: 20{:02d}-{:02d}-{:02d}", fw_buf[0] >> 4,
+                    fw_buf[0] & ~0xf0, fw_buf[1]);
+    }
+  } else
+    spdlog::debug("Unable to get FW Version");
+
+  qhy_res = QHYCCD_ERROR;
   // Let's push the mode names to our private instance variable
   for (int x = 0; x < _num_modes; x++) {
     std::string mode_name;
@@ -819,7 +833,9 @@ double qhy_alpaca_camera::heat_sink_temperature() {
   if (!_can_control_cooler_power)
     throw alpaca_exception(alpaca_exception::NOT_IMPLEMENTED,
                            "Cooler Power Setting not available on this camera");
-  std::lock_guard lock(_cam_mutex);
+  // I'm going to eliminate read locks moving forward for values don't need
+  // guaranteed accuracy
+  // std::lock_guard lock(_cam_mutex);
   return GetQHYCCDParam(_cam_handle, CONTROL_CURTEMP);
 }
 
@@ -890,7 +906,8 @@ void qhy_alpaca_camera::set_reading_state() {
 void qhy_alpaca_camera::read_image_from_camera() {
   set_reading_state();
 
-  spdlog::trace("read_image_from_camera started");
+  spdlog::debug("read_image_from_camera started");
+
   uint32_t w = 0;
   uint32_t h = 0;
   uint32_t bpp = 0;
@@ -902,8 +919,9 @@ void qhy_alpaca_camera::read_image_from_camera() {
 
   // Adding this per the SDK spec so that nothing else should happen while
   // reading from the camera
+  spdlog::debug("Getting lock...");
   std::lock_guard lock(_cam_mutex);
-  spdlog::trace("Calling GetQHYCCDSingleFrame and fetching img_data", img_size);
+  spdlog::debug("Calling GetQHYCCDSingleFrame and fetching img_data", img_size);
   uint32_t r =
       GetQHYCCDSingleFrame(_cam_handle, &w, &h, &bpp, &channels, &_img_data[0]);
 
@@ -915,7 +933,11 @@ void qhy_alpaca_camera::read_image_from_camera() {
     spdlog::trace("Successfully executed GetQHYCCDSingleFrame with {} size",
                   img_size);
     spdlog::trace("setting camera state to idle");
+  } else {
+    spdlog::error("Problem calling GetQHYCCDSingleFrame");
   }
+
+  spdlog::debug("read_image_from_camera complete setting idle state");
   _camera_state = camera_state_enum::CAMERA_IDLE;
 }
 
@@ -1101,6 +1123,7 @@ int qhy_alpaca_camera::start_exposure_proc() {
     spdlog::debug("start_exposure_proc ended");
     return 0;
   }
+
   spdlog::error("Failed to start exposing frame: {}", r);
   uint8_t cam_status_buf[4] = {};
 
@@ -1488,7 +1511,8 @@ int qhy_alpaca_camera::bayer_offset_y() {
 std::vector<std::string> qhy_alpaca_camera::supported_actions() {
   throw_if_not_connected();
   std::vector<std::string> supported_actions;
-  supported_actions.push_back("usbtraffic");
+  supported_actions.push_back("setusbtraffic");
+  supported_actions.push_back("getusbtraffic");
   return supported_actions;
 }
 
@@ -1532,6 +1556,33 @@ int qhy_alpaca_camera::enable_gains_value_mode() {
 int qhy_alpaca_camera::enable_offsets_value_mode() {
   _offsets_mode = "offsets_value_mode";
   return 0;
+}
+
+std::string qhy_alpaca_camera::invoke_action(
+    const std::string &action_name,
+    const std::map<std::string, std::string> &action_params) {
+
+  if (action_name == "getusbtraffic") {
+    return std::to_string(_usb_traffic);
+  } else if (action_name == "setusbtraffic") {
+    try {
+      auto usb_traffic = atoi(action_params.at("Value").c_str());
+      auto res = SetQHYCCDParam(_cam_handle, CONTROL_USBTRAFFIC, usb_traffic);
+      if (res != QHYCCD_SUCCESS)
+        throw alpaca_exception(alpaca_exception::DRIVER_ERROR,
+                               "Problem setting usb traffic");
+      _usb_traffic = usb_traffic;
+      return action_params.at("Value");
+    } catch (std::exception &ex) {
+      throw alpaca_exception(
+          alpaca_exception::INVALID_OPERATION,
+          fmt::format(
+              "Problem with setting usb traffic. Ensure that you've passed an "
+              "integer in the Value parameter of the PUT body. Error: {}",
+              ex.what()));
+    }
+  }
+  return fmt::format("custom action {} invoked", action_name);
 }
 
 std::map<std::string, device_variant_t> qhy_alpaca_camera::details() {
