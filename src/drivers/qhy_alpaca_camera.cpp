@@ -94,12 +94,12 @@ int is_qhy_control_available(qhyccd_handle *_cam_handle,
 
 void qhy_alpaca_camera::init_filterwheel() {
   uint32_t qhy_res = QHYCCD_ERROR;
-
   qhy_res = IsQHYCCDCFWPlugged(_cam_handle);
 
   if (qhy_res == QHYCCD_SUCCESS) {
     spdlog::debug("Filterwheel appears to be connected. Initializing");
-    _filter_wheel = std::make_shared<qhy_alpaca_filterwheel>(this);
+    _filter_wheel =
+        std::make_shared<qhy_alpaca_filterwheel>(*this);
 
     int num_slots =
         (int)GetQHYCCDParam(_cam_handle, CONTROL_ID::CONTROL_CFWSLOTSNUM);
@@ -383,8 +383,8 @@ void qhy_alpaca_camera::initialize_camera_by_camera_id(std::string &camera_id) {
 
   if (qhy_res == QHYCCD_SUCCESS) {
     if ((fw_buf[0] >> 4) <= 9) {
-      spdlog::debug("FW Version: 20{:02d}-{:02d}-{:02d}", (fw_buf[0] >> 4) + 0x10,
-                    fw_buf[0] & ~0xf0, fw_buf[1]);
+      spdlog::debug("FW Version: 20{:02d}-{:02d}-{:02d}",
+                    (fw_buf[0] >> 4) + 0x10, fw_buf[0] & ~0xf0, fw_buf[1]);
     } else {
       spdlog::debug("FW Version: 20{:02d}-{:02d}-{:02d}", fw_buf[0] >> 4,
                     fw_buf[0] & ~0xf0, fw_buf[1]);

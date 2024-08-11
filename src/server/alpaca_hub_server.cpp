@@ -43,6 +43,13 @@ template <typename RESP> RESP init_resp_imagebytes(RESP resp) {
   return resp;
 }
 
+template <typename RESP> RESP init_resp_js(RESP resp) {
+  resp.append_header("Server", "AlpacaHub /v.0.1");
+  resp.append_header_date_field().append_header("Content-Type",
+                                                "application/javascript; charset=utf-8");
+  return resp;
+}
+
 template <typename RESP> RESP init_resp_html(RESP resp) {
   resp.append_header("Server", "AlpacaHub /v.0.1");
   resp.append_header_date_field().append_header("Content-Type",
@@ -589,6 +596,26 @@ server_handler() {
   });
 
   // Let's handle rendering static content from ./html
+  router->http_get("/html/js/:page(.+)", [](auto req, auto params) {
+    std::string path = "../src/html/js/";
+    // std::string path = "./html/";
+    path.append(params["page"]);
+
+    spdlog::debug("Looking for: {0}", path);
+
+    if (std::filesystem::exists(path)) {
+      spdlog::debug("file found, rendering: {0}", path);
+      std::string data = slurp(path);
+
+      return init_resp_js(req->create_response()).set_body(data).done();
+    } else {
+      return init_resp_html(req->create_response(restinio::status_not_found()))
+          .set_body("Page not found.")
+          .done();
+    }
+  });
+
+  // Let's handle rendering static content from ./html
   router->http_get("/html/:page(.+)", [](auto req, auto params) {
     std::string path = "../src/html/";
     // std::string path = "./html/";
@@ -599,6 +626,7 @@ server_handler() {
     if (std::filesystem::exists(path)) {
       spdlog::debug("file found, rendering: {0}", path);
       std::string data = slurp(path);
+
       return init_resp_html(req->create_response()).set_body(data).done();
     } else {
       return init_resp_html(req->create_response(restinio::status_not_found()))

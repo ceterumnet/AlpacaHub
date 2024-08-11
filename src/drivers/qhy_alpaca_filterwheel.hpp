@@ -5,6 +5,7 @@
 #include "interfaces/i_alpaca_filterwheel.hpp"
 
 // #include "qhy_alpaca_camera.hpp"
+#include <memory>
 #include <qhyccd.h>
 
 class qhy_alpaca_camera;
@@ -22,9 +23,8 @@ public:
   std::vector<std::string> supported_actions();
   std::string unique_id();
 
-  qhy_alpaca_filterwheel(qhy_alpaca_camera *);
+  qhy_alpaca_filterwheel(qhy_alpaca_camera &);
   ~qhy_alpaca_filterwheel();
-
 
   int position();
   std::vector<std::string> names();
@@ -43,7 +43,7 @@ private:
   std::string _unique_id;
   std::vector<int> _focus_offsets;
   std::vector<std::string> _names;
-  qhy_alpaca_camera *_camera;
+  qhy_alpaca_camera  &_camera;
 };
 
 #endif

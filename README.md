@@ -265,12 +265,13 @@ the usual paramater parsing and general http plumbing in a way that
 I believe is pretty straight forward and easy to understand.
 
 #### Interfaces
-There are 4 key "interfaces" defined as abstract c++ classes for
+There are 5 key "interfaces" defined as abstract c++ classes for
 Alpaca Hub as it sits today:
 - Camera
 - Filterwheel
 - Telescope
 - Focuser
+- Switch
 
 The interface generally mimics what Alpaca / ASCOM prescribe.
 
@@ -430,6 +431,7 @@ cmake -B build src
 Note: I need to move these to an issues list / tickets in Github
 
  - [x] Create web page for project with documentation on usage
+ - [x] Add custom actions for QHY Cameras for USB Limit
  - [ ] Go through all settings that are currently hard-coded and
        ensure that they are exposed as configuration
  - [ ] Implement persistent configuration

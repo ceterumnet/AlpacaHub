@@ -25,15 +25,25 @@ std::vector<std::string> qhy_alpaca_filterwheel::supported_actions() {
 
 void qhy_alpaca_filterwheel::initialize() {}
 
-qhy_alpaca_filterwheel::qhy_alpaca_filterwheel(qhy_alpaca_camera *camera)
+qhy_alpaca_filterwheel::qhy_alpaca_filterwheel(
+    qhy_alpaca_camera &camera)
     : _camera(camera), _connected(false), _driver_version("v0.1"),
       _description("QHY Filterwheel"), _name("QHYFW") {
 
+  int num_of_filters =
+      (int)GetQHYCCDParam(_camera._cam_handle, CONTROL_ID::CONTROL_CFWSLOTSNUM);
 
   // TODO: This should be driven off of what the filterwheel indicates is
   // actually there
-  _names = {"0", "1", "2", "3", "4", "5", "6", "7", "8"};
-  _focus_offsets = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+  // _names = {"0", "1", "2", "3", "4", "5", "6", "7", "8"};
+  // _focus_offsets = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+  for (int i = 0; i < num_of_filters; i++) {
+    char filter_name = '0' + i + 1;
+    // TODO: I need to have a loadable setting for the filter names...
+    _names.push_back(std::string{filter_name});
+    _focus_offsets.push_back(0);
+  }
 }
 
 qhy_alpaca_filterwheel::~qhy_alpaca_filterwheel() {
@@ -43,7 +53,7 @@ qhy_alpaca_filterwheel::~qhy_alpaca_filterwheel() {
 int qhy_alpaca_filterwheel::position() {
   char fw_status = 0;
   uint32_t fw_res = QHYCCD_ERROR;
-  fw_res = GetQHYCCDCFWStatus(_camera->_cam_handle, &fw_status);
+  fw_res = GetQHYCCDCFWStatus(_camera._cam_handle, &fw_status);
 
   if (fw_res == QHYCCD_SUCCESS)
     return fw_status - '0';
@@ -63,7 +73,7 @@ int qhy_alpaca_filterwheel::set_names(std::vector<std::string> names) {
 int qhy_alpaca_filterwheel::set_position(uint32_t position) {
   char pos = position + '0';
   uint32_t r = QHYCCD_ERROR;
-  r = SendOrder2QHYCCDCFW(_camera->_cam_handle, &pos, 1);
+  r = SendOrder2QHYCCDCFW(_camera._cam_handle, &pos, 1);
   return r;
 }
 
@@ -72,11 +82,10 @@ std::vector<int> qhy_alpaca_filterwheel::focus_offsets() {
 }
 
 std::string qhy_alpaca_filterwheel::unique_id() {
-  return _camera->unique_id() + std::string("FW");
+  return _camera.unique_id() + std::string("FW");
 }
 
-std::map<std::string, device_variant_t>
-qhy_alpaca_filterwheel::details() {
+std::map<std::string, device_variant_t> qhy_alpaca_filterwheel::details() {
   std::map<std::string, device_variant_t> detail_map;
   detail_map["Connected"] = _connected;
   if (_connected) {
