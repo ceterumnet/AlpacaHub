@@ -3,6 +3,7 @@
 #include "drivers/qhy_alpaca_filterwheel_standalone.hpp"
 #include "drivers/zwo_am5_telescope.hpp"
 #include "server/alpaca_hub_server.hpp"
+#include "drivers/primaluce_focuser_rotator.hpp"
 #include <ostream>
 
 static asio::io_context io_ctx(1);
@@ -239,21 +240,27 @@ int main(int argc, char **argv) {
     }
   }
 
-  for (auto iter : pegasus_alpaca_focuscube3::serial_devices()) {
-    auto focuser_ptr = std::make_shared<pegasus_alpaca_focuscube3>();
-    focuser_ptr->set_serial_device(iter);
-    spdlog::info("Adding Pegasus Focuser at {}", iter);
-    alpaca_hub_server::device_map["focuser"].push_back(focuser_ptr);
+  auto focuser_ptr = std::make_shared<esatto_focuser>();
+  focuser_ptr->set_serial_device(
+      "/dev/serial/by-id/usb-Silicon_Labs_CP2102N_USB_to_UART_Bridge_Controller_"
+      "b2f14184e185eb11ad7b8b1ab7d59897-if00-port0");
+  alpaca_hub_server::device_map["focuser"].push_back(focuser_ptr);
+  spdlog::debug("added focuser esatto focuser");
+  // for (auto iter : pegasus_alpaca_focuscube3::serial_devices()) {
+  //   auto focuser_ptr = std::make_shared<pegasus_alpaca_focuscube3>();
+  //   focuser_ptr->set_serial_device(iter);
+  //   spdlog::info("Adding Pegasus Focuser at {}", iter);
+  //   alpaca_hub_server::device_map["focuser"].push_back(focuser_ptr);
 
-    if (auto_connect_devices) {
-      spdlog::info("Attempting to autoconnect: {}", iter);
-      try {
-        focuser_ptr->set_connected(true);
-      } catch (std::exception &ex) {
-        spdlog::error("Failed to autoconnect device: {}", iter);
-      }
-    }
-  }
+  //   if (auto_connect_devices) {
+  //     spdlog::info("Attempting to autoconnect: {}", iter);
+  //     try {
+  //       focuser_ptr->set_connected(true);
+  //     } catch (std::exception &ex) {
+  //       spdlog::error("Failed to autoconnect device: {}", iter);
+  //     }
+  //   }
+  // }
 
   for (auto iter : pegasus_alpaca_ppba::serial_devices()) {
     auto switch_ptr = std::make_shared<pegasus_alpaca_ppba>();

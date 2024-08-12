@@ -28,7 +28,7 @@ void qhy_alpaca_filterwheel::initialize() {}
 qhy_alpaca_filterwheel::qhy_alpaca_filterwheel(
     qhy_alpaca_camera &camera)
     : _camera(camera), _connected(false), _driver_version("v0.1"),
-      _description("QHY Filterwheel"), _name("QHYFW") {
+      _description("QHY Filterwheel"), _name("QHYCFW3") {
 
   int num_of_filters =
       (int)GetQHYCCDParam(_camera._cam_handle, CONTROL_ID::CONTROL_CFWSLOTSNUM);

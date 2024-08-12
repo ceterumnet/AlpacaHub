@@ -136,6 +136,7 @@ add_executable(AlpacaHubTests
   tests/zwo_am5_mount_tests.cpp
   tests/pegasus_alpaca_focuser_tests.cpp
   tests/qhy_alpaca_filterwheel_standalone_tests.cpp
+  tests/primaluce_tests.cpp
 )
 
 target_link_libraries(AlpacaHubTests

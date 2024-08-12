@@ -130,6 +130,8 @@ written drivers for the hardware I have at home:
 - ZWO AM5/AM3 Mount
 - Pegasus FocusCube 3
 - Pegasus Pocket Power Box Advanced (gen2 tested)
+- PrimaLuceLabs Esatto Robotic Focuser
+- PrimaLuceLabs ARCO Rotator
 
 Everything that I've implemented so far has passed the Alpaca Conform tests
 without issues except for guiding on the declination axis on the AM5. I
@@ -265,12 +267,13 @@ the usual paramater parsing and general http plumbing in a way that
 I believe is pretty straight forward and easy to understand.
 
 #### Interfaces
-There are 5 key "interfaces" defined as abstract c++ classes for
+There are 6 key "interfaces" defined as abstract c++ classes for
 Alpaca Hub as it sits today:
 - Camera
 - Filterwheel
 - Telescope
 - Focuser
+- Rotator
 - Switch
 
 The interface generally mimics what Alpaca / ASCOM prescribe.

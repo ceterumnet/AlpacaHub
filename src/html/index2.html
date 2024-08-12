@@ -12,7 +12,9 @@
          /* main {
             flex: 1 0 auto;
             } */
-
+         .container-wide {
+             width: 90%;
+         }
          .panel {
              border: 1px solid #eee;
              height: 300px;
@@ -568,7 +570,7 @@
     </head>
     <body v-scope="App()" @vue:mounted="setupRouting">
         <main>
-            <div class="container">
+            <div class="container container-wide">
                 Container
                 <div class="row">
                     <div class="col s12 m6 l4">
@@ -582,7 +584,24 @@
                         </div>
                     </div>
                     <div class="col s12 m6 l4">
+                        <div class="z-depth-2 grey panel" style="height: 600px">
+                            panel
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col s12 m6 l4">
                         <div class="z-depth-2 grey panel">
+                            panel
+                        </div>
+                    </div>
+                    <div class="col s12 m6 l4">
+                        <div class="z-depth-2 grey panel">
+                            panel
+                        </div>
+                    </div>
+                    <div class="col s12 m6 l4">
+                        <div class="z-depth-2 grey panel" style="height: 600px">
                             panel
                         </div>
                     </div>

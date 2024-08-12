@@ -14,8 +14,12 @@
          }
 
         </style>
-        <script type="text/javascript" src="/html/js/petite-vue.iife.js"></script>
+
         <script type="module">
+         import { createApp, reactive } from "/html/js/petite-vue.iife.js";
+         /* import { createApp, reactive } from 'https://unpkg.com/petite-vue?module' */
+
+         import { Focuser } from "/html/js/focuser.js"
          function App() {
              console.log("Main App Component");
              return {
@@ -187,17 +191,17 @@
                              'Content-Type': 'application/json'
                          },
                      })
-                             .then((_res) => _res.json())
-                             .then((_data) => {
-                                 device.busy = false;
-                                 if(_data.ErrorNumber === 0) {
-                                     console.log("response: ", _data);
-                                     this.fetchDeviceDetails(device);
-                                 } else {
-                                     device.ErrorNumber = _data.ErrorNumber;
-                                     device.ErrorMessage = _data.ErrorMessage;
-                                 }
-                             });
+                         .then((_res) => _res.json())
+                         .then((_data) => {
+                             device.busy = false;
+                             if(_data.ErrorNumber === 0) {
+                                 console.log("response: ", _data);
+                                 this.fetchDeviceDetails(device);
+                             } else {
+                                 device.ErrorNumber = _data.ErrorNumber;
+                                 device.ErrorMessage = _data.ErrorMessage;
+                             }
+                         });
                  },
                  setMountTimeFromPC(device) {
                      device.busy = true;
@@ -501,63 +505,10 @@
                              }
                          });
                  },
-                 setFocuserPosition(device) {
-                     device.busy = true;
-                     fetch("/api/v1/" + device.DeviceType.toLowerCase() + "/" + device.DeviceNumber + "/move", {
-                         method: 'PUT',
-                         headers: {
-                             'Content-Type': 'application/json'
-                         },
-                         body: `Position=${encodeURIComponent(device.Position)}`
-                     })
-                         .then((_res) => _res.json())
-                         .catch((e) => {
-                             alert("problem setting focuser position!");
-                             device.busy = false;
-                         })
-                         .then((_data) => {
-                             if(_data.ErrorNumber === 0) {
-                                 // device.Position = null;
-                                 device.busy = true;
-                                 console.log("device should be busy...");
-                                 this.fetchDeviceDetails(device);
-                             } else {
-                                 alert("Problem: " + _data.ErrorMessage);
-                                 this.fetchDeviceDetails(device);
-                                 device.busy = false;
-                             }
-                         });
-                 },
-                 haltFocuser(device) {
-                     device.busy = true;
-                     fetch("/api/v1/" + device.DeviceType.toLowerCase() + "/" + device.DeviceNumber + "/halt", {
-                         method: 'PUT',
-                         headers: {
-                             'Content-Type': 'application/json'
-                         }
-                     })
-                         .then((_res) => _res.json())
-                         .catch((e) => {
-                             alert("problem halting focuser");
-                             device.busy = false;
-                         })
-                         .then((_data) => {
-                             if(_data.ErrorNumber === 0) {
-                                 // device.Position = null;
-                                 this.fetchDeviceDetails(device);
-                                 device.busy = true;
-                             } else {
-                                 alert("Problem: " + _data.ErrorMessage);
-                                 this.fetchDeviceDetails(device);
-                                 device.busy = false;
-                             }
-                         });
-                 },
-
              }
          };
 
-         PetiteVue.createApp({App}).mount();
+         createApp({App, Focuser}).mount();
         </script>
     </head>
     <body v-scope="App()" @vue:mounted="setupRouting">
@@ -806,27 +757,7 @@
                                                     Set Longitude
                                                 </button>
                                             </div>
-                                            <div class="input-field" v-if="key === 'Position' && device.DeviceType.toLowerCase() == 'focuser'">
-                                                <input
-                                                    v-model="device.Position"
-                                                    id="focuser_position"
-                                                    type="text"
-                                                    class="validate right"
-                                                    @keyup.enter="setFocuserPosition(device)">
-                                                <label for="focuser_position"></label>
-                                                <button :class="{ disabled: device.busy }"
-                                                        @click="setFocuserPosition(device)"
-                                                        style="font-size: .75em"
-                                                        class="blue-grey darken-2 waves-effect waves-light btn-small">
-                                                    Set Focuser Position
-                                                </button>
-                                                <button @click="haltFocuser(device)"
-                                                        style="font-size: .75em"
-                                                        class="blue-grey darken-2 waves-effect waves-light btn-small">
-                                                    Halt Focuser
-                                                </button>
-                                            </div>
-
+                                            <div v-model="Focuser(device)"></div>
                                         </td>
                                     </tr>
                                 </tbody>
@@ -878,3 +809,26 @@
         <script type="text/javascript" src="/html/materialize/js/materialize.min.js"></script>
     </body>
 </html>
+
+<template id="focuser-input">
+    <div class="input-field" v-if="key === 'Position' && device.DeviceType.toLowerCase() == 'focuser'">
+        <input
+            v-model="device.Position"
+            id="focuser_position"
+            type="text"
+            class="validate right"
+            @keyup.enter="setFocuserPosition(device)">
+        <label for="focuser_position"></label>
+        <button :class="{ disabled: device.busy }"
+                @click="setFocuserPosition(device)"
+                style="font-size: .75em"
+                class="blue-grey darken-2 waves-effect waves-light btn-small">
+            Set Focuser Position
+        </button>
+        <button @click="haltFocuser(device)"
+                style="font-size: .75em"
+                class="blue-grey darken-2 waves-effect waves-light btn-small">
+            Halt Focuser
+        </button>
+    </div>
+</template>
