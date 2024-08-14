@@ -16,7 +16,7 @@
         </style>
 
         <script type="module">
-         import { createApp, reactive } from "/html/js/petite-vue.iife.js";
+         import { createApp, reactive } from "/html/js/petite-vue.module.iife.js";
          /* import { createApp, reactive } from 'https://unpkg.com/petite-vue?module' */
 
          import { Focuser } from "/html/js/focuser.js"
@@ -757,7 +757,26 @@
                                                     Set Longitude
                                                 </button>
                                             </div>
-                                            <div v-model="Focuser(device)"></div>
+                                            <div v-scope="Focuser(device)" class="input-field" v-if="key === 'Position' && device.DeviceType.toLowerCase() == 'focuser'">
+                                                <input
+                                                    v-model="device.Position"
+                                                    id="focuser_position"
+                                                    type="text"
+                                                    class="validate right"
+                                                    @keyup.enter="setFocuserPosition(device)">
+                                                <label for="focuser_position"></label>
+                                                <button :class="{ disabled: device.busy }"
+                                                        @click="setFocuserPosition(device)"
+                                                        style="font-size: .75em"
+                                                        class="blue-grey darken-2 waves-effect waves-light btn-small">
+                                                    Set Focuser Position
+                                                </button>
+                                                <button @click="haltFocuser(device)"
+                                                        style="font-size: .75em"
+                                                        class="blue-grey darken-2 waves-effect waves-light btn-small">
+                                                    Halt Focuser
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 </tbody>
@@ -809,26 +828,3 @@
         <script type="text/javascript" src="/html/materialize/js/materialize.min.js"></script>
     </body>
 </html>
-
-<template id="focuser-input">
-    <div class="input-field" v-if="key === 'Position' && device.DeviceType.toLowerCase() == 'focuser'">
-        <input
-            v-model="device.Position"
-            id="focuser_position"
-            type="text"
-            class="validate right"
-            @keyup.enter="setFocuserPosition(device)">
-        <label for="focuser_position"></label>
-        <button :class="{ disabled: device.busy }"
-                @click="setFocuserPosition(device)"
-                style="font-size: .75em"
-                class="blue-grey darken-2 waves-effect waves-light btn-small">
-            Set Focuser Position
-        </button>
-        <button @click="haltFocuser(device)"
-                style="font-size: .75em"
-                class="blue-grey darken-2 waves-effect waves-light btn-small">
-            Halt Focuser
-        </button>
-    </div>
-</template>

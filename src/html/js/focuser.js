@@ -1,8 +1,7 @@
  export const Focuser = function(props) {
      console.log("Focuser Component: ", props);
      return {
-         $template: '#focuser-input',
-         device: props.device,
+         device: props,
          setFocuserPosition(device) {
              console.log(`setting focuser pos to ${device.Position}`);
              console.log("Device: ", device);

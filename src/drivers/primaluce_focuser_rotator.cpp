@@ -3,8 +3,10 @@
 #include "interfaces/i_alpaca_device.hpp"
 #include <memory>
 
+// Rotator functions
 arco_rotator::arco_rotator(esatto_focuser &focuser)
-    : _focuser(focuser), _is_moving(false) {}
+    : _focuser(focuser), _is_moving(false), _mechanical_position(0),
+      _position(0), _reversed(false), _target_position(0), _connected(false) {}
 
 arco_rotator::~arco_rotator() {}
 
@@ -31,7 +33,12 @@ std::vector<std::string> arco_rotator::supported_actions() {
 
 std::string arco_rotator::unique_id() { return "unique_id_for_rotator123131"; };
 
-int arco_rotator::set_connected(bool connected) { return 0; }
+int arco_rotator::set_connected(bool connected) {
+  // TODO: I'm not sure if I need to do anything else here...depends on how I
+  // handle the update process
+  _connected = connected;
+  return 0;
+}
 
 std::string arco_rotator::description() { return "ARCO Robotic Rotator"; }
 
@@ -49,13 +56,15 @@ bool arco_rotator::can_reverse() { return true; };
 
 bool arco_rotator::is_moving() { return _is_moving; };
 
-double arco_rotator::mechanical_position() { return 0; };
-bool arco_rotator::reverse() { return false; };
+double arco_rotator::mechanical_position() { return _mechanical_position; };
+
+bool arco_rotator::reverse() { return _reversed; };
+
 int arco_rotator::set_reverse() { return 0; };
 
-double arco_rotator::step_size() { return 0; };
+double arco_rotator::step_size() { return 0.1; };
 
-double arco_rotator::target_position() { return 0; };
+double arco_rotator::target_position() { return _target_position; };
 
 int arco_rotator::halt() { return 0; };
 
@@ -69,6 +78,217 @@ int arco_rotator::movemechanical(const double &mechanical_position) {
 
 int arco_rotator::sync(const double &sync_position) { return 0; };
 
+// commands
+
+// I'm not sure if this will be used
+std::string arco_rotator::set_arco_enabled_cmd(const bool &enabled) {
+  int enable = enabled ? 1 : 0;
+  primaluce_kv_node root;
+  root.create_object("req")->create_object("set")->push_param("ARCO", enable);
+  return root.to_json().dump();
+};
+
+std::string arco_rotator::get_mot2_status_cmd() {
+  primaluce_kv_node root;
+  root.create_object("req")
+      ->create_object("get")
+      ->create_object("MOT2")
+      ->push_param("STATUS", "");
+  return root.to_json().dump();
+};
+
+bool valid_rotator_unit(const std::string &unit) {
+  if (unit == "DEG" || unit == "ARCSEC" || unit == "STEP")
+    return true;
+  return false;
+}
+std::string arco_rotator::cmd_sync_pos_mot2_cmd(const double &pos,
+                                                const std::string unit) {
+  if (!valid_rotator_unit(unit))
+    return "";
+  primaluce_kv_node root;
+  root.create_object("req")
+      ->create_object("cmd")
+      ->create_object("MOT2")
+      ->create_object("SYNC_POS")
+      ->push_param(unit, pos);
+  return root.to_json().dump();
+};
+
+// Is the offset between the Absolute and Mechanical Positions.This
+// parameter supports only the "get" operation
+// COMPENSATION_POS_STEP
+// COMPENSATION_POS_DEG
+// COMPENSATION_POS_ARCSEC
+std::string
+arco_rotator::get_mot2_compensation_pos_cmd(const std::string unit) {
+  if (!valid_rotator_unit(unit))
+    return "";
+
+  primaluce_kv_node root;
+  root.create_object("req")
+      ->create_object("get")
+      ->create_object("MOT2")
+      ->push_param(fmt::format("COMPENSATION_POS_{}", unit), "");
+  return root.to_json().dump();
+};
+
+// Return the current Rotator position, allowing for any sync offset
+// POSITION_STEP = ABS_POS_STEP + COMPENSATION_POS_STEP
+//
+// Thisparameter supports only the "get" operation POSITION_STEP is same
+// of POSITION
+std::string arco_rotator::get_mot2_pos_cmd(const std::string unit) {
+  if (!valid_rotator_unit(unit))
+    return "";
+  primaluce_kv_node root;
+  root.create_object("req")
+      ->create_object("get")
+      ->create_object("MOT2")
+      ->push_param(fmt::format("POSITION_{}", unit), "");
+  return root.to_json().dump();
+};
+
+// This command returns the raw mechanical position of the rotator.
+std::string arco_rotator::get_mot2_abs_pos_deg_cmd(const std::string unit) {
+  if (!valid_rotator_unit(unit))
+    return "";
+  primaluce_kv_node root;
+  root.create_object("req")
+      ->create_object("get")
+      ->create_object("MOT2")
+      ->push_param(fmt::format("ABS_POS_{}", unit), "");
+  return root.to_json().dump();
+};
+
+// Move the rotator to the specified absolute position This command
+// is similar to the GOTO command, except it works with the absolute
+// position
+std::string arco_rotator::cmd_move_abs_mot2_cmd(const double &pos,
+                                                const std::string unit) {
+  if (!valid_rotator_unit(unit))
+    return "";
+  primaluce_kv_node root;
+  root.create_object("req")
+      ->create_object("cmd")
+      ->create_object("MOT2")
+      ->create_object("MOVE_ABS")
+      ->push_param(unit, pos);
+  return root.to_json().dump();
+};
+
+// Same as MOVE_ABS command, but writes logs in the shell at every
+// second.
+std::string
+arco_rotator::cmd_verbose_move_abs_mot2_cmd(const double &pos,
+                                            const std::string unit) {
+  if (!valid_rotator_unit(unit))
+    return "";
+  primaluce_kv_node root;
+  root.create_object("req")
+      ->create_object("cmd")
+      ->create_object("MOT2")
+      ->create_object("VERBOSE_MOVE_ABS")
+      ->push_param(unit, pos);
+  return root.to_json().dump();
+};
+
+// Causes the rotator to move Position relative to the current
+// Position value.The number value could be positive or negative.
+std::string arco_rotator::cmd_move_mot2_cmd(const double &pos,
+                                            const std::string unit) {
+  if (!valid_rotator_unit(unit))
+    return "";
+  primaluce_kv_node root;
+  root.create_object("req")
+      ->create_object("cmd")
+      ->create_object("MOT2")
+      ->create_object("MOVE")
+      ->push_param(unit, pos);
+  return root.to_json().dump();
+};
+
+// Same as MOVE command, but writes logs in the shell at every
+// second.The value could be set in "DEG", "ARCSEC" or "STEP"
+std::string arco_rotator::cmd_verbose_move_mot2_cmd(const double &pos,
+                                                    const std::string unit) {
+  if (!valid_rotator_unit(unit))
+    return "";
+  primaluce_kv_node root;
+  root.create_object("req")
+      ->create_object("cmd")
+      ->create_object("MOT2")
+      ->create_object("VERBOSE_MOVE")
+      ->push_param(unit, pos);
+  return root.to_json().dump();
+};
+
+// Get/Set the Hemisphere status. Its value will influence the
+// motor's direction and degrees sign.
+std::string arco_rotator::get_hemisphere_mot2_cmd() {
+  primaluce_kv_node root;
+  root.create_object("req")
+      ->create_object("get")
+      ->create_object("MOT2")
+    ->push_param("HEMISPHERE","");
+  return root.to_json().dump();
+};
+// Values are "northern" and "southern".
+std::string
+arco_rotator::set_hemisphere_mot2_cmd(const std::string &hemisphere) {
+  primaluce_kv_node root;
+  root.create_object("req")
+      ->create_object("set")
+      ->create_object("MOT2")
+      ->push_param("HEMISPHERE", hemisphere);
+  return root.to_json().dump();
+};
+
+// Stop the motor without deceleration
+std::string arco_rotator::cmd_abort_mot2_cmd() {
+  primaluce_kv_node root;
+  root.create_object("req")
+      ->create_object("cmd")
+      ->create_object("MOT2")
+      ->push_param("MOT_ABORT", "");
+  return root.to_json().dump();
+};
+
+// Stop the motor with previous deceleration
+std::string arco_rotator::cmd_stop_mot2_cmd() {
+  primaluce_kv_node root;
+  root.create_object("req")
+      ->create_object("cmd")
+      ->create_object("MOT2")
+      ->push_param("MOT_ABORT", "");
+  return root.to_json().dump();
+};
+
+// 0: normal angular direction
+// 1: reversed
+std::string arco_rotator::get_reverse_mot2_cmd() {
+  primaluce_kv_node root;
+  root.create_object("req")
+      ->create_object("get")
+      ->create_object("MOT2")
+      ->push_param("REVERSE", "");
+  return root.to_json().dump();
+};
+
+// 0: normal angular direction
+// 1: reversed
+std::string arco_rotator::set_reverse_mot2_cmd(const int &reverse) {
+  primaluce_kv_node root;
+  root.create_object("req")
+      ->create_object("set")
+      ->create_object("MOT2")
+      ->push_param("REVERSE", reverse);
+  return root.to_json().dump();
+};
+
+// END arco functions
+
+// Focuser functions
 std::vector<std::string> esatto_focuser::serial_devices() {
   std::vector<std::string> device_paths;
   return device_paths;
@@ -76,7 +296,8 @@ std::vector<std::string> esatto_focuser::serial_devices() {
 
 esatto_focuser::esatto_focuser()
     : _connected(false), _is_moving(false), _position(0), _temperature(0),
-      _backlash(0), _serial_port(_io_context){};
+      _backlash(0), _serial_port(_io_context), _arco_present(false),
+      _step_size(1){};
 
 esatto_focuser::~esatto_focuser() {
   if (_connected) {
@@ -88,12 +309,30 @@ esatto_focuser::~esatto_focuser() {
 
 bool esatto_focuser::connected() { return _connected; };
 
-void esatto_focuser::update_properties(){
+void esatto_focuser::update_properties() {
+  auto resp = send_command_to_focuser(get_all_system_data_cmd());
+  auto all_system_data = nlohmann::json::parse(resp)["res"]["get"];
 
+  resp = send_command_to_focuser(get_mot1_status_cmd());
+  auto mot1_status_data = nlohmann::json::parse(resp)["res"]["get"]["MOT1"];
+
+  _position = all_system_data["MOT1"]["POSITION"];
+  _is_moving = mot1_status_data["STATUS"]["MST"] == "stop" ? false : true;
+  _temperature = std::atof(all_system_data["EXT_T"].get<std::string>().c_str());
+  _backlash = all_system_data["MOT1"]["BKLASH"];
 };
 
-void esatto_focuser::update_properties_proc(){
-
+void esatto_focuser::update_properties_proc() {
+  using namespace std::chrono_literals;
+  while (_connected) {
+    try {
+      update_properties();
+    } catch (alpaca_exception &ex) {
+      spdlog::warn("problem during update_properties: {}", ex.what());
+    }
+    std::this_thread::sleep_for(500ms);
+  }
+  spdlog::debug("update_properties_proc ended");
 };
 
 // std::string build_command(const std::string &cmd_type, const std::)
@@ -122,31 +361,25 @@ int esatto_focuser::set_connected(bool connected) {
 
       char buf[512] = {0};
 
-      // primaluce_map_of_value_t m1{{"key", "value"}};
-      // // primaluce_map_of_maps_value_t m2{{"key", m1}};
-      // primaluce_dict_variant_t d1{{"key", "value"}};
-      // primaluce_dict_variant_t d2{{"key", m1}};
-
-      // using pdv = primaluce_dict_variant_t;
-      // // using pmv = primaluce_map_of_maps_value_t;
-      // using pd  = primaluce_dict_t;
-      // using pmv = primaluce_map_of_value_t;
-      // pmv x{{"foo", "bar"}};
-
-      // primaluce_kv_node<primaluce_kv_node> root{"key", primaluce_kv_node}
-
       std::map<std::string,
                std::map<std::string, std::map<std::string, primaluce_value_t>>>
           req;
 
-      req["req"]["get"]["MODNAME"] = "";
-      // _serial_port.write_some(
-      //     asio::buffer(R"({"req":{"get":{"MODNAME":""}}}")"));
+      auto resp = send_command_to_focuser(get_all_system_data_cmd());
+      // spdlog::debug("Focuser response: {}", resp);
+      auto parsed_resp = nlohmann::json::parse(resp);
+      if (parsed_resp["res"]["get"]["MODNAME"] != "ESATTO3")
+        throw alpaca_exception(
+            alpaca_exception::DRIVER_ERROR,
+            fmt::format("Problem getting model name. Focuser returned {}",
+                        resp));
 
-      _serial_port.write_some(asio::buffer(nlohmann::json(req).dump()));
-      _serial_port.read_some(asio::buffer(buf));
+      if (parsed_resp["res"]["get"]["ARCO"] == 1) {
+        spdlog::debug("ARCO detected");
+        _arco_present = true;
+      } else
+        spdlog::debug("ARCO not detected");
 
-      spdlog::debug("Focuser response: {}", buf);
       // Start update thread to values
       _focuser_update_thread =
           std::thread(std::bind(&esatto_focuser::update_properties_proc, this));
@@ -215,9 +448,9 @@ bool esatto_focuser::absolute() { return true; };
 
 bool esatto_focuser::is_moving() { return _is_moving; };
 
-uint32_t esatto_focuser::max_increment() { return 0; };
+uint32_t esatto_focuser::max_increment() { return 731000; };
 
-uint32_t esatto_focuser::max_step() { return 0; };
+uint32_t esatto_focuser::max_step() { return 731000; };
 
 uint32_t esatto_focuser::position() { return _position; };
 
@@ -232,11 +465,23 @@ int esatto_focuser::set_temp_comp(bool temp_comp_enabled) {
 
 bool esatto_focuser::temp_comp_available() { return true; };
 
+bool esatto_focuser::arco_present() { return _arco_present; };
+
 double esatto_focuser::temperature() { return _temperature; };
 
-int esatto_focuser::halt() { return 0; };
+int esatto_focuser::halt() {
+  auto resp = send_command_to_focuser(cmd_stop_mot1_cmd());
+  // TODO: check for errors
+  return 0;
+};
 
-int esatto_focuser::move(const int &pos) { return 0; };
+int esatto_focuser::move(const int &pos) {
+  spdlog::debug("moving focuser to: {}", pos);
+  auto resp = send_command_to_focuser(cmd_move_abs_mot1_cmd(pos));
+  spdlog::debug("resp: {}", resp);
+  // TODO: check for errors
+  return 0;
+};
 
 std::map<std::string, device_variant_t> esatto_focuser::details() {
   std::map<std::string, device_variant_t> detail_map;
@@ -248,14 +493,263 @@ std::map<std::string, device_variant_t> esatto_focuser::details() {
     detail_map["Position"] = _position;
     detail_map["Moving"] = _is_moving;
     detail_map["Backlash"] = _backlash;
+    detail_map["Moving"] = _is_moving;
   }
 
   return detail_map;
 };
 
 // This will be used for the arco unit as well
-std::string send_command_to_focuser(const std::string &cmd,
-                                    bool read_response = true,
-                                    char stop_on_char = '\n') {
+std::string esatto_focuser::send_command_to_focuser(const std::string &cmd,
+                                                    bool read_response,
+                                                    char stop_on_char) {
+
+  try {
+    spdlog::trace("sending: {} to focuser", cmd);
+    std::lock_guard lock(_focuser_mtx);
+    char buf[8192] = {0};
+    _serial_port.write_some(asio::buffer(cmd));
+    std::string rsp;
+
+    if (read_response) {
+      _io_context.reset();
+      alpaca_hub_serial::blocking_reader reader(cmd, _serial_port, 250,
+                                                _io_context);
+      char c;
+      while (reader.read_char(c)) {
+        rsp += c;
+        if (c == stop_on_char || stop_on_char == '\0') {
+          break;
+        }
+      }
+    }
+
+    spdlog::trace("focuser returned: {}", rsp);
+    return rsp;
+  } catch (std::exception &ex) {
+    throw alpaca_exception(
+        alpaca_exception::DRIVER_ERROR,
+        fmt::format("Problem sending command to focuser: ", ex.what()));
+  }
+};
+
+std::string get_common_cmd(const std::string &param_name) {
+  primaluce_kv_node root;
+  root.create_object("req")->create_object("get")->push_param(param_name, "");
+  return root.to_json().dump();
+}
+
+std::string esatto_focuser::get_product_name_cmd() {
+  return get_common_cmd("MODNAME");
+};
+
+std::string esatto_focuser::get_serial_number_cmd() {
+  return get_common_cmd("SN");
+};
+
+std::string esatto_focuser::get_macaddr_cmd() {
+  return get_common_cmd("MACADDR");
+};
+
+std::string esatto_focuser::get_external_temp_cmd() {
+  return get_common_cmd("EXT_T");
+};
+
+std::string esatto_focuser::get_vin_12v_cmd() {
+  return get_common_cmd("VIN_12V");
+};
+
+std::string esatto_focuser::get_wifi_ap_cmd() {
+  return get_common_cmd("WIFIAP");
+};
+
+std::string esatto_focuser::get_sw_vers_cmd() {
+  return get_common_cmd("SWVERS");
+};
+
+// preset_idx 1-12
+std::string esatto_focuser::get_preset_cmd(const uint32_t &preset_idx) {
+  return get_common_cmd(fmt::format("PRESET_{}", preset_idx));
+};
+
+std::string esatto_focuser::get_presets_cmd() {
+  return get_common_cmd("PRESETS");
+};
+
+// preset_idx 1-12
+std::string esatto_focuser::cmd_recall_preset_cmd(const uint32_t &preset_idx) {
   return "";
+};
+
+std::string esatto_focuser::get_all_system_data_cmd() {
+  primaluce_kv_node root;
+  root.create_object("req")->push_param("get", "");
+  return root.to_json().dump();
+};
+
+// on, low, middle, off
+std::string esatto_focuser::cmd_dimleds_cmd(const std::string &led_brightness) {
+  if (led_brightness != "on" && led_brightness != "low" &&
+      led_brightness != "middle" && led_brightness != "off")
+    throw alpaca_exception(
+        alpaca_exception::INVALID_VALUE,
+        "DIMLEDS must be set to one of off, on, low, middle");
+
+  return get_common_cmd("DIMLEDS");
+};
+
+std::string esatto_focuser::cmd_reboot_cmd() {
+  primaluce_kv_node root;
+  root.create_object("req")->create_object("cmd")->push_param("REBOOT", "");
+  return root.to_json().dump();
+};
+
+// ***************************************** //
+// Commands only for esatto
+// ***************************************** //
+std::string esatto_focuser::get_vin_usb_cmd() {
+  return get_common_cmd("VIN_USB");
+};
+
+// ***************************************** //
+// Commands common to esatto and sestosenso2
+// ***************************************** //
+std::string esatto_focuser::get_mot1_cmd() { return get_common_cmd("SN"); };
+
+std::string esatto_focuser::get_mot1_status_cmd() {
+  primaluce_kv_node root;
+  root.create_object("req")
+      ->create_object("get")
+      ->create_object("MOT1")
+      ->push_param("STATUS", "");
+  return root.to_json().dump();
+};
+// Deprecated command...won't implement
+// std::string cmd_goto_cmd(const int &) { return ""; };
+
+// Not sure I want / need to implement these or not...
+// std::string cmd_fast_inward_mot1_cmd() { return ""; };
+// std::string cmd_fast_outward_mot1_cmd() { return ""; };
+// std::string cmd_slow_inward_mot1_cmd() { return ""; };
+// std::string cmd_slow_outward_mot1_cmd() { return ""; };
+
+std::string cmd_common_mot1_cmd(const std::string &param_name) {
+  primaluce_kv_node root;
+  root.create_object("req")
+      ->create_object("cmd")
+      ->create_object("MOT1")
+      ->push_param(param_name, "");
+  return root.to_json().dump();
+}
+
+// Without deceleration
+std::string esatto_focuser::cmd_abort_mot1_cmd() {
+  return cmd_common_mot1_cmd("MOT_ABORT");
+};
+
+// With previously set deceleration
+std::string esatto_focuser::cmd_stop_mot1_cmd() {
+  return cmd_common_mot1_cmd("MOT_STOP");
+};
+
+// Moves the focuser to a new position like for the GOTO command,
+// but it write, in the serial bus, a feedback of the current
+// position. This command print every 1 sec, the current position
+// and inform you when it finished your request.
+std::string
+esatto_focuser::cmd_verbose_time_goto_mot1_cmd(const uint32_t &pos) {
+  return cmd_common_mot1_cmd("VERBOSE_TIME_GOTO");
+};
+
+std::string get_common_mot1_cmd(const std::string &param_name) {
+  primaluce_kv_node root;
+  root.create_object("req")
+      ->create_object("cmd")
+      ->create_object("MOT1")
+      ->push_param(param_name, "");
+  return root.to_json().dump();
+}
+
+// Motor position, allowing for any sync offset
+// POSITION = POSITION_STEP + COMPENSATION_POS_STEP
+// This parameter supports only the "get" operation
+std::string esatto_focuser::get_position_mot1_cmd() {
+  return get_common_mot1_cmd("POSITION");
+};
+
+// Absolute (mechanical) Motor position
+std::string esatto_focuser::get_position_step_mot1_cmd() {
+  return get_common_mot1_cmd("POSITION_STEP");
+};
+
+// Absolute (mechanical) Motor position
+std::string esatto_focuser::get_abs_position_step_mot1_cmd() {
+  return get_common_mot1_cmd("ABS_POS_STEP");
+};
+
+// Syncs the motor to the specified position without moving it.This
+// command changes the COMPENSATION_POS_STEP's value
+std::string
+esatto_focuser::cmd_sync_position_mot1_cmd(const uint32_t &sync_pos) {
+  primaluce_kv_node root;
+  root.create_object("req")
+      ->create_object("cmd")
+      ->create_object("MOT1")
+      ->create_object("SYNC_POS")
+      ->push_param("STEP", sync_pos);
+  return root.to_json().dump();
+};
+
+// Move the motor to the specified absolute position This command is
+// similar to the GOTO command, except it works with the absolute
+// position
+std::string esatto_focuser::cmd_move_abs_mot1_cmd(const uint32_t &pos) {
+  primaluce_kv_node root;
+  root.create_object("req")
+      ->create_object("cmd")
+      ->create_object("MOT1")
+      ->create_object("MOVE_ABS")
+      ->push_param("STEP", pos);
+  return root.to_json().dump();
+};
+
+// Same as MOVE_ABS command, but writes logs in the shell at every
+// second
+std::string esatto_focuser::cmd_verbose_move_abs_mot1_cmd(const uint32_t &pos) {
+  primaluce_kv_node root;
+  root.create_object("req")
+      ->create_object("cmd")
+      ->create_object("MOT1")
+      ->create_object("VERBOSE_MOVE_ABS")
+      ->push_param("STEP", pos);
+  return root.to_json().dump();
+};
+// Causes the motor to move Position relative to the
+// current Position value
+std::string esatto_focuser::cmd_move_mot1_cmd(const uint32_t &pos) {
+  primaluce_kv_node root;
+  root.create_object("req")
+      ->create_object("cmd")
+      ->create_object("MOT1")
+      ->create_object("MOVE")
+      ->push_param("STEP", pos);
+  return root.to_json().dump();
+};
+
+std::string esatto_focuser::get_backlash_cmd() {
+  return get_common_mot1_cmd("BKLASH");
+};
+
+// The Motor's backlash is corrected in the factory, with a specific
+// calibration value.  The user could customize this motor's
+// parameter using this command, increasing the calibration setup.
+// The range of possible values is from 0 to 5000.  The default
+// value is zero.
+std::string esatto_focuser::set_backlash_cmd(const uint32_t &steps) {
+  primaluce_kv_node root;
+  root.create_object("req")
+      ->create_object("set")
+      ->create_object("MOT1")
+      ->push_param("BKLASH", steps);
+  return root.to_json().dump();
 };

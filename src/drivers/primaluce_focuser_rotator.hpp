@@ -7,19 +7,19 @@
 #include "interfaces/i_alpaca_rotator.hpp"
 #include <memory>
 
-// Basic type
+// Basic types for PrimaLuceLabs JSON
 using primaluce_value_t = std::variant<double, int, uint32_t, std::string>;
 
-// Basic single level deep object
-using primaluce_map_of_value_t = std::map<std::string, primaluce_value_t>;
+// // Basic single level deep object
+// using primaluce_map_of_value_t = std::map<std::string, primaluce_value_t>;
 
-using primaluce_variant_t =
-    std::variant<primaluce_value_t, primaluce_map_of_value_t>;
+// using primaluce_variant_t =
+//     std::variant<primaluce_value_t, primaluce_map_of_value_t>;
 
-using primaluce_dict_variant_t = std::map<std::string, primaluce_variant_t>;
+// using primaluce_dict_variant_t = std::map<std::string, primaluce_variant_t>;
 
-using primaluce_dict_t =
-    std::map<std::string, std::map<std::string, primaluce_variant_t>>;
+// using primaluce_dict_t =
+//     std::map<std::string, std::map<std::string, primaluce_variant_t>>;
 
 struct primaluce_node {
   std::string key;
@@ -30,8 +30,10 @@ struct primaluce_node {
   // std::visit([](const auto &elem) { std::cout << elem << '\n'; }, value);
 };
 
-template <> struct fmt::formatter<primaluce_value_t> : fmt::formatter<std::string> {
-  auto format(primaluce_value_t my, format_context &ctx) const -> decltype(ctx.out()) {
+template <>
+struct fmt::formatter<primaluce_value_t> : fmt::formatter<std::string> {
+  auto format(primaluce_value_t my, format_context &ctx) const
+      -> decltype(ctx.out()) {
     if (std::holds_alternative<double>(my)) {
       return format_to(ctx.out(), "{}", std::get<double>(my));
     } else if (std::holds_alternative<int>(my)) {
@@ -45,17 +47,16 @@ template <> struct fmt::formatter<primaluce_value_t> : fmt::formatter<std::strin
 };
 
 // template <typename T>
-struct primaluce_kv_node : public std::enable_shared_from_this<primaluce_kv_node> {
+struct primaluce_kv_node
+    : public std::enable_shared_from_this<primaluce_kv_node> {
   std::string key;
   std::vector<std::shared_ptr<primaluce_node>> nodes;
   std::vector<std::shared_ptr<primaluce_kv_node>> edges;
 
-  std::shared_ptr<primaluce_kv_node> this_root() {
-    return shared_from_this();
-  }
+  std::shared_ptr<primaluce_kv_node> this_root() { return shared_from_this(); }
 
   std::shared_ptr<primaluce_kv_node> push_param(std::string k,
-                                              primaluce_value_t v) {
+                                                primaluce_value_t v) {
     auto node = std::make_shared<primaluce_node>(k, v);
     nodes.push_back(node);
     return this_root();
@@ -68,9 +69,7 @@ struct primaluce_kv_node : public std::enable_shared_from_this<primaluce_kv_node
     return edge;
   }
 
-  std::string dump() {
-    return to_json().dump();
-  }
+  std::string dump() { return to_json().dump(); }
 
   nlohmann::json to_json(nlohmann::json j = nlohmann::json()) {
     for (auto iter : nodes) {
@@ -120,6 +119,68 @@ public:
   int movemechanical(const double &mechanical_position);
   int sync(const double &sync_position);
 
+  // commands
+  std::string set_arco_enabled_cmd(const bool &enabled);
+  std::string get_mot2_status_cmd();
+
+  std::string cmd_sync_pos_mot2_cmd(const double &pos,
+                                    const std::string unit = "DEG");
+
+  // Is the offset between the Absolute and Mechanical Positions.This
+  // parameter supports only the "get" operation
+  // COMPENSATION_POS_STEP
+  // COMPENSATION_POS_DEG
+  // COMPENSATION_POS_ARCSEC
+  std::string get_mot2_compensation_pos_cmd(const std::string unit = "DEG");
+
+  // Return the current Rotator position, allowing for any sync offset
+  // POSITION_STEP = ABS_POS_STEP + COMPENSATION_POS_STEP
+  //
+  // Thisparameter supports only the "get" operation POSITION_STEP is same
+  // of POSITION
+  std::string get_mot2_pos_cmd(const std::string unit = "DEG");
+
+  // This command returns the raw mechanical position of the rotator.
+  std::string get_mot2_abs_pos_deg_cmd(const std::string unit = "DEG");
+
+  // Move the rotator to the specified absolute position This command
+  // is similar to the GOTO command, except it works with the absolute
+  // position
+  std::string cmd_move_abs_mot2_cmd(const double &pos,
+                                    const std::string unit = "DEG");
+
+  // Same as MOVE_ABS command, but writes logs in the shell at every
+  // second.
+  std::string cmd_verbose_move_abs_mot2_cmd(const double &pos,
+                                            const std::string unit = "DEG");
+
+  // Causes the rotator to move Position relative to the current
+  // Position value.The number value could be positive or negative.
+  std::string cmd_move_mot2_cmd(const double &pos,
+                                const std::string unit = "DEG");
+
+  // Same as MOVE command, but writes logs in the shell at every
+  // second.The value could be set in "DEG", "ARCSEC" or "STEP"
+  std::string cmd_verbose_move_mot2_cmd(const double &deg,
+                                        const std::string unit = "DEG");
+
+  // Get/Set the Hemisphere status. Its value will influence the
+  // motor's direction and degrees sign.
+  std::string get_hemisphere_mot2_cmd();
+  // Values are "northern" and "southern".
+  std::string set_hemisphere_mot2_cmd(const std::string &hemisphere);
+
+  // Stop the motor without deceleration
+  std::string cmd_abort_mot2_cmd();
+
+  // Stop the motor with previous deceleration
+  std::string cmd_stop_mot2_cmd();
+
+  // 0: normal angular direction
+  // 1: reversed
+  std::string get_reverse_mot2_cmd();
+  std::string set_reverse_mot2_cmd(const int &reverse);
+
 private:
   esatto_focuser &_focuser;
   bool _is_moving;
@@ -168,28 +229,13 @@ public:
   int halt();
   int move(const int &pos);
 
+  bool arco_present();
   // This will be used for the arco unit as well
   std::string send_command_to_focuser(const std::string &cmd,
                                       bool read_response = true,
                                       char stop_on_char = '\n');
 
-private:
-  void throw_if_not_connected();
-  void update_properties();
-  void update_properties_proc();
-  std::thread _focuser_update_thread;
-  std::string _serial_device_path;
-  bool _connected;
-  bool _is_moving;
-  asio::io_context _io_context;
-  asio::serial_port _serial_port;
-  std::mutex _focuser_mtx;
-  uint32_t _position;
-  int _backlash;
-  double _temperature;
-  std::unique_ptr<arco_rotator> _rotator;
-  uint32_t _step_size;
-  bool _temp_comp_enabled;
+  // TODO: refactor these into a separate commands namespace
 
   // ***************************************** //
   // Commands common to all
@@ -219,8 +265,8 @@ private:
   // ***************************************** //
   // Commands common to esatto and sestosenso2
   // ***************************************** //
-  std::string cmd_get_mot1_cmd();
-  std::string cmd_get_mot1_status_cmd();
+  std::string get_mot1_cmd();
+  std::string get_mot1_status_cmd();
   // Deprecated command...won't implement
   // std::string cmd_goto_cmd(const int &);
 
@@ -264,7 +310,7 @@ private:
 
   // Same as MOVE_ABS command, but writes logs in the shell at every
   // second
-  std::string verbose_move_abs_mot1_cmd(const uint32_t &);
+  std::string cmd_verbose_move_abs_mot1_cmd(const uint32_t &);
   // Causes the motor to move Position relative to the
   // current Position value
   std::string cmd_move_mot1_cmd(const uint32_t &);
@@ -277,6 +323,25 @@ private:
   // The range of possible values is from 0 to 5000.  The default
   // value is zero.
   std::string set_backlash_cmd(const uint32_t &);
+
+private:
+  void throw_if_not_connected();
+  void update_properties();
+  void update_properties_proc();
+  std::thread _focuser_update_thread;
+  std::string _serial_device_path;
+  bool _connected;
+  bool _is_moving;
+  asio::io_context _io_context;
+  asio::serial_port _serial_port;
+  std::mutex _focuser_mtx;
+  uint32_t _position;
+  int _backlash;
+  double _temperature;
+  std::unique_ptr<arco_rotator> _rotator;
+  uint32_t _step_size;
+  bool _temp_comp_enabled;
+  bool _arco_present;
 };
 
 #endif
