@@ -1,9 +1,9 @@
 #include "drivers/pegasus_alpaca_focuscube3.hpp"
 #include "drivers/pegasus_alpaca_ppba.hpp"
+#include "drivers/primaluce_focuser_rotator.hpp"
 #include "drivers/qhy_alpaca_filterwheel_standalone.hpp"
 #include "drivers/zwo_am5_telescope.hpp"
 #include "server/alpaca_hub_server.hpp"
-#include "drivers/primaluce_focuser_rotator.hpp"
 #include <ostream>
 
 static asio::io_context io_ctx(1);
@@ -219,6 +219,8 @@ int main(int argc, char **argv) {
       std::vector<std::shared_ptr<i_alpaca_device>>();
   alpaca_hub_server::device_map["focuser"] =
       std::vector<std::shared_ptr<i_alpaca_device>>();
+  alpaca_hub_server::device_map["rotator"] =
+      std::vector<std::shared_ptr<i_alpaca_device>>();
 
   // BEGIN Implementation specific initialization of various device types:
   // TODO: figure out how to setup the implementation specific pieces in a
@@ -240,12 +242,53 @@ int main(int argc, char **argv) {
     }
   }
 
-  auto focuser_ptr = std::make_shared<esatto_focuser>();
-  focuser_ptr->set_serial_device(
-      "/dev/serial/by-id/usb-Silicon_Labs_CP2102N_USB_to_UART_Bridge_Controller_"
-      "b2f14184e185eb11ad7b8b1ab7d59897-if00-port0");
-  alpaca_hub_server::device_map["focuser"].push_back(focuser_ptr);
-  spdlog::debug("added focuser esatto focuser");
+  try {
+    auto focuser_ptr = std::make_shared<esatto_focuser>(
+        "/dev/serial/by-id/"
+        "usb-Silicon_Labs_CP2102N_USB_to_UART_Bridge_Controller_"
+        "b2f14184e185eb11ad7b8b1ab7d59897-if00-port0");
+    alpaca_hub_server::device_map["focuser"].push_back(focuser_ptr);
+
+    try {
+      focuser_ptr->init_rotator();
+    } catch (std::exception &ex) {
+      spdlog::error("Failed to init arco device: {}", ex.what());
+    }
+
+    spdlog::debug("added focuser esatto focuser at {}",
+                  focuser_ptr->get_serial_device_path());
+
+    if (auto_connect_devices) {
+      spdlog::info("Attempting to autoconnect Focuser at: {}",
+                   focuser_ptr->get_serial_device_path());
+      try {
+        focuser_ptr->set_connected(true);
+      } catch (std::exception &ex) {
+        spdlog::error("Failed to autoconnect device: {}",
+                      focuser_ptr->get_serial_device_path());
+      }
+    }
+
+    if (focuser_ptr->arco_present()) {
+      focuser_ptr->init_rotator();
+      auto rotator_ptr = focuser_ptr->rotator();
+      alpaca_hub_server::device_map["rotator"].push_back(rotator_ptr);
+
+      if (auto_connect_devices) {
+        spdlog::info("Attempting to autoconnect attached rotator");
+        try {
+          rotator_ptr->set_connected(true);
+        } catch (std::exception &ex) {
+          spdlog::error("Failed to autoconnect rotator: {}");
+        }
+      }
+    }
+
+  } catch(std::exception &ex) {
+    spdlog::error("failed to add esatto: {}", ex.what());
+  }
+
+
   // for (auto iter : pegasus_alpaca_focuscube3::serial_devices()) {
   //   auto focuser_ptr = std::make_shared<pegasus_alpaca_focuscube3>();
   //   focuser_ptr->set_serial_device(iter);
@@ -341,7 +384,8 @@ int main(int argc, char **argv) {
     auto filterwheel_list =
         qhy_alpaca_filterwheel_standalone::get_connected_filterwheels();
     for (auto &fw_item : filterwheel_list) {
-      auto fw_ptr = std::make_shared<qhy_alpaca_filterwheel_standalone>(fw_item);
+      auto fw_ptr =
+          std::make_shared<qhy_alpaca_filterwheel_standalone>(fw_item);
       alpaca_hub_server::device_map["filterwheel"].push_back(fw_ptr);
       spdlog::info("filterwheel added at {}", fw_item);
       if (auto_connect_devices) {

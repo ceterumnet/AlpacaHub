@@ -435,6 +435,11 @@ Note: I need to move these to an issues list / tickets in Github
 
  - [x] Create web page for project with documentation on usage
  - [x] Add custom actions for QHY Cameras for USB Limit
+ - [ ] Rewrite main.cpp so that device specific code is implemented
+       inside of each driver class with validation that the device
+       is even present
+ - [ ] Add dynamic polling of devices being added / removed from the
+       system
  - [ ] Go through all settings that are currently hard-coded and
        ensure that they are exposed as configuration
  - [ ] Implement persistent configuration
@@ -457,7 +462,9 @@ Note: I need to move these to an issues list / tickets in Github
     - [x] Achieve conformance with ASCOM Conform Tool (there are a few
           issues to work through on this regarding pulseguide in dec
           axis)
- - [x] Implement focuser driver
+ - [x] Implement Pegasus FocusCube3 focuser driver
+ - [x] Implement PrimaLuceLabs Esatto focuser driver
+ - [x] Implement PrimaLuceLabs ARCO focuser driver
  - [ ] Implement better descriptions in device driver implementations
  - [ ] Implement firmware version to data pulled into the device
        driver implementations

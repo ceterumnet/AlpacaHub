@@ -5,7 +5,10 @@ TEST_CASE("Key Value structures", "[primaluce_kv_structures]") {
   spdlog::set_level(spdlog::level::trace);
 
   primaluce_kv_node root;
-  esatto_focuser focuser;
+  esatto_focuser focuser(
+      "/dev/serial/by-id/"
+      "usb-Silicon_Labs_CP2102N_USB_to_UART_Bridge_Controller_"
+      "b2f14184e185eb11ad7b8b1ab7d59897-if00-port0");
   // auto n = root.create_node("foo", "bar");
 
   SECTION("Basic node creation") {
@@ -17,10 +20,6 @@ TEST_CASE("Key Value structures", "[primaluce_kv_structures]") {
   }
 
   SECTION("System status") {
-    focuser.set_serial_device(
-        "/dev/serial/by-id/"
-        "usb-Silicon_Labs_CP2102N_USB_to_UART_Bridge_Controller_"
-        "b2f14184e185eb11ad7b8b1ab7d59897-if00-port0");
     focuser.set_connected(true);
     auto resp =
         focuser.send_command_to_focuser(focuser.get_all_system_data_cmd());
@@ -46,10 +45,6 @@ TEST_CASE("Key Value structures", "[primaluce_kv_structures]") {
   }
 
   SECTION("MOT1 status") {
-    focuser.set_serial_device(
-        "/dev/serial/by-id/"
-        "usb-Silicon_Labs_CP2102N_USB_to_UART_Bridge_Controller_"
-        "b2f14184e185eb11ad7b8b1ab7d59897-if00-port0");
     focuser.set_connected(true);
     auto resp =
       focuser.send_command_to_focuser(focuser.get_mot1_status_cmd());

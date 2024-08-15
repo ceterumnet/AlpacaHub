@@ -5,8 +5,10 @@
 
 // Rotator functions
 arco_rotator::arco_rotator(esatto_focuser &focuser)
-    : _focuser(focuser), _is_moving(false), _mechanical_position(0),
-      _position(0), _reversed(false), _target_position(0), _connected(false) {}
+    : _focuser(focuser), _is_moving(false), _mechanical_position_deg(0),
+      _mechanical_position_step(0), _mechanical_position_arcsec(0),
+      _position_deg(0), _position_step(0), _position_arcsec(0),
+      _reversed(false), _target_position_deg(0), _connected(false) {}
 
 arco_rotator::~arco_rotator() {}
 
@@ -15,14 +17,35 @@ std::map<std::string, device_variant_t> arco_rotator::details() {
   detail_map["Connected"] = _connected;
 
   if (_connected) {
-    detail_map["Position"] = _position;
-    detail_map["Mechanical Position"] = _mechanical_position;
-    detail_map["Target Position"] = _target_position;
+    detail_map["Position (deg)"] = _position_deg;
+    detail_map["Position (steps)"] = _position_step;
+    detail_map["Position (arcsec)"] = _position_arcsec;
+
+    detail_map["Mechanical Position (deg)"] = _mechanical_position_deg;
+    detail_map["Mechanical Position (steps)"] = _mechanical_position_step;
+    detail_map["Mechanical Position (arcsec)"] = _mechanical_position_arcsec;
+
+    detail_map["Position Offset from Mechanical (deg)"] =
+        _mechanical_position_deg;
+    detail_map["Position Offset from Mechanical (steps)"] =
+        _mechanical_position_step;
+    detail_map["Position Offset from Mechanical (arcsec)"] =
+        _mechanical_position_arcsec;
+
+    detail_map["Target Position (deg)"] = _target_position_deg;
     detail_map["Moving"] = _is_moving;
     detail_map["Reversed"] = _reversed;
   }
 
   return detail_map;
+};
+
+std::string arco_rotator::send_command_to_rotator(const std::string &cmd,
+                                                  bool read_response,
+                                                  char stop_on_char) {
+
+  // The arco is simply a peripheral that is connected to the focuser.
+  return _focuser.send_command_to_focuser(cmd);
 };
 
 bool arco_rotator::connected() { return _connected; };
@@ -36,6 +59,9 @@ std::string arco_rotator::unique_id() { return "unique_id_for_rotator123131"; };
 int arco_rotator::set_connected(bool connected) {
   // TODO: I'm not sure if I need to do anything else here...depends on how I
   // handle the update process
+  if (!_focuser.connected())
+    throw alpaca_exception(alpaca_exception::INVALID_OPERATION,
+                           "Focuser must be connected first.");
   _connected = connected;
   return 0;
 }
@@ -56,27 +82,59 @@ bool arco_rotator::can_reverse() { return true; };
 
 bool arco_rotator::is_moving() { return _is_moving; };
 
-double arco_rotator::mechanical_position() { return _mechanical_position; };
+double arco_rotator::position() { return _position_deg; };
+
+double arco_rotator::mechanical_position() { return _mechanical_position_deg; };
 
 bool arco_rotator::reverse() { return _reversed; };
 
-int arco_rotator::set_reverse() { return 0; };
+int arco_rotator::set_reverse(bool reverse) { return 0; };
 
 double arco_rotator::step_size() { return 0.1; };
 
-double arco_rotator::target_position() { return _target_position; };
+double arco_rotator::target_position() { return _target_position_deg; };
 
-int arco_rotator::halt() { return 0; };
-
-int arco_rotator::move(const double &position) { return 0; };
-
-int arco_rotator::moveabsolute(const double &absolute_position) { return 0; };
-
-int arco_rotator::movemechanical(const double &mechanical_position) {
+int arco_rotator::halt() {
+  auto resp = send_command_to_rotator(cmd_abort_mot2_cmd());
+  // TODO: check for errors
   return 0;
 };
 
-int arco_rotator::sync(const double &sync_position) { return 0; };
+int arco_rotator::move(const double &position) {
+  _target_position_deg = _position_deg + position;
+
+  auto resp = send_command_to_rotator(cmd_move_mot2_cmd(position));
+  // TODO: check for errors
+  return 0;
+};
+
+int arco_rotator::moveabsolute(const double &absolute_position) {
+  _target_position_deg = absolute_position;
+  auto resp = send_command_to_rotator(cmd_move_abs_mot2_cmd(absolute_position));
+  // TODO: check for errors
+  return 0;
+};
+
+int arco_rotator::movemechanical(const double &mechanical_position) {
+
+  // Need to calculate the absolute position
+  double absolute_calculated =
+      mechanical_position + _position_offset_from_mechanical_deg;
+  spdlog::debug("mechanical position: {}", mechanical_position);
+  spdlog::debug("moving to {}", absolute_calculated);
+  _target_position_deg = absolute_calculated;
+  auto resp = send_command_to_rotator(
+      cmd_move_abs_mot2_cmd(absolute_calculated));
+  // TODO: check for errors
+  return 0;
+};
+
+int arco_rotator::sync(const double &sync_position) {
+  // Need to calculate the absolute position
+  auto resp = send_command_to_rotator(cmd_sync_pos_mot2_cmd(sync_position));
+  // TODO: check for errors
+  return 0;
+};
 
 // commands
 
@@ -230,7 +288,7 @@ std::string arco_rotator::get_hemisphere_mot2_cmd() {
   root.create_object("req")
       ->create_object("get")
       ->create_object("MOT2")
-    ->push_param("HEMISPHERE","");
+      ->push_param("HEMISPHERE", "");
   return root.to_json().dump();
 };
 // Values are "northern" and "southern".
@@ -294,10 +352,22 @@ std::vector<std::string> esatto_focuser::serial_devices() {
   return device_paths;
 };
 
-esatto_focuser::esatto_focuser()
-    : _connected(false), _is_moving(false), _position(0), _temperature(0),
-      _backlash(0), _serial_port(_io_context), _arco_present(false),
-      _step_size(1){};
+esatto_focuser::esatto_focuser(const std::string &serial_device_path)
+    : _serial_device_path(serial_device_path), _connected(false),
+      _is_moving(false), _position(0), _temperature(0), _backlash(0),
+      _serial_port(_io_context), _arco_present(false), _step_size(1) {
+  spdlog::debug("Setting connected to true");
+  spdlog::debug("Attempting to open serial device at {0}", _serial_device_path);
+  _serial_port.open(_serial_device_path);
+  _serial_port.set_option(asio::serial_port_base::baud_rate(115200));
+  _serial_port.set_option(asio::serial_port_base::character_size(8));
+  _serial_port.set_option(asio::serial_port_base::flow_control(
+      asio::serial_port_base::flow_control::none));
+  _serial_port.set_option(
+      asio::serial_port_base::parity(asio::serial_port_base::parity::none));
+  _serial_port.set_option(asio::serial_port_base::stop_bits(
+      asio::serial_port_base::stop_bits::one));
+};
 
 esatto_focuser::~esatto_focuser() {
   if (_connected) {
@@ -307,20 +377,98 @@ esatto_focuser::~esatto_focuser() {
   }
 };
 
+void esatto_focuser::init_rotator() {
+  // Check if the rotator is present
+  auto resp = send_command_to_focuser(get_all_system_data_cmd());
+  auto parsed_resp = nlohmann::json::parse(resp);
+  if (parsed_resp["res"]["get"]["ARCO"] == 1) {
+    _rotator->_target_position_deg = parsed_resp["res"]["get"]["MOT2"]["POSITION_DEG"];
+    spdlog::debug("ARCO detected");
+    _arco_present = true;
+  } else
+    spdlog::debug("ARCO not detected");
+  // Create rotator
+  if (_arco_present) {
+    _rotator = std::make_shared<arco_rotator>(*this);
+  }
+}
+
+std::shared_ptr<arco_rotator> esatto_focuser::rotator() { return _rotator; }
+
 bool esatto_focuser::connected() { return _connected; };
 
 void esatto_focuser::update_properties() {
-  auto resp = send_command_to_focuser(get_all_system_data_cmd());
-  auto all_system_data = nlohmann::json::parse(resp)["res"]["get"];
+  std::string resp;
+  try {
+    spdlog::trace("sending get_all_system_data_cmd");
+    resp = send_command_to_focuser(get_all_system_data_cmd());
+    spdlog::trace("   returned: {}", resp);
 
-  resp = send_command_to_focuser(get_mot1_status_cmd());
-  auto mot1_status_data = nlohmann::json::parse(resp)["res"]["get"]["MOT1"];
+    auto all_system_data = nlohmann::json::parse(resp)["res"]["get"];
 
-  _position = all_system_data["MOT1"]["POSITION"];
-  _is_moving = mot1_status_data["STATUS"]["MST"] == "stop" ? false : true;
-  _temperature = std::atof(all_system_data["EXT_T"].get<std::string>().c_str());
-  _backlash = all_system_data["MOT1"]["BKLASH"];
-};
+    spdlog::trace("sending get_mot1_status_cmd");
+    resp = send_command_to_focuser(get_mot1_status_cmd());
+    spdlog::trace("   returned: {}", resp);
+
+    auto mot1_status_data = nlohmann::json::parse(resp)["res"]["get"]["MOT1"];
+
+    _position = all_system_data["MOT1"]["POSITION"];
+
+    _is_moving = mot1_status_data["STATUS"]["MST"] == "stop" ? false : true;
+    _temperature =
+        std::atof(all_system_data["EXT_T"].get<std::string>().c_str());
+    _backlash = all_system_data["MOT1"]["BKLASH"];
+
+    // If we have an arco, let's update the properties here
+    if (_arco_present && _rotator->_connected) {
+      spdlog::trace("getting reverse");
+      _rotator->_reversed = all_system_data["MOT2"]["REVERSE"] == 1;
+
+      spdlog::trace("getting position_step");
+      _rotator->_position_step = all_system_data["MOT2"]["POSITION_STEP"];
+
+      spdlog::trace("getting position_deg");
+      _rotator->_position_deg = all_system_data["MOT2"]["POSITION_DEG"];
+
+      spdlog::trace("getting position_arcsec");
+      _rotator->_position_arcsec = all_system_data["MOT2"]["POSITION_ARCSEC"];
+
+      spdlog::trace("getting compensation_deg");
+      _rotator->_position_offset_from_mechanical_deg =
+          all_system_data["MOT2"]["COMPENSATION_POS_DEG"];
+
+      spdlog::trace("getting compensation_arcsec");
+      _rotator->_position_offset_from_mechanical_arcsec =
+          all_system_data["MOT2"]["COMPENSATION_POS_ARCSEC"];
+
+      spdlog::trace("getting compensation_step");
+      _rotator->_position_offset_from_mechanical_step =
+          all_system_data["MOT2"]["COMPENSATION_POS_STEP"];
+
+      spdlog::trace("getting abs_pos_deg");
+      _rotator->_mechanical_position_deg =
+          all_system_data["MOT2"]["ABS_POS_DEG"];
+
+      spdlog::trace("getting abs_pos_arcsec");
+      _rotator->_mechanical_position_arcsec =
+          all_system_data["MOT2"]["ABS_POS_ARCSEC"];
+
+      spdlog::trace("getting abs_pos_step");
+      _rotator->_mechanical_position_step =
+        all_system_data["MOT2"]["ABS_POS_STEP"];
+
+      resp = send_command_to_focuser(_rotator->get_mot2_status_cmd());
+      auto mot2_status_data = nlohmann::json::parse(resp)["res"]["get"]["MOT2"];
+      _is_moving = mot2_status_data["STATUS"]["MST"] == "stop" ? false : true;
+    }
+  } catch (std::exception &ex) {
+    spdlog::error("Problem parsing output: {}", ex.what());
+    spdlog::error("Output from Esatto:\n{}\n", resp);
+    spdlog::error("halting all");
+    send_command_to_focuser(cmd_abort_mot1_cmd());
+    send_command_to_focuser(_rotator->cmd_abort_mot2_cmd());
+  }
+}
 
 void esatto_focuser::update_properties_proc() {
   using namespace std::chrono_literals;
@@ -346,18 +494,6 @@ int esatto_focuser::set_connected(bool connected) {
 
   if (connected) {
     try {
-      spdlog::debug("Setting connected to true");
-      spdlog::debug("Attempting to open serial device at {0}",
-                    _serial_device_path);
-      _serial_port.open(_serial_device_path);
-      _serial_port.set_option(asio::serial_port_base::baud_rate(115200));
-      _serial_port.set_option(asio::serial_port_base::character_size(8));
-      _serial_port.set_option(asio::serial_port_base::flow_control(
-          asio::serial_port_base::flow_control::none));
-      _serial_port.set_option(
-          asio::serial_port_base::parity(asio::serial_port_base::parity::none));
-      _serial_port.set_option(asio::serial_port_base::stop_bits(
-          asio::serial_port_base::stop_bits::one));
 
       char buf[512] = {0};
 
@@ -373,12 +509,6 @@ int esatto_focuser::set_connected(bool connected) {
             alpaca_exception::DRIVER_ERROR,
             fmt::format("Problem getting model name. Focuser returned {}",
                         resp));
-
-      if (parsed_resp["res"]["get"]["ARCO"] == 1) {
-        spdlog::debug("ARCO detected");
-        _arco_present = true;
-      } else
-        spdlog::debug("ARCO not detected");
 
       // Start update thread to values
       _focuser_update_thread =

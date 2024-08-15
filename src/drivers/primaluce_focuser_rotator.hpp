@@ -10,30 +10,18 @@
 // Basic types for PrimaLuceLabs JSON
 using primaluce_value_t = std::variant<double, int, uint32_t, std::string>;
 
-// // Basic single level deep object
-// using primaluce_map_of_value_t = std::map<std::string, primaluce_value_t>;
-
-// using primaluce_variant_t =
-//     std::variant<primaluce_value_t, primaluce_map_of_value_t>;
-
-// using primaluce_dict_variant_t = std::map<std::string, primaluce_variant_t>;
-
-// using primaluce_dict_t =
-//     std::map<std::string, std::map<std::string, primaluce_variant_t>>;
-
 struct primaluce_node {
   std::string key;
   primaluce_value_t value;
   primaluce_node(const std::string k, const primaluce_value_t v)
       : key(k), value(v){};
-
-  // std::visit([](const auto &elem) { std::cout << elem << '\n'; }, value);
 };
 
 template <>
 struct fmt::formatter<primaluce_value_t> : fmt::formatter<std::string> {
   auto format(primaluce_value_t my, format_context &ctx) const
       -> decltype(ctx.out()) {
+    // I think this can be cleaned up with a visit but it's not a priority.
     if (std::holds_alternative<double>(my)) {
       return format_to(ctx.out(), "{}", std::get<double>(my));
     } else if (std::holds_alternative<int>(my)) {
@@ -90,6 +78,7 @@ class esatto_focuser;
 
 class arco_rotator : public i_alpaca_rotator {
 public:
+  friend class esatto_focuser;
   arco_rotator(esatto_focuser &focuser);
   ~arco_rotator();
 
@@ -108,9 +97,11 @@ public:
 
   bool can_reverse();
   bool is_moving();
+  double position();
   double mechanical_position();
+
   bool reverse();
-  int set_reverse();
+  int set_reverse(bool reverse);
   double step_size();
   double target_position();
   int halt();
@@ -119,7 +110,18 @@ public:
   int movemechanical(const double &mechanical_position);
   int sync(const double &sync_position);
 
-  // commands
+  // TODO: this should not be a public member. It is exposed
+  // because I'm being lazy so that I can write unit tests...
+  // but I need to leverage a macro or some other strategy
+  // to allow the access level to change for unit tests
+  std::string send_command_to_rotator(const std::string &cmd,
+                                      bool read_response = true,
+                                      char stop_on_char = '\n');
+
+
+
+  // command builders
+  // TODO: I need to make these private
   std::string set_arco_enabled_cmd(const bool &enabled);
   std::string get_mot2_status_cmd();
 
@@ -186,21 +188,35 @@ private:
   bool _is_moving;
   bool _connected;
   bool _reversed;
-  double _position;
-  double _mechanical_position;
-  double _target_position;
+
+  double _position_deg;
+  double _position_arcsec;
+  double _position_step;
+
+  double _position_offset_from_mechanical_deg;
+  double _position_offset_from_mechanical_arcsec;
+  double _position_offset_from_mechanical_step;
+
+  double _mechanical_position_deg;
+  double _mechanical_position_arcsec;
+  double _mechanical_position_step;
+
+  double _target_position_deg;
 };
 
-class esatto_focuser : public i_alpaca_focuser {
+class esatto_focuser : public i_alpaca_focuser,
+                       public std::enable_shared_from_this<esatto_focuser>
+{
 public:
   // This is the one that pops up on my system...
   // usb-Silicon_Labs_CP2102N_USB_to_UART_Bridge_Controller_b2f14184e185eb11ad7b8b1ab7d59897-if00-port0
   static std::vector<std::string> serial_devices();
   friend class arco_rotator;
 
-  esatto_focuser();
+  esatto_focuser(const std::string &serial_device_path);
   ~esatto_focuser();
 
+  std::shared_ptr<arco_rotator> rotator();
   std::map<std::string, device_variant_t> details();
   bool connected();
   int set_connected(bool);
@@ -323,6 +339,7 @@ public:
   // The range of possible values is from 0 to 5000.  The default
   // value is zero.
   std::string set_backlash_cmd(const uint32_t &);
+  void init_rotator();
 
 private:
   void throw_if_not_connected();
@@ -338,7 +355,7 @@ private:
   uint32_t _position;
   int _backlash;
   double _temperature;
-  std::unique_ptr<arco_rotator> _rotator;
+  std::shared_ptr<arco_rotator> _rotator;
   uint32_t _step_size;
   bool _temp_comp_enabled;
   bool _arco_present;

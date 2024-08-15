@@ -1,5 +1,6 @@
 #include "alpaca_hub_server.hpp"
 #include "interfaces/i_alpaca_focuser.hpp"
+#include "interfaces/i_alpaca_rotator.hpp"
 #include "interfaces/i_alpaca_switch.hpp"
 #include "interfaces/i_alpaca_telescope.hpp"
 #include "restinio/cast_to.hpp"
@@ -45,8 +46,8 @@ template <typename RESP> RESP init_resp_imagebytes(RESP resp) {
 
 template <typename RESP> RESP init_resp_js(RESP resp) {
   resp.append_header("Server", "AlpacaHub /v.0.1");
-  resp.append_header_date_field().append_header("Content-Type",
-                                                "application/javascript; charset=utf-8");
+  resp.append_header_date_field().append_header(
+      "Content-Type", "application/javascript; charset=utf-8");
   return resp;
 }
 
@@ -74,12 +75,13 @@ restinio::request_handling_status_t api_v1_handler::on_get_device_common(
 
   if (device_type != "camera" && device_type != "telescope" &&
       device_type != "focuser" && device_type != "filterwheel" &&
-      device_type != "switch") {
-    std::string err_msg = fmt::format(
-        "Unsupported device_type: {0}\nDetails: [device "
-        "parameter in path must "
-        "be one of camera, telescope, filterwheel, focuser, or switch.]",
-        device_type);
+      device_type != "switch" && device_type != "rotator") {
+    std::string err_msg =
+        fmt::format("Unsupported device_type: {0}\nDetails: [device "
+                    "parameter in path must "
+                    "be one of camera, telescope, filterwheel, focuser, "
+                    "rotator, or switch.]",
+                    device_type);
 
     return init_resp(req->create_response(restinio::status_bad_request()))
         .set_body(err_msg)
@@ -173,12 +175,13 @@ restinio::request_handling_status_t api_v1_handler::on_put_device_common(
 
   if (device_type != "camera" && device_type != "telescope" &&
       device_type != "focuser" && device_type != "filterwheel" &&
-      device_type != "switch") {
-    std::string err_msg = fmt::format(
-        "Unsupported device_type: {0}\nDetails: [device "
-        "parameter in path must "
-        "be one of camera, telescope, filterwheel, switch, or focuser.]",
-        device_type);
+      device_type != "switch" && device_type != "rotator") {
+    std::string err_msg =
+        fmt::format("Unsupported device_type: {0}\nDetails: [device "
+                    "parameter in path must "
+                    "be one of camera, telescope, filterwheel, switch, "
+                    "rotator, or focuser.]",
+                    device_type);
 
     return init_resp(req->create_response(restinio::status_bad_request()))
         .set_body(err_msg)
@@ -446,10 +449,14 @@ void api_v1_handler::add_route_to_router(
     device_type_regex = "switch";
   }
 
+  if (std::is_same<T, i_alpaca_rotator>::value) {
+    device_type_regex = "rotator";
+  }
+
   // I think this is a bug...when I do the format, I don't believe it correctly
   // generates a valid regex.
   if (std::is_same<T, i_alpaca_device>::value) {
-    device_type_regex = "telescope|camera|focuser|filterwheel|switch";
+    device_type_regex = "telescope|camera|focuser|filterwheel|switch|rotator";
   }
 
   std::string base_route_path = fmt::format(
@@ -2718,6 +2725,84 @@ server_handler() {
       });
 
   // END switch routes
+
+  // BEGIN rotator routes
+
+  // GET canreverse
+  api_handler
+      ->add_route_to_router<i_alpaca_rotator, &i_alpaca_rotator::can_reverse>(
+          router, "canreverse");
+
+  // GET ismoving
+  api_handler
+      ->add_route_to_router<i_alpaca_rotator, &i_alpaca_rotator::is_moving>(
+          router, "ismoving");
+
+  // GET mechanicalposition
+  api_handler->add_route_to_router<i_alpaca_rotator,
+                                   &i_alpaca_rotator::mechanical_position>(
+      router, "mechanicalposition");
+
+  // GET position
+  api_handler
+      ->add_route_to_router<i_alpaca_rotator, &i_alpaca_rotator::position>(
+          router, "position");
+
+  // GET reverse
+  api_handler
+      ->add_route_to_router<i_alpaca_rotator, &i_alpaca_rotator::reverse>(
+          router, "reverse");
+
+  // GET stepsize
+  api_handler
+      ->add_route_to_router<i_alpaca_rotator, &i_alpaca_rotator::step_size>(
+          router, "stepsize");
+
+  // GET targetposition
+  api_handler->add_route_to_router<i_alpaca_rotator,
+                                   &i_alpaca_rotator::target_position>(
+      router, "targetposition");
+
+  // PUT reverse
+  router->http_put(
+      "/api/v1/rotator/:device_number/reverse",
+      api_handler->device_put_handler<bool, i_alpaca_rotator,
+      &i_alpaca_rotator::set_reverse>("Reverse", true));
+
+  // PUT halt
+  router->http_put(
+      "/api/v1/rotator/:device_number/halt",
+      api_handler->device_put_handler<void, i_alpaca_rotator,
+                                      &i_alpaca_rotator::halt>());
+
+  // PUT move
+  router->http_put(
+      "/api/v1/rotator/:device_number/move",
+      api_handler->device_put_handler<double, i_alpaca_rotator,
+                                      &i_alpaca_rotator::move>("Position"));
+
+  // PUT moveabsolute
+  router->http_put(
+      "/api/v1/rotator/:device_number/moveabsolute",
+      api_handler->device_put_handler<double, i_alpaca_rotator,
+                                      &i_alpaca_rotator::moveabsolute>(
+          "Position"));
+
+  // PUT movemechanical
+  router->http_put(
+      "/api/v1/rotator/:device_number/movemechanical",
+      api_handler->device_put_handler<double, i_alpaca_rotator,
+                                      &i_alpaca_rotator::movemechanical>(
+          "Position"));
+
+  // PUT sync
+  router->http_put(
+      "/api/v1/rotator/:device_number/sync",
+      api_handler->device_put_handler<double, i_alpaca_rotator,
+                                      &i_alpaca_rotator::sync>(
+          "Position"));
+
+  // END rotator routes
 
   router->non_matched_request_handler([](auto req) {
     return req->create_response(restinio::status_not_found())

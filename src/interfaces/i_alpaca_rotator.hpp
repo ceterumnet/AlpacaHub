@@ -8,9 +8,10 @@ public:
   virtual ~i_alpaca_rotator() {};
   virtual bool can_reverse() = 0;
   virtual bool is_moving() = 0;
+  virtual double position() = 0;
   virtual double mechanical_position() = 0;
   virtual bool reverse() = 0;
-  virtual int set_reverse() = 0;
+  virtual int set_reverse(bool reverse) = 0;
   virtual double step_size() = 0;
   virtual double target_position() = 0;
   virtual int halt() = 0;
