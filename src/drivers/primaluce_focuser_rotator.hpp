@@ -184,6 +184,8 @@ public:
   std::string set_reverse_mot2_cmd(const int &reverse);
 
 private:
+  void throw_if_not_connected();
+
   esatto_focuser &_focuser;
   bool _is_moving;
   bool _connected;

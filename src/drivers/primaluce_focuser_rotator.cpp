@@ -3,6 +3,13 @@
 #include "interfaces/i_alpaca_device.hpp"
 #include <memory>
 
+// TODO: I need to refactor this into common
+void arco_rotator::throw_if_not_connected() {
+  if (!_connected)
+    throw alpaca_exception(alpaca_exception::INVALID_OPERATION,
+                           "Rotator must be connected");
+}
+
 // Rotator functions
 arco_rotator::arco_rotator(esatto_focuser &focuser)
     : _focuser(focuser), _is_moving(false), _mechanical_position_deg(0),
@@ -78,29 +85,59 @@ uint32_t arco_rotator::interface_version() { return 3; }
 
 std::string arco_rotator::driver_version() { return "v0.1"; }
 
-bool arco_rotator::can_reverse() { return true; };
+bool arco_rotator::can_reverse() {
+  throw_if_not_connected();
+  return true;
+};
 
-bool arco_rotator::is_moving() { return _is_moving; };
+bool arco_rotator::is_moving() {
+  throw_if_not_connected();
+  return _is_moving;
+};
 
-double arco_rotator::position() { return _position_deg; };
+double arco_rotator::position() {
+  throw_if_not_connected();
+  return _position_deg;
+};
 
-double arco_rotator::mechanical_position() { return _mechanical_position_deg; };
+double arco_rotator::mechanical_position() {
+  throw_if_not_connected();
+  return _mechanical_position_deg;
+};
 
-bool arco_rotator::reverse() { return _reversed; };
+bool arco_rotator::reverse() {
+  throw_if_not_connected();
+  return _reversed;
+};
 
-int arco_rotator::set_reverse(bool reverse) { return 0; };
+int arco_rotator::set_reverse(bool reverse) {
+  throw_if_not_connected();
+  int reversed = reverse ? 1 : 0;
+  auto resp = send_command_to_rotator(set_reverse_mot2_cmd(reversed));
+    // TODO: check for errors
+  return 0;
 
-double arco_rotator::step_size() { return 0.1; };
+  };
 
-double arco_rotator::target_position() { return _target_position_deg; };
+double arco_rotator::step_size() {
+  throw_if_not_connected();
+  return 0.1;
+};
+
+double arco_rotator::target_position() {
+  throw_if_not_connected();
+  return _target_position_deg;
+};
 
 int arco_rotator::halt() {
+  throw_if_not_connected();
   auto resp = send_command_to_rotator(cmd_abort_mot2_cmd());
   // TODO: check for errors
   return 0;
 };
 
 int arco_rotator::move(const double &position) {
+  throw_if_not_connected();
   _target_position_deg = _position_deg + position;
 
   auto resp = send_command_to_rotator(cmd_move_mot2_cmd(position));
@@ -109,6 +146,7 @@ int arco_rotator::move(const double &position) {
 };
 
 int arco_rotator::moveabsolute(const double &absolute_position) {
+  throw_if_not_connected();
   _target_position_deg = absolute_position;
   auto resp = send_command_to_rotator(cmd_move_abs_mot2_cmd(absolute_position));
   // TODO: check for errors
@@ -116,7 +154,7 @@ int arco_rotator::moveabsolute(const double &absolute_position) {
 };
 
 int arco_rotator::movemechanical(const double &mechanical_position) {
-
+  throw_if_not_connected();
   // Need to calculate the absolute position
   double absolute_calculated =
       mechanical_position + _position_offset_from_mechanical_deg;
@@ -130,6 +168,7 @@ int arco_rotator::movemechanical(const double &mechanical_position) {
 };
 
 int arco_rotator::sync(const double &sync_position) {
+  throw_if_not_connected();
   // Need to calculate the absolute position
   auto resp = send_command_to_rotator(cmd_sync_pos_mot2_cmd(sync_position));
   // TODO: check for errors
@@ -379,17 +418,20 @@ esatto_focuser::~esatto_focuser() {
 
 void esatto_focuser::init_rotator() {
   // Check if the rotator is present
+  spdlog::debug("Checking for ARCO rotator");
   auto resp = send_command_to_focuser(get_all_system_data_cmd());
   auto parsed_resp = nlohmann::json::parse(resp);
   if (parsed_resp["res"]["get"]["ARCO"] == 1) {
-    _rotator->_target_position_deg = parsed_resp["res"]["get"]["MOT2"]["POSITION_DEG"];
     spdlog::debug("ARCO detected");
     _arco_present = true;
   } else
     spdlog::debug("ARCO not detected");
+
   // Create rotator
   if (_arco_present) {
     _rotator = std::make_shared<arco_rotator>(*this);
+    _rotator->_target_position_deg =
+        parsed_resp["res"]["get"]["MOT2"]["POSITION_DEG"];
   }
 }
 
@@ -478,7 +520,7 @@ void esatto_focuser::update_properties_proc() {
     } catch (alpaca_exception &ex) {
       spdlog::warn("problem during update_properties: {}", ex.what());
     }
-    std::this_thread::sleep_for(500ms);
+    std::this_thread::sleep_for(1000ms);
   }
   spdlog::debug("update_properties_proc ended");
 };
@@ -574,30 +616,58 @@ std::string esatto_focuser::driverinfo() {
 
 std::string esatto_focuser::name() { return "Esatto Robotic Focuser"; };
 
-bool esatto_focuser::absolute() { return true; };
+bool esatto_focuser::absolute() {
+  throw_if_not_connected();
+  return true;
+};
 
-bool esatto_focuser::is_moving() { return _is_moving; };
+bool esatto_focuser::is_moving() {
+  throw_if_not_connected();
+  return _is_moving;
+};
 
-uint32_t esatto_focuser::max_increment() { return 731000; };
+uint32_t esatto_focuser::max_increment() {
+  throw_if_not_connected();
+  return 731000;
+};
 
-uint32_t esatto_focuser::max_step() { return 731000; };
+uint32_t esatto_focuser::max_step() {
+  throw_if_not_connected();
+  return 731000;
+};
 
-uint32_t esatto_focuser::position() { return _position; };
+uint32_t esatto_focuser::position() {
+  throw_if_not_connected();
+  return _position;
+};
 
-uint32_t esatto_focuser::step_size() { return _step_size; };
+uint32_t esatto_focuser::step_size() {
+  throw_if_not_connected();
+  return _step_size;
+};
 
-bool esatto_focuser::temp_comp() { return _temp_comp_enabled; };
+bool esatto_focuser::temp_comp() {
+  throw_if_not_connected();
+  return _temp_comp_enabled;
+};
 
 int esatto_focuser::set_temp_comp(bool temp_comp_enabled) {
+  throw_if_not_connected();
   _temp_comp_enabled = true;
   return 0;
 };
 
-bool esatto_focuser::temp_comp_available() { return true; };
+bool esatto_focuser::temp_comp_available() {
+  throw_if_not_connected();
+  return true;
+};
 
 bool esatto_focuser::arco_present() { return _arco_present; };
 
-double esatto_focuser::temperature() { return _temperature; };
+double esatto_focuser::temperature() {
+  throw_if_not_connected();
+  return _temperature;
+};
 
 int esatto_focuser::halt() {
   auto resp = send_command_to_focuser(cmd_stop_mot1_cmd());
@@ -606,6 +676,7 @@ int esatto_focuser::halt() {
 };
 
 int esatto_focuser::move(const int &pos) {
+  throw_if_not_connected();
   spdlog::debug("moving focuser to: {}", pos);
   auto resp = send_command_to_focuser(cmd_move_abs_mot1_cmd(pos));
   spdlog::debug("resp: {}", resp);
@@ -635,6 +706,8 @@ std::string esatto_focuser::send_command_to_focuser(const std::string &cmd,
                                                     char stop_on_char) {
 
   try {
+    // spdlog::trace("flushing serial");
+
     spdlog::trace("sending: {} to focuser", cmd);
     std::lock_guard lock(_focuser_mtx);
     char buf[8192] = {0};
@@ -643,7 +716,7 @@ std::string esatto_focuser::send_command_to_focuser(const std::string &cmd,
 
     if (read_response) {
       _io_context.reset();
-      alpaca_hub_serial::blocking_reader reader(cmd, _serial_port, 250,
+      alpaca_hub_serial::blocking_reader reader(cmd, _serial_port, 500,
                                                 _io_context);
       char c;
       while (reader.read_char(c)) {
@@ -883,3 +956,9 @@ std::string esatto_focuser::set_backlash_cmd(const uint32_t &steps) {
       ->push_param("BKLASH", steps);
   return root.to_json().dump();
 };
+
+void esatto_focuser::throw_if_not_connected() {
+  if (!_connected)
+    throw alpaca_exception(alpaca_exception::INVALID_OPERATION,
+                           "Focuser must be connected");
+}
