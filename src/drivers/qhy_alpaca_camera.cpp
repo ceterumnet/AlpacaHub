@@ -1007,6 +1007,8 @@ long qhy_alpaca_camera::num_y() {
 int qhy_alpaca_camera::set_num_x(long num_x) {
   throw_if_not_connected();
   spdlog::debug("set_num_x called with: {}", num_x);
+  if(num_x < 1)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE, "NumX must be greater than 0");
   std::lock_guard lock(_cam_mutex);
   _num_x = num_x;
   return 0;
@@ -1015,6 +1017,9 @@ int qhy_alpaca_camera::set_num_x(long num_x) {
 int qhy_alpaca_camera::set_num_y(long num_y) {
   throw_if_not_connected();
   spdlog::debug("set_num_y called with: {}", num_y);
+  if (num_y < 1)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "NumY must be greater than 0");
   std::lock_guard lock(_cam_mutex);
   _num_y = num_y;
   return 0;
@@ -1063,6 +1068,7 @@ int qhy_alpaca_camera::set_start_x(long start_x) {
 // Subframe start y coordinate
 long qhy_alpaca_camera::start_y() {
   throw_if_not_connected();
+  // std::lock_guard lock(_cam_mutex);
   return _start_y;
 }
 

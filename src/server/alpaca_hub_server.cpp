@@ -914,6 +914,57 @@ server_handler() {
             .done();
       });
 
+  // GET devicestate (TODO: need to look up official implementation standard on this one)
+  router->http_get(
+      "/api/v1/:device_type/:device_number/devicestate", [](auto req, auto params) {
+        std::shared_ptr<i_alpaca_device> the_device = req->extra_data().device;
+
+        if (!the_device) {
+          spdlog::error("device pointer is null. aborting request");
+          return init_resp(req->create_response(restinio::status_bad_request()))
+              .set_body("major fault occurred.")
+              .done();
+        }
+
+        auto &response_map = req->extra_data().response_map;
+
+        auto raw_qp = restinio::parse_query(req->header().query());
+
+        std::map<std::string, std::string> qp;
+        // device_param_t response_map;
+
+        for (auto &query_param : raw_qp) {
+          std::string key(lowercase(std::string(query_param.first)));
+          qp[key] = query_param.second;
+        }
+
+        response_map["ServerTransactionID"] = get_next_transaction_number();
+
+        try {
+          response_map["ClientID"] =
+              restinio::cast_to<uint32_t>(qp["clientid"]);
+          response_map["ClientTransactionID"] =
+              restinio::cast_to<uint32_t>(qp["clienttransactionid"]);
+        } catch (std::exception &ex) {
+          if (_show_client_id_warnings)
+            spdlog::warn("problem with request: {0}", ex.what());
+        }
+
+        auto device_details = the_device->details();
+
+        device_variant_t x = "foobar";
+
+        for (auto device_detail_entry : device_details) {
+          // auto x = device_detail_entry.second;
+
+          response_map[device_detail_entry.first] = device_detail_entry.second;
+        }
+
+        return init_resp(req->create_response())
+            .set_body(nlohmann::json(response_map).dump())
+            .done();
+      });
+
   // GET connected
   api_handler
       ->add_route_to_router<i_alpaca_device, &i_alpaca_device::connected>(
@@ -1104,8 +1155,10 @@ server_handler() {
     std::shared_ptr<i_alpaca_camera> the_cam =
         std::dynamic_pointer_cast<i_alpaca_camera>(req->extra_data().device);
 
+    spdlog::trace("created the_cam shared_ptr");
     if (!the_cam->image_ready()) {
 
+      spdlog::error("the image is not ready but an attempt to read the bytes occurred");
       // throw std::runtime_error("Image is not ready");
       response_map["ErrorNumber"] = alpaca_exception::INVALID_OPERATION;
       response_map["ErrorMessage"] = "Image is not ready";
@@ -1161,7 +1214,7 @@ server_handler() {
 
       } else {
         spdlog::debug("16bpp for imagebytes");
-        image_bytes_t<uint16_t> image_bytes;
+        image_bytes_t<int16_t> image_bytes;
         try {
           image_bytes.client_transaction_number =
               std::get<uint32_t>(response_map["ClientTransactionID"]);
@@ -1172,7 +1225,7 @@ server_handler() {
         }
         image_bytes.server_transaction_number =
             std::get<uint32_t>(response_map["ServerTransactionID"]);
-        image_bytes.image_element_type = 2;
+        image_bytes.image_element_type = 1;
         image_bytes.transmission_element_type = 1;
 
         image_bytes.dimension1 = i2d.size();
@@ -1180,9 +1233,9 @@ server_handler() {
 
         size_t size_1d = i2d.size() * i2d[0].size();
 
-        std::vector<uint16_t> img_1d(size_1d);
+        std::vector<int16_t> img_1d(size_1d);
 
-        uint16_t *p = &img_1d[0];
+        int16_t *p = &img_1d[0];
 
         for (const auto &row : i2d) {
           for (auto x : row)

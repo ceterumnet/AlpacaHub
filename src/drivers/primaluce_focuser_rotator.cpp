@@ -569,9 +569,10 @@ int esatto_focuser::set_connected(bool connected) {
     try {
       spdlog::debug("Setting connected to false");
       if (_connected) {
+        _rotator->set_connected(false);
         _connected = false;
         _focuser_update_thread.join();
-        _serial_port.close();
+        // _serial_port.close();
       }
       _connected = false;
       return 0;
@@ -732,7 +733,7 @@ std::string esatto_focuser::send_command_to_focuser(const std::string &cmd,
   } catch (std::exception &ex) {
     throw alpaca_exception(
         alpaca_exception::DRIVER_ERROR,
-        fmt::format("Problem sending command to focuser: ", ex.what()));
+        fmt::format("Problem sending command to focuser: {}", ex.what()));
   }
 };
 

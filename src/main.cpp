@@ -66,11 +66,11 @@ void discovery_thread_proc() {
       std::string msg_received(recv_str);
       spdlog::trace("received {0}", msg_received);
       if (msg_received == "alpacadiscovery1") {
-        spdlog::trace("received discovery message!");
-        spdlog::trace("sending back: {0}", disc_resp);
+        spdlog::debug("received discovery message!");
+        spdlog::debug("sending back: {0}", disc_resp);
         socket.send_to(asio::buffer(disc_resp), client);
       } else {
-        spdlog::trace("received {0}", msg_received);
+        spdlog::debug("received {0}", msg_received);
       }
     }
     std::this_thread::sleep_for(1000ms);
