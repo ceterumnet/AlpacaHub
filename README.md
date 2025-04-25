@@ -125,6 +125,7 @@ written drivers for the hardware I have at home:
     - QHY9M + FW
     - QHY5II-L-M
     - QHYIII568M
+    - QHYIII585M
     - QHY268M
     - QHY Filterwheel 3
 - ZWO AM5/AM3 Mount

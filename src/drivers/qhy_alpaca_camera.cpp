@@ -635,7 +635,7 @@ int qhy_alpaca_camera::set_bin_y(short y) {
 
 qhy_alpaca_camera::camera_state_enum qhy_alpaca_camera::camera_state() {
   throw_if_not_connected();
-  // std::lock_guard lock(_cam_mutex);
+  std::lock_guard lock(_cam_mutex);
   return _camera_state;
 };
 
@@ -1110,9 +1110,9 @@ int qhy_alpaca_camera::start_exposure_proc() {
   spdlog::trace("start_exposure_proc() invoked");
   spdlog::debug("Invoking ExpQHYCCDSingleFrame");
 
-  auto time_stamp = std::chrono::system_clock::now();
-
-  _last_exposure_start_time_fits = fmt::format("{:%FT%T}", time_stamp);
+  _last_exposure_start_time = std::chrono::system_clock::now();
+  _last_exposure_start_time_fits = fmt::format("{:%FT%T}", _last_exposure_start_time);
+  
   spdlog::trace("Start time of exposure: {}", _last_exposure_start_time_fits);
 
   spdlog::debug("  startX: {}, startY: {}, numX: {}, numY: {}", _start_x, _start_y, _num_x, _num_y);
@@ -1126,9 +1126,10 @@ int qhy_alpaca_camera::start_exposure_proc() {
 
   r = ExpQHYCCDSingleFrame(_cam_handle);
   double remaining = GetQHYCCDExposureRemaining(_cam_handle);
+  spdlog::debug("Remaining exposure time: {} returned from GetQHYCCDExposureRemaining", remaining);
   long wait_time = 0;
-  if (remaining > 100)
-    wait_time = remaining / 1000000;
+  if (remaining > 0)
+    wait_time = _last_exposure_duration;
 
   spdlog::debug("ExpQHYCCDSingleFrame returned and {}s remaining", wait_time);
   if (r == QHYCCD_SUCCESS || r == QHYCCD_READ_DIRECTLY) {
@@ -1365,6 +1366,7 @@ int qhy_alpaca_camera::set_fast_readout(bool fast_readout) {
 
 uint32_t qhy_alpaca_camera::gain() {
   throw_if_not_connected();
+  std::lock_guard lock(_cam_mutex);
   return _gain;
 };
 
@@ -1442,6 +1444,7 @@ int qhy_alpaca_camera::set_offset(int offset_v) {
 
 int qhy_alpaca_camera::offset() {
   throw_if_not_connected();
+  std::lock_guard lock(_cam_mutex);
   return _offset;
 }
 
@@ -1472,6 +1475,7 @@ std::vector<std::string> qhy_alpaca_camera::offsets() {
 
 int qhy_alpaca_camera::readout_mode() {
   throw_if_not_connected();
+  std::lock_guard lock(_cam_mutex);
   return _readout_mode;
 }
 
@@ -1504,6 +1508,11 @@ uint8_t qhy_alpaca_camera::bpp() { return _bpp; }
 
 int qhy_alpaca_camera::percent_complete() {
   throw_if_not_connected();
+  std::lock_guard lock(_cam_mutex);
+  auto now = std::chrono::system_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::seconds>(now - _last_exposure_start_time).count();
+  _percent_complete = 100 * duration / _last_exposure_duration; 
+  spdlog::trace("percent_complete: {}", _percent_complete);
   return _percent_complete;
 }
 
