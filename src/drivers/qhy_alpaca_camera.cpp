@@ -484,9 +484,9 @@ void qhy_alpaca_camera::initialize_camera_by_camera_id(std::string &camera_id) {
   GetQHYCCDParamMinMaxStep(_cam_handle, CONTROL_ID::CONTROL_EXPOSURE,
                            &_exposure_min, &_exposure_max,
                            &_exposure_step_size);
-  spdlog::trace("Max Exposure: {}", _exposure_max);
-  spdlog::trace("Min Exposure: {}", _exposure_min);
-  spdlog::trace("Exposure Step Size: {}", _exposure_step_size);
+  spdlog::debug("Max Exposure: {}", _exposure_max);
+  spdlog::debug("Min Exposure: {}", _exposure_min);
+  spdlog::debug("Exposure Step Size: {}", _exposure_step_size);
 
   // TODO: I really should handle any error that might occur
   GetQHYCCDParamMinMaxStep(_cam_handle, CONTROL_ID::CONTROL_OFFSET,
@@ -567,10 +567,13 @@ qhy_alpaca_camera::qhy_alpaca_camera(std::string &camera_id)
   initialize_camera_by_camera_id(camera_id);
 };
 
+
 qhy_alpaca_camera::~qhy_alpaca_camera() {
   spdlog::trace("Closing Camera");
   if (_cooler_thread.joinable())
     _cooler_thread.join();
+  if (_start_exposure_thread.joinable())
+    _start_exposure_thread.join();
   uint32_t r = CloseQHYCCD(_cam_handle);
   if (r == QHYCCD_SUCCESS) {
     spdlog::trace("Successfully Closed Camera");
@@ -1134,6 +1137,7 @@ int qhy_alpaca_camera::start_exposure_proc() {
   spdlog::debug("ExpQHYCCDSingleFrame returned and {}s remaining", wait_time);
   if (r == QHYCCD_SUCCESS || r == QHYCCD_READ_DIRECTLY) {
     __t.expires_after(asio::chrono::seconds(wait_time));
+    // This is a non blocking call that will call the read_image_from_camera after the timer expires
     __t.async_wait(std::bind(&qhy_alpaca_camera::read_image_from_camera, this));
     _io.run();
     spdlog::debug("start_exposure_proc ended");
@@ -1188,9 +1192,9 @@ int qhy_alpaca_camera::start_exposure(double duration_seconds, bool is_light) {
     // probably creates the memory leak / memory violation I'm seeing in
     // valgrind
     spdlog::debug("Creating start exposure thread");
-    std::thread t(std::bind(&qhy_alpaca_camera::start_exposure_proc, this));
+    _start_exposure_thread = std::thread(std::bind(&qhy_alpaca_camera::start_exposure_proc, this));
     spdlog::debug("Start exposure thread created");
-    t.detach();
+    _start_exposure_thread.detach();
     spdlog::debug("Start exposure thread detached");
     return 0;
   }

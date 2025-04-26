@@ -219,6 +219,7 @@ private:
   std::chrono::system_clock::time_point _last_exposure_start_time;
   std::vector<uint8_t> _img_data;
   std::thread _img_read_thread;
+  std::thread _start_exposure_thread;
   std::thread _cooler_thread;
   bool _run_cooler_thread;
   void cooler_proc();
