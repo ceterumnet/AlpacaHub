@@ -32,7 +32,9 @@ const std::string cmd_get_date();
 const std::string cmd_set_date(const int &mm, const int &dd, const int &yy);
 const std::string cmd_set_time(const int &hh, const int &mm, const int &ss);
 const std::string cmd_get_time();
+const std::string cmd_get_time_12h();
 const std::string cmd_get_sidereal_time();
+const std::string cmd_set_sidereal_time(const int &hh, const int &mm, const int &ss);
 const std::string cmd_get_daylight_savings();
 const std::string cmd_set_daylight_savings(const int &on_or_off);
 
@@ -50,6 +52,15 @@ const std::string cmd_set_longitude(const char &plus_or_minus, const int &ddd,
                                     const int &mm, const int &ss);
 
 const std::string cmd_get_longitude();
+const std::string cmd_set_site_0_name(const std::string &site_name);
+const std::string cmd_set_site_1_name(const std::string &site_name);
+const std::string cmd_set_site_2_name(const std::string &site_name);
+const std::string cmd_set_site_3_name(const std::string &site_name);
+const std::string cmd_get_site_0_name();
+const std::string cmd_get_site_1_name();
+const std::string cmd_get_site_2_name();
+const std::string cmd_get_site_3_name();
+const std::string cmd_select_site(const int &site_number);
 const std::string cmd_get_current_cardinal_direction();
 const std::string cmd_get_target_ra();
 
@@ -59,12 +70,20 @@ const std::string cmd_set_target_ra(const int &hh, const int &mm,
 const std::string cmd_get_target_dec();
 const std::string cmd_set_target_dec(const char &plus_or_minus, const int &dd,
                                      const int &mm, const int &ss);
+const std::string cmd_set_target_azm(const int &ddd, const int &mm, const int &ss);
+const std::string cmd_set_target_alt(const char &plus_or_minus, const int &dd,
+                                     const int &mm, const int &ss);
+const std::string cmd_set_horizon_limit(const char &plus_or_minus, const int &dd);
+const std::string cmd_get_horizon_limit();
+const std::string cmd_set_overhead_limit(const int &dd);
+const std::string cmd_get_overhead_limit();
 
 const std::string cmd_get_current_ra();
 const std::string cmd_get_current_dec();
 const std::string cmd_get_azimuth();
 const std::string cmd_get_altitude();
 const std::string cmd_goto();
+const std::string cmd_goto_horizontal();
 const std::string cmd_stop_moving();
 
 auto format_as(move_speed_enum s);
@@ -102,8 +121,20 @@ cmd_set_act_of_crossing_meridian(const int &perform_meridian_flip,
 const std::string cmd_get_act_of_crossing_meridian();
 const std::string cmd_sync();
 const std::string cmd_home_position();
+const std::string cmd_set_home();
 const std::string cmd_get_status();
 const std::string cmd_park();
+const std::string cmd_restore_parked_telescope();
+const std::string cmd_get_distance_bars();
+const std::string cmd_reset_controller();
+const std::string cmd_reset_eeprom();
+const std::string cmd_set_baud_rate(const int &rate);
+const std::string cmd_precision_toggle();
+const std::string cmd_get_firmware_date();
+const std::string cmd_get_firmware_time();
+const std::string cmd_get_firmware_number();
+const std::string cmd_get_firmware_name();
+const std::string cmd_get_general_status();
 
 const std::string cmd_set_lat_and_long(const char &plus_or_minus_lat,
                                        const int &lat_dd, const int lat_mm,
@@ -133,6 +164,60 @@ const std::string cmd_set_target_ra_and_dec_and_sync(
     const int &ra_hh, const int &ra_mm, const int &ra_ss,
     const char &plus_or_minus_dec, const int &dec_dd, const int &dec_mm,
     const int &dec_ss);
+
+const std::string cmd_set_sidereal_rate_ra(const double &rate);
+const std::string cmd_get_sidereal_rate_ra();
+const std::string cmd_track_sidereal_rate_reset();
+const std::string cmd_track_rate_increase();
+const std::string cmd_track_rate_decrease();
+const std::string cmd_set_tracking_rate_to_king();
+const std::string cmd_enable_refraction_rate_tracking();
+const std::string cmd_disable_refraction_rate_tracking();
+
+// Anti-backlash commands
+const std::string cmd_set_ra_backlash(const int &backlash);
+const std::string cmd_set_dec_backlash(const int &backlash);
+
+// Basic focuser commands
+const std::string cmd_is_focuser1_active();
+const std::string cmd_is_focuser2_active();
+const std::string cmd_select_primary_focuser(const int &n);
+const std::string cmd_get_primary_focuser();
+const std::string cmd_get_focuser_status();
+const std::string cmd_get_focuser_mode();
+const std::string cmd_get_focuser_full_in_position();
+const std::string cmd_get_focuser_max_position();
+const std::string cmd_stop_focuser();
+const std::string cmd_set_focuser_fast_motion();
+const std::string cmd_set_focuser_slow_motion();
+const std::string cmd_move_focuser_in();
+const std::string cmd_move_focuser_out();
+const std::string cmd_get_focuser_position();
+const std::string cmd_set_focuser_position_zero();
+const std::string cmd_set_focuser_position_half_travel();
+const std::string cmd_set_focuser_target_half_travel();
+
+// PEC Commands
+const std::string cmd_turn_pec_on();
+const std::string cmd_turn_pec_off();
+const std::string cmd_clear_pec_data();
+const std::string cmd_start_recording_pec();
+const std::string cmd_save_pec_data();
+const std::string cmd_get_pec_status();
+const std::string cmd_readout_pec_data(const int &index);
+const std::string cmd_readout_pec_data_at_current_index();
+const std::string cmd_write_pec_data(const int &index, const int &steps);
+
+// Alignment Commands
+const std::string cmd_align_write_model();
+const std::string cmd_align_one_star();
+const std::string cmd_align_two_star();
+const std::string cmd_align_three_star();
+const std::string cmd_align_accept();
+
+// Reticle Control
+const std::string cmd_increase_reticule_brightness();
+const std::string cmd_decrease_reticule_brightness();
 }; // namespace onstep_commands
 
 namespace onstep_responses {

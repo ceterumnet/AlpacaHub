@@ -47,8 +47,26 @@ const std::string cmd_set_time(const int &hh, const int &mm, const int &ss) {
 // response should be "HH:MM:SS#"
 const std::string cmd_get_time() { return ":GL#"; }
 
+// NEW: Get time in 12hr format - response should be "HH:MM:SS#"
+const std::string cmd_get_time_12h() { return ":Ga#"; }
+
 // response should be "HH:MM:SS#"
 const std::string cmd_get_sidereal_time() { return ":GS#"; }
+
+// NEW: Set sidereal time - response should be 1 for success and 0 for failure
+const std::string cmd_set_sidereal_time(const int &hh, const int &mm, const int &ss) {
+  if (hh < 0 || hh > 23)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "hour must be 0 through 23");
+  if (mm < 0 || mm > 59)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "minutes must 0 through 59");
+  if (ss < 0 || ss > 59)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "seconds must 0 through 59");
+
+  return fmt::format(":SS{0:#02d}:{1:#02d}:{2:#02d}#", hh, mm, ss);
+}
 
 // response is 1 for daylight savings on and 0 for off
 const std::string cmd_get_daylight_savings() { return ":GH#"; }
@@ -124,6 +142,46 @@ const std::string cmd_set_longitude(const char &plus_or_minus, const int &ddd,
 // Response should be "sDDD*MM#"
 const std::string cmd_get_longitude() { return ":Gg#"; }
 
+// NEW: Set site 0 name - response should be 0 or 1
+const std::string cmd_set_site_0_name(const std::string &site_name) {
+  return fmt::format(":SM{}#", site_name);
+}
+
+// NEW: Set site 1 name - response should be 0 or 1
+const std::string cmd_set_site_1_name(const std::string &site_name) {
+  return fmt::format(":SN{}#", site_name);
+}
+
+// NEW: Set site 2 name - response should be 0 or 1
+const std::string cmd_set_site_2_name(const std::string &site_name) {
+  return fmt::format(":SO{}#", site_name);
+}
+
+// NEW: Set site 3 name - response should be 0 or 1
+const std::string cmd_set_site_3_name(const std::string &site_name) {
+  return fmt::format(":SP{}#", site_name);
+}
+
+// NEW: Get site 0 name - response should be "sss...#"
+const std::string cmd_get_site_0_name() { return ":GM#"; }
+
+// NEW: Get site 1 name - response should be "sss...#"
+const std::string cmd_get_site_1_name() { return ":GN#"; }
+
+// NEW: Get site 2 name - response should be "sss...#"
+const std::string cmd_get_site_2_name() { return ":GO#"; }
+
+// NEW: Get site 3 name - response should be "sss...#"
+const std::string cmd_get_site_3_name() { return ":GP#"; }
+
+// NEW: Select site n (0-3) - response should be none
+const std::string cmd_select_site(const int &site_number) {
+  if (site_number < 0 || site_number > 3)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "site number must be 0 through 3");
+  return fmt::format(":W{}#", site_number);
+}
+
 // Response should be "E or W or N for home / zero position"
 const std::string cmd_get_current_cardinal_direction() { return ":Gm#"; }
 
@@ -170,6 +228,67 @@ const std::string cmd_set_target_dec(const char &plus_or_minus, const int &dd,
                      ss);
 }
 
+// NEW: Set target Azm - response should be 1 for success or 0 for failure
+const std::string cmd_set_target_azm(const int &ddd, const int &mm, const int &ss) {
+  if (ddd < 0 || ddd > 359)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "degrees must be 0 through 359");
+  if (mm < 0 || mm > 59)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "minutes must 0 through 59");
+  if (ss < 0 || ss > 59)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "seconds must 0 through 59");
+
+  return fmt::format(":Sz{0:#03d}:{1:#02d}:{2:#02d}#", ddd, mm, ss);
+}
+
+// NEW: Set target Alt - response should be 1 for success or 0 for failure
+const std::string cmd_set_target_alt(const char &plus_or_minus, const int &dd,
+                                    const int &mm, const int &ss) {
+  if (plus_or_minus != '+' && plus_or_minus != '-')
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "first param must be '+' or '-'");
+  if (dd < 0 || dd > 90)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "degrees must 0 through 90");
+  if (mm < 0 || mm > 59)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "minutes must 0 through 59");
+  if (ss < 0 || ss > 59)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "seconds must 0 through 59");
+
+  return fmt::format(":Sa{0}{1:#02d}:{2:#02d}:{3:#02d}#", plus_or_minus, dd, mm, ss);
+}
+
+// NEW: Set horizon limit - response should be 1 for success or 0 for failure
+const std::string cmd_set_horizon_limit(const char &plus_or_minus, const int &dd) {
+  if (plus_or_minus != '+' && plus_or_minus != '-')
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "first param must be '+' or '-'");
+  if (dd < 0 || dd > 30)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "degrees must 0 through 30");
+
+  return fmt::format(":Sh{0}{1:#02d}#", plus_or_minus, dd);
+}
+
+// NEW: Get horizon limit - response should be "sDD#"
+const std::string cmd_get_horizon_limit() { return ":Gh#"; }
+
+// NEW: Set overhead limit - response should be 1 for success or 0 for failure
+const std::string cmd_set_overhead_limit(const int &dd) {
+  if (dd < 60 || dd > 90)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "degrees must 60 through 90");
+
+  return fmt::format(":So{0:#02d}#", dd);
+}
+
+// NEW: Get overhead limit - response should be "DD#"
+const std::string cmd_get_overhead_limit() { return ":Go#"; }
+
 // Response should be "HH:MM:SS#"
 const std::string cmd_get_current_ra() { return ":GR#"; }
 
@@ -184,6 +303,9 @@ const std::string cmd_get_altitude() { return ":GA#"; }
 
 // Response should be 1 for success or "e2#"
 const std::string cmd_goto() { return ":MS#"; }
+
+// NEW: Move telescope to current Hor target - response should be e
+const std::string cmd_goto_horizontal() { return ":MA#"; }
 
 // Response should be none
 const std::string cmd_stop_moving() { return ":Q#"; }
@@ -254,6 +376,29 @@ const std::string cmd_set_tracking_rate_to_solar() { return ":TS#"; }
 // Response should be none
 const std::string cmd_set_tracking_rate_to_lunar() { return ":TL#"; }
 
+// NEW: Set sidereal rate RA - response should be 0 or 1
+const std::string cmd_set_sidereal_rate_ra(const double &rate) {
+  if (rate < 0.0 || rate > 100.0)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "rate must be between 0.0 and 100.0");
+  return fmt::format(":ST{0:#.5f}#", rate);
+}
+
+// NEW: Get sidereal rate RA - response should be "dd.ddddd#"
+const std::string cmd_get_sidereal_rate_ra() { return ":GT#"; }
+
+// NEW: Track sidereal rate reset - response should be none
+const std::string cmd_track_sidereal_rate_reset() { return ":TR#"; }
+
+// NEW: Track rate increase 0.02Hz - response should be none
+const std::string cmd_track_rate_increase() { return ":T+#"; }
+
+// NEW: Track rate decrease 0.02Hz - response should be none
+const std::string cmd_track_rate_decrease() { return ":T-#"; }
+
+// NEW: Track king rate RA - response should be none
+const std::string cmd_set_tracking_rate_to_king() { return ":TK#"; }
+
 // Response will be one of 1# 2# or 3# corresponding with the tracking rate enum
 const std::string cmd_get_tracking_rate() { return ":GT#"; }
 
@@ -262,6 +407,12 @@ const std::string cmd_start_tracking() { return ":Te#"; }
 
 // Returns 1 for success or 0 for failure
 const std::string cmd_stop_tracking() { return ":Td#"; }
+
+// NEW: Refraction rate tracking - response should be 0 or 1
+const std::string cmd_enable_refraction_rate_tracking() { return ":Tr#"; }
+
+// NEW: No refraction rate tracking - response should be 0 or 1
+const std::string cmd_disable_refraction_rate_tracking() { return ":Tn#"; }
 
 // Returns 0# for tracking off, 1# for tracking on, e+error code+#
 const std::string cmd_get_tracking_status() { return ":GAT#"; }
@@ -341,6 +492,12 @@ const std::string cmd_get_status() { return ":GU#"; }
 
 // Response should be none
 const std::string cmd_park() { return ":hP#"; }
+
+// NEW: Restore parked telescope to operation - response should be 0 or 1
+const std::string cmd_restore_parked_telescope() { return ":hR#"; }
+
+// NEW: Set home (CWD) - response should be none
+const std::string cmd_set_home() { return ":hF#"; }
 
 // Response should be 1 for success or 0 for failure
 // :SMGEsDD*MM:SS&sDDD*MM:SS#
@@ -505,6 +662,180 @@ const std::string cmd_set_target_ra_and_dec_and_sync(
       ":SMMC{0:#02d}:{1:#02d}:{2:#02d}&{3}{4:#02d}*{5:#02d}:{6:#02d}#", ra_hh,
       ra_mm, ra_ss, plus_or_minus_dec, dec_dd, dec_mm, dec_ss);
 }
+
+// NEW: Get distance bars (indicates slew) - response should be "\0x7F#"
+const std::string cmd_get_distance_bars() { return ":D#"; }
+
+// NEW: Reset controller (must be at home or parked) - response should be none or 0
+const std::string cmd_reset_controller() { return ":ERESET#"; }
+
+// NEW: Reset NV (EEPROM) - response should be "NV memory will be cleared..."
+const std::string cmd_reset_eeprom() { return ":ENVRESET#"; }
+
+// NEW: Set baud rate - response should be 0 or 1
+const std::string cmd_set_baud_rate(const int &rate) {
+  if (rate < 1 || rate > 9)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "rate must be 1 through 9");
+  return fmt::format(":SB{}#", rate);
+}
+
+// NEW: Precision toggle - response should be none
+const std::string cmd_precision_toggle() { return ":U#"; }
+
+// NEW: Get firmware date - response should be "MM DD YY#"
+const std::string cmd_get_firmware_date() { return ":GVD#"; }
+
+// NEW: Get firmware time - response should be "HH:MM:SS#"
+const std::string cmd_get_firmware_time() { return ":GVT#"; }
+
+// NEW: Get firmware number - response should be "3.16o#" or similar
+const std::string cmd_get_firmware_number() { return ":GVN#"; }
+
+// NEW: Get firmware name - response should be "On-Step#"
+const std::string cmd_get_firmware_name() { return ":GVP#"; }
+
+// NEW: Get status - response should be "sss#"
+const std::string cmd_get_general_status() { return ":GU#"; }
+
+// NEW: Set RA (Azm) backlash amount (in ArcSec) - response should be 0 or 1
+const std::string cmd_set_ra_backlash(const int &backlash) {
+  if (backlash < 0 || backlash > 999)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "backlash must be 0 through 999");
+  return fmt::format(":$BR{:#03d}#", backlash);
+}
+
+// NEW: Set Dec (Alt) backlash amount (in ArcSec) - response should be 0 or 1
+const std::string cmd_set_dec_backlash(const int &backlash) {
+  if (backlash < 0 || backlash > 999)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "backlash must be 0 through 999");
+  return fmt::format(":$BD{:#03d}#", backlash);
+}
+
+// NEW: Basic focuser commands
+
+// Focuser1 Active? - response should be 0 or 1
+const std::string cmd_is_focuser1_active() { return ":FA#"; }
+
+// Focuser2 Active? - response should be 0 or 1
+const std::string cmd_is_focuser2_active() { return ":fA#"; }
+
+// Select primary focuser n = 1 or 2 - response should be 0 or 1
+const std::string cmd_select_primary_focuser(const int &n) {
+  if (n != 1 && n != 2)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                           "focuser number must be 1 or 2");
+  return fmt::format(":FA{}#", n);
+}
+
+// Get primary focuser - response should be 0 or 1
+const std::string cmd_get_primary_focuser() { return ":Fa#"; }
+
+// Get status M# = moving, S# = stopped - response should be M# or S#
+const std::string cmd_get_focuser_status() { return ":FT#"; }
+
+// Get mode 0 = absolute 1 = pseudo absolute - response should be 0 or 1
+const std::string cmd_get_focuser_mode() { return ":FI#"; }
+
+// Get full in position (in microns or steps) - response should be n#
+const std::string cmd_get_focuser_full_in_position() { return ":FI#"; }
+
+// Get max position (in microns or steps) - response should be n#
+const std::string cmd_get_focuser_max_position() { return ":FM#"; }
+
+// Stops the focuser - response should be none
+const std::string cmd_stop_focuser() { return ":FQ#"; }
+
+// Set focuser for fast motion (1mm/s) - response should be none
+const std::string cmd_set_focuser_fast_motion() { return ":FF#"; }
+
+// Set focuser for slow motion (0.01mm/s) - response should be none
+const std::string cmd_set_focuser_slow_motion() { return ":FS#"; }
+
+// Move focuser in (toward objective) - response should be none
+const std::string cmd_move_focuser_in() { return ":F+#"; }
+
+// Move focuser out (away from objective) - response should be none
+const std::string cmd_move_focuser_out() { return ":F-#"; }
+
+// Get focuser current position (in microns or steps) - response should be n#
+const std::string cmd_get_focuser_position() { return ":FG#"; }
+
+// Set focuser position as zero - response should be none
+const std::string cmd_set_focuser_position_zero() { return ":FZ#"; }
+
+// Set focuser position as half-travel - response should be none
+const std::string cmd_set_focuser_position_half_travel() { return ":FH#"; }
+
+// Set focuser target position at half-travel - response should be none
+const std::string cmd_set_focuser_target_half_travel() { return ":Fh#"; }
+
+// PEC Commands
+
+// Turn PEC on - response should be none
+const std::string cmd_turn_pec_on() { return ":$QZ+#"; }
+
+// Turn PEC off - response should be none
+const std::string cmd_turn_pec_off() { return ":$QZ-#"; }
+
+// Clear PEC data - response should be none
+const std::string cmd_clear_pec_data() { return ":$QZZ#"; }
+
+// Start recording PEC - response should be none
+const std::string cmd_start_recording_pec() { return ":$QZ/#"; }
+
+// Save PEC data/settings to EEPROM - response should be none
+const std::string cmd_save_pec_data() { return ":$QZ!#"; }
+
+// Get PEC status - response should be s#
+const std::string cmd_get_pec_status() { return ":$QZ?#"; }
+
+// Readout PEC data - response should be sddd#
+const std::string cmd_readout_pec_data(const int &index) {
+  if (index < 0 || index > 9999)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                          "index must be 0 through 9999");
+  return fmt::format(":VR{:#04d}#", index);
+}
+
+// Readout PEC data at current index - response should be sddd,ddd#
+const std::string cmd_readout_pec_data_at_current_index() { return ":VR#"; }
+
+// Write PEC data - response should be 0 or 1
+const std::string cmd_write_pec_data(const int &index, const int &steps) {
+  if (index < 0 || index > 9999)
+    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
+                          "index must be 0 through 9999");
+  
+  return fmt::format(":WR{:#04d},{:+d}#", index, steps);
+}
+
+// Alignment Commands
+
+// Align, write model to EEPROM - response should be 0 or 1
+const std::string cmd_align_write_model() { return ":AW#"; }
+
+// Align, one-star - response should be 0 or 1
+const std::string cmd_align_one_star() { return ":A1#"; }
+
+// Align, two or more star - response should be 0 or 1
+const std::string cmd_align_two_star() { return ":A2#"; }
+
+// Align, three or more star - response should be 0 or 1 
+const std::string cmd_align_three_star() { return ":A3#"; }
+
+// Align, accept - response should be 0 or 1
+const std::string cmd_align_accept() { return ":A+#"; }
+
+// Reticle Control
+
+// Increase reticule Brightness - response should be none
+const std::string cmd_increase_reticule_brightness() { return ":B+#"; }
+
+// Decrease reticule Brightness - response should be none
+const std::string cmd_decrease_reticule_brightness() { return ":B-#"; }
 
 }; // namespace onstep_commands
 
