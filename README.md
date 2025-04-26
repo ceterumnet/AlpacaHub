@@ -128,11 +128,15 @@ written drivers for the hardware I have at home:
     - QHYIII585M
     - QHY268M
     - QHY Filterwheel 3
+- PlayerOne Cameras (should work with any PlayerOne camera)
+  - Uranus-C 585
+  - Apollo Max
 - ZWO AM5/AM3 Mount
 - Pegasus FocusCube 3
 - Pegasus Pocket Power Box Advanced (gen2 tested)
 - PrimaLuceLabs Esatto Robotic Focuser
 - PrimaLuceLabs ARCO Rotator
+- (Testing...) Warp Astron WD-20 (should work with any Onstep device I think...)
 
 Everything that I've implemented so far has passed the Alpaca Conform tests
 without issues except for guiding on the declination axis on the AM5. I

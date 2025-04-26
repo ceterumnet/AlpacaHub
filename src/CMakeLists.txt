@@ -147,3 +147,12 @@ target_link_libraries(AlpacaHubTests
 target_include_directories(AlpacaHubTests
   PUBLIC ${date_src_SOURCE_DIR}/include ${llhttp_src_SOURCE_DIR}/include)
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/html DESTINATION ${CMAKE_CURRENT_BINARY_DIR} )
+
+add_executable(SerialConsole
+  util/serial_console.cpp
+)
+
+target_link_libraries(SerialConsole
+  PRIVATE fmt::fmt Catch2::Catch2WithMain common drivers
+  spdlog::spdlog nlohmann_json::nlohmann_json
+  uuid date::date tz_lib)
