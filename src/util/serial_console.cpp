@@ -1,5 +1,5 @@
 #include <iostream>
-#include <drivers/lx200_commands.hpp>
+#include <drivers/onstep_commands.hpp>
 #include "common/alpaca_hub_serial.hpp"
 
 asio::io_context _io_context;

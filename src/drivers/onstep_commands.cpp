@@ -2,13 +2,15 @@
 #include "onstep_commands.hpp"
 namespace onstep_commands {
 
-const std::string cmd_get_version() { return ":GV#"; }
+const std::string cmd_get_version() { return ":GVP#"; }
 
 // This doesn't respond with anything
-const std::string cmd_switch_to_eq_mode() { return ":AP#"; }
+// Removing undocumented command
+// const std::string cmd_switch_to_eq_mode() { return ":AP#"; }
 
 // This doesn't respond with anything
-const std::string cmd_switch_to_alt_az_mode() { return ":AA#"; }
+// Removing undocumented command
+// const std::string cmd_switch_to_alt_az_mode() { return ":AA#"; }
 
 // response should be "MM/DD/YY#"
 const std::string cmd_get_date() { return ":GC#"; }
@@ -501,341 +503,33 @@ const std::string cmd_set_home() { return ":hF#"; }
 
 // Response should be 1 for success or 0 for failure
 // :SMGEsDD*MM:SS&sDDD*MM:SS#
-const std::string cmd_set_lat_and_long(const char &plus_or_minus_lat,
-                                       const int &lat_dd, const int lat_mm,
-                                       const int &lat_ss,
-                                       const char &plus_or_minus_long,
-                                       const int &long_ddd, const int &long_mm,
-                                       const int &long_ss) {
-  if (plus_or_minus_lat != '+' && plus_or_minus_lat != '-')
-    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
-                           "lat +/- param must be '+' or '-'");
-  if (lat_dd < 0 || lat_dd > 90)
-    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
-                           "latitude degrees must be 0 through 90");
-  if (lat_mm < 0 || lat_mm > 59)
-    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
-                           "minutes must 0 through 59");
-  if (lat_ss < 0 || lat_ss > 59)
-    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
-                           "seconds must 0 through 59");
-  if (plus_or_minus_long != '+' && plus_or_minus_long != '-')
-    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
-                           "longitude +/- param must be '+' or '-'");
-  if (long_ddd < 0 || long_ddd > 180)
-    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
-                           "longitude degrees must be 0 through 90");
-  if (long_mm < 0 || long_mm > 59)
-    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
-                           "minutes must 0 through 59");
-  if (long_ss < 0 || long_ss > 59)
-    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
-                           "seconds must 0 through 59");
+// Removing undocumented command
+// const std::string cmd_set_lat_and_long(const char &plus_or_minus_lat,
+//                                       const int &lat_dd, const int lat_mm,
+//                                       const int &lat_ss,
+//                                       const char &plus_or_minus_long,
+//                                       const int &long_ddd, const int &long_mm,
+//                                       const int &long_ss) {
+//   ... [code implementation] ...
+// }
 
-  return fmt::format(
-      ":SMGE{0}{1:#02d}*{2:#02d}:{3:#02d}&{4}{5:#03d}*{6:#02d}:{7:#02d}#",
-      plus_or_minus_lat, lat_dd, lat_mm, lat_ss, plus_or_minus_long, long_ddd,
-      long_mm, long_ss);
-}
+// Removing undocumented command
+// const std::string cmd_get_lat_and_long() { return ":GMGE#"; }
 
-// Response should be "sDD*MM&sDDD*MM#"
-const std::string cmd_get_lat_and_long() { return ":GMGE#"; }
+// Removing undocumented command
+// const std::string cmd_set_date_time_and_tz(
+//    const int &date_mm, const int &date_dd, const int &date_yy,
+//    const int &time_hh, const int &time_mm, const int &time_ss,
+//    const char &plus_or_minus_tz, const int tz_hh, int tz_mm) {
+//    ... [code implementation] ...
+// }
 
-// Response should be 1 for success and 0 for failure
-// :SMTIMM/DD/YY&HH:MM:SS&sHH:MM#
-const std::string cmd_set_date_time_and_tz(
-    const int &date_mm, const int &date_dd, const int &date_yy,
-    const int &time_hh, const int &time_mm, const int &time_ss,
-    const char &plus_or_minus_tz, const int tz_hh, int tz_mm) {
-  if (date_mm < 1 || date_mm > 12)
-    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
-                           "month must be 1 through 12");
-  if (date_dd < 1 || date_dd > 31)
-    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
-                           "day must be 1 through 31");
-  if (date_yy < 0 || date_yy > 99)
-    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
-                           "year must be 0 through 99");
-  if (time_hh < 0 || time_hh > 23)
-    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
-                           "hour must be 0 through 23");
-  if (time_mm < 0 || time_mm > 59)
-    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
-                           "minutes must 0 through 59");
-  if (time_ss < 0 || time_ss > 59)
-    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
-                           "seconds must 0 through 59");
-
-  if (plus_or_minus_tz != '+' && plus_or_minus_tz != '-')
-    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
-                           "plus_or_minus_tz must be '+' or '-'");
-  if (tz_hh < 0 || tz_hh > 23)
-    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
-                           "hour offset must be 0 through 23");
-  if (tz_mm != 0 && tz_mm != 30)
-    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
-                           "minutes offset must be 0 or 30");
-
-  return fmt::format(
-      ":SMTI{0:#02d}/{1:#02d}/"
-      "{2:#02d}&{3:#02d}:{4:#02d}:{5:#02d}&{6}{7:#02d}:{8:#02d}#",
-      date_mm, date_dd, date_yy, time_hh, time_mm, time_ss, plus_or_minus_tz,
-      tz_hh, tz_mm);
-}
-
-// Should return "MM/DD/YY&HH:MM:SS&sHH:MM#"
-const std::string cmd_get_date_and_time_and_tz() { return ":GMTI#"; }
-
-// Should return "HH:MM:SS&sDD*MM:SS#"
-const std::string cmd_get_target_ra_and_dec() { return ":GMeq#"; }
-
-// Should return "HH:MM:SS&sDD*MM:SS#"
-const std::string cmd_get_current_ra_and_dec() { return ":GMEQ#"; }
-
-// Should return "DDD*MM:SS&sDD*MM:SS#"
-const std::string cmd_get_az_and_alt() { return ":GMZA#"; }
-
-// Should return 1 for success and e+error_code+#
-// :SMeqHH:MM:SS&sDD*MM:SS#
-const std::string cmd_set_target_ra_and_dec_and_goto(
-    const int &ra_hh, const int &ra_mm, const int &ra_ss,
-    const char &plus_or_minus_dec, const int &dec_dd, const int &dec_mm,
-    const int &dec_ss) {
-
-  if (ra_hh < 0 || ra_hh > 23)
-    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
-                           "hours must 0 through 23");
-  if (ra_mm < 0 || ra_mm > 59)
-    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
-                           "minutes must 0 through 59");
-  if (ra_ss < 0 || ra_ss > 59)
-    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
-                           "seconds must 0 through 59");
-  if (plus_or_minus_dec != '+' && plus_or_minus_dec != '-')
-    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
-                           "plus_or_minus_dec must be '+' or '-'");
-  if (dec_dd < 0 || dec_dd > 90)
-    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
-                           "degrees must 0 through 90");
-  if (dec_mm < 0 || dec_mm > 59)
-    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
-                           "minutes must 0 through 59");
-  if (dec_ss < 0 || dec_ss > 59)
-    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
-                           "seconds must 0 through 59");
-
-  return fmt::format(
-      ":SMeq{0:#02d}:{1:#02d}:{2:#02d}&{3}{4:#02d}*{5:#02d}:{6:#02d}#", ra_hh,
-      ra_mm, ra_ss, plus_or_minus_dec, dec_dd, dec_mm, dec_ss);
-}
-
-// Should return N/A#: Success, e+ error code+#
-// :SMMCHH:MM:SS&sDD*MM:SS#
-const std::string cmd_set_target_ra_and_dec_and_sync(
-    const int &ra_hh, const int &ra_mm, const int &ra_ss,
-    const char &plus_or_minus_dec, const int &dec_dd, const int &dec_mm,
-    const int &dec_ss) {
-
-  if (ra_hh < 0 || ra_hh > 23)
-    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
-                           "hours must 0 through 23");
-  if (ra_mm < 0 || ra_mm > 59)
-    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
-                           "minutes must 0 through 59");
-  if (ra_ss < 0 || ra_ss > 59)
-    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
-                           "seconds must 0 through 59");
-  if (plus_or_minus_dec != '+' && plus_or_minus_dec != '-')
-    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
-                           "plus_or_minus_dec must be '+' or '-'");
-  if (dec_dd < 0 || dec_dd > 90)
-    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
-                           "degrees must 0 through 90");
-  if (dec_mm < 0 || dec_mm > 59)
-    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
-                           "minutes must 0 through 59");
-  if (dec_ss < 0 || dec_ss > 59)
-    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
-                           "seconds must 0 through 59");
-
-  return fmt::format(
-      ":SMMC{0:#02d}:{1:#02d}:{2:#02d}&{3}{4:#02d}*{5:#02d}:{6:#02d}#", ra_hh,
-      ra_mm, ra_ss, plus_or_minus_dec, dec_dd, dec_mm, dec_ss);
-}
-
-// NEW: Get distance bars (indicates slew) - response should be "\0x7F#"
-const std::string cmd_get_distance_bars() { return ":D#"; }
-
-// NEW: Reset controller (must be at home or parked) - response should be none or 0
-const std::string cmd_reset_controller() { return ":ERESET#"; }
-
-// NEW: Reset NV (EEPROM) - response should be "NV memory will be cleared..."
-const std::string cmd_reset_eeprom() { return ":ENVRESET#"; }
-
-// NEW: Set baud rate - response should be 0 or 1
-const std::string cmd_set_baud_rate(const int &rate) {
-  if (rate < 1 || rate > 9)
-    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
-                           "rate must be 1 through 9");
-  return fmt::format(":SB{}#", rate);
-}
-
-// NEW: Precision toggle - response should be none
-const std::string cmd_precision_toggle() { return ":U#"; }
-
-// NEW: Get firmware date - response should be "MM DD YY#"
-const std::string cmd_get_firmware_date() { return ":GVD#"; }
-
-// NEW: Get firmware time - response should be "HH:MM:SS#"
-const std::string cmd_get_firmware_time() { return ":GVT#"; }
-
-// NEW: Get firmware number - response should be "3.16o#" or similar
-const std::string cmd_get_firmware_number() { return ":GVN#"; }
-
-// NEW: Get firmware name - response should be "On-Step#"
-const std::string cmd_get_firmware_name() { return ":GVP#"; }
+// Removing undocumented command
+// const std::string cmd_get_date_and_time_and_tz() { return ":GMTI#"; }
 
 // NEW: Get status - response should be "sss#"
-const std::string cmd_get_general_status() { return ":GU#"; }
-
-// NEW: Set RA (Azm) backlash amount (in ArcSec) - response should be 0 or 1
-const std::string cmd_set_ra_backlash(const int &backlash) {
-  if (backlash < 0 || backlash > 999)
-    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
-                           "backlash must be 0 through 999");
-  return fmt::format(":$BR{:#03d}#", backlash);
-}
-
-// NEW: Set Dec (Alt) backlash amount (in ArcSec) - response should be 0 or 1
-const std::string cmd_set_dec_backlash(const int &backlash) {
-  if (backlash < 0 || backlash > 999)
-    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
-                           "backlash must be 0 through 999");
-  return fmt::format(":$BD{:#03d}#", backlash);
-}
-
-// NEW: Basic focuser commands
-
-// Focuser1 Active? - response should be 0 or 1
-const std::string cmd_is_focuser1_active() { return ":FA#"; }
-
-// Focuser2 Active? - response should be 0 or 1
-const std::string cmd_is_focuser2_active() { return ":fA#"; }
-
-// Select primary focuser n = 1 or 2 - response should be 0 or 1
-const std::string cmd_select_primary_focuser(const int &n) {
-  if (n != 1 && n != 2)
-    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
-                           "focuser number must be 1 or 2");
-  return fmt::format(":FA{}#", n);
-}
-
-// Get primary focuser - response should be 0 or 1
-const std::string cmd_get_primary_focuser() { return ":Fa#"; }
-
-// Get status M# = moving, S# = stopped - response should be M# or S#
-const std::string cmd_get_focuser_status() { return ":FT#"; }
-
-// Get mode 0 = absolute 1 = pseudo absolute - response should be 0 or 1
-const std::string cmd_get_focuser_mode() { return ":FI#"; }
-
-// Get full in position (in microns or steps) - response should be n#
-const std::string cmd_get_focuser_full_in_position() { return ":FI#"; }
-
-// Get max position (in microns or steps) - response should be n#
-const std::string cmd_get_focuser_max_position() { return ":FM#"; }
-
-// Stops the focuser - response should be none
-const std::string cmd_stop_focuser() { return ":FQ#"; }
-
-// Set focuser for fast motion (1mm/s) - response should be none
-const std::string cmd_set_focuser_fast_motion() { return ":FF#"; }
-
-// Set focuser for slow motion (0.01mm/s) - response should be none
-const std::string cmd_set_focuser_slow_motion() { return ":FS#"; }
-
-// Move focuser in (toward objective) - response should be none
-const std::string cmd_move_focuser_in() { return ":F+#"; }
-
-// Move focuser out (away from objective) - response should be none
-const std::string cmd_move_focuser_out() { return ":F-#"; }
-
-// Get focuser current position (in microns or steps) - response should be n#
-const std::string cmd_get_focuser_position() { return ":FG#"; }
-
-// Set focuser position as zero - response should be none
-const std::string cmd_set_focuser_position_zero() { return ":FZ#"; }
-
-// Set focuser position as half-travel - response should be none
-const std::string cmd_set_focuser_position_half_travel() { return ":FH#"; }
-
-// Set focuser target position at half-travel - response should be none
-const std::string cmd_set_focuser_target_half_travel() { return ":Fh#"; }
-
-// PEC Commands
-
-// Turn PEC on - response should be none
-const std::string cmd_turn_pec_on() { return ":$QZ+#"; }
-
-// Turn PEC off - response should be none
-const std::string cmd_turn_pec_off() { return ":$QZ-#"; }
-
-// Clear PEC data - response should be none
-const std::string cmd_clear_pec_data() { return ":$QZZ#"; }
-
-// Start recording PEC - response should be none
-const std::string cmd_start_recording_pec() { return ":$QZ/#"; }
-
-// Save PEC data/settings to EEPROM - response should be none
-const std::string cmd_save_pec_data() { return ":$QZ!#"; }
-
-// Get PEC status - response should be s#
-const std::string cmd_get_pec_status() { return ":$QZ?#"; }
-
-// Readout PEC data - response should be sddd#
-const std::string cmd_readout_pec_data(const int &index) {
-  if (index < 0 || index > 9999)
-    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
-                          "index must be 0 through 9999");
-  return fmt::format(":VR{:#04d}#", index);
-}
-
-// Readout PEC data at current index - response should be sddd,ddd#
-const std::string cmd_readout_pec_data_at_current_index() { return ":VR#"; }
-
-// Write PEC data - response should be 0 or 1
-const std::string cmd_write_pec_data(const int &index, const int &steps) {
-  if (index < 0 || index > 9999)
-    throw alpaca_exception(alpaca_exception::INVALID_VALUE,
-                          "index must be 0 through 9999");
-  
-  return fmt::format(":WR{:#04d},{:+d}#", index, steps);
-}
-
-// Alignment Commands
-
-// Align, write model to EEPROM - response should be 0 or 1
-const std::string cmd_align_write_model() { return ":AW#"; }
-
-// Align, one-star - response should be 0 or 1
-const std::string cmd_align_one_star() { return ":A1#"; }
-
-// Align, two or more star - response should be 0 or 1
-const std::string cmd_align_two_star() { return ":A2#"; }
-
-// Align, three or more star - response should be 0 or 1 
-const std::string cmd_align_three_star() { return ":A3#"; }
-
-// Align, accept - response should be 0 or 1
-const std::string cmd_align_accept() { return ":A+#"; }
-
-// Reticle Control
-
-// Increase reticule Brightness - response should be none
-const std::string cmd_increase_reticule_brightness() { return ":B+#"; }
-
-// Decrease reticule Brightness - response should be none
-const std::string cmd_decrease_reticule_brightness() { return ":B-#"; }
+// Removing duplicate status command
+// const std::string cmd_get_general_status() { return ":GU#"; }
 
 }; // namespace onstep_commands
 

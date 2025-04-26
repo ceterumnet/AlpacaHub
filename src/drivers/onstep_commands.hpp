@@ -26,8 +26,9 @@ enum move_speed_enum : int {
 };
 
 const std::string cmd_get_version();
-const std::string cmd_switch_to_eq_mode();
-const std::string cmd_switch_to_alt_az_mode();
+// Removing undocumented commands
+// const std::string cmd_switch_to_eq_mode();
+// const std::string cmd_switch_to_alt_az_mode();
 const std::string cmd_get_date();
 const std::string cmd_set_date(const int &mm, const int &dd, const int &yy);
 const std::string cmd_set_time(const int &hh, const int &mm, const int &ss);
@@ -102,11 +103,19 @@ const std::string cmd_stop_moving_towards_north();
 const std::string cmd_move_towards_south();
 const std::string cmd_stop_moving_towards_south();
 const std::string cmd_set_tracking_rate_to_sidereal();
+const std::string cmd_set_sidereal_rate_ra(const double &rate);
+const std::string cmd_get_sidereal_rate_ra();
+const std::string cmd_track_sidereal_rate_reset();
+const std::string cmd_track_rate_increase();
+const std::string cmd_track_rate_decrease();
 const std::string cmd_set_tracking_rate_to_solar();
 const std::string cmd_set_tracking_rate_to_lunar();
+const std::string cmd_set_tracking_rate_to_king();
 const std::string cmd_get_tracking_rate();
 const std::string cmd_start_tracking();
 const std::string cmd_stop_tracking();
+const std::string cmd_enable_refraction_rate_tracking();
+const std::string cmd_disable_refraction_rate_tracking();
 const std::string cmd_get_tracking_status();
 const std::string cmd_guide(const char &direction, const int &rate);
 const std::string cmd_set_guide_rate(const double &guide_rate);
@@ -134,45 +143,8 @@ const std::string cmd_get_firmware_date();
 const std::string cmd_get_firmware_time();
 const std::string cmd_get_firmware_number();
 const std::string cmd_get_firmware_name();
-const std::string cmd_get_general_status();
-
-const std::string cmd_set_lat_and_long(const char &plus_or_minus_lat,
-                                       const int &lat_dd, const int lat_mm,
-                                       const int &lat_ss,
-                                       const char &plus_or_minus_long,
-                                       const int &long_ddd, const int &long_mm,
-                                       const int &long_ss);
-
-const std::string cmd_get_lat_and_long();
-
-const std::string cmd_set_date_time_and_tz(
-    const int &date_mm, const int &date_dd, const int &date_yy,
-    const int &time_hh, const int &time_mm, const int &time_ss,
-    const char &plus_or_minus_tz, const int tz_hh, int tz_mm = 0);
-
-const std::string cmd_get_date_and_time_and_tz();
-const std::string cmd_get_target_ra_and_dec();
-const std::string cmd_get_current_ra_and_dec();
-const std::string cmd_get_az_and_alt();
-
-const std::string cmd_set_target_ra_and_dec_and_goto(
-    const int &ra_hh, const int &ra_mm, const int &ra_ss,
-    const char &plus_or_minus_dec, const int &dec_dd, const int &dec_mm,
-    const int &dec_ss);
-
-const std::string cmd_set_target_ra_and_dec_and_sync(
-    const int &ra_hh, const int &ra_mm, const int &ra_ss,
-    const char &plus_or_minus_dec, const int &dec_dd, const int &dec_mm,
-    const int &dec_ss);
-
-const std::string cmd_set_sidereal_rate_ra(const double &rate);
-const std::string cmd_get_sidereal_rate_ra();
-const std::string cmd_track_sidereal_rate_reset();
-const std::string cmd_track_rate_increase();
-const std::string cmd_track_rate_decrease();
-const std::string cmd_set_tracking_rate_to_king();
-const std::string cmd_enable_refraction_rate_tracking();
-const std::string cmd_disable_refraction_rate_tracking();
+// Removing duplicate status command
+// const std::string cmd_get_general_status();
 
 // Anti-backlash commands
 const std::string cmd_set_ra_backlash(const int &backlash);
@@ -218,6 +190,37 @@ const std::string cmd_align_accept();
 // Reticle Control
 const std::string cmd_increase_reticule_brightness();
 const std::string cmd_decrease_reticule_brightness();
+
+// Removing undocumented commands
+// const std::string cmd_set_lat_and_long(const char &plus_or_minus_lat,
+//                                     const int &lat_dd, const int lat_mm,
+//                                     const int &lat_ss,
+//                                     const char &plus_or_minus_long,
+//                                     const int &long_ddd, const int &long_mm,
+//                                     const int &long_ss);
+
+// const std::string cmd_get_lat_and_long();
+
+// const std::string cmd_set_date_time_and_tz(
+//     const int &date_mm, const int &date_dd, const int &date_yy,
+//     const int &time_hh, const int &time_mm, const int &time_ss,
+//     const char &plus_or_minus_tz, const int tz_hh, int tz_mm = 0);
+
+// const std::string cmd_get_date_and_time_and_tz();
+// const std::string cmd_get_target_ra_and_dec();
+// const std::string cmd_get_current_ra_and_dec();
+// const std::string cmd_get_az_and_alt();
+
+// const std::string cmd_set_target_ra_and_dec_and_goto(
+//     const int &ra_hh, const int &ra_mm, const int &ra_ss,
+//     const char &plus_or_minus_dec, const int &dec_dd, const int &dec_mm,
+//     const int &dec_ss);
+
+// const std::string cmd_set_target_ra_and_dec_and_sync(
+//     const int &ra_hh, const int &ra_mm, const int &ra_ss,
+//     const char &plus_or_minus_dec, const int &dec_dd, const int &dec_mm,
+//     const int &dec_ss);
+
 }; // namespace onstep_commands
 
 namespace onstep_responses {
