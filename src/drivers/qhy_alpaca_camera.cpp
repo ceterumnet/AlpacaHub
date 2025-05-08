@@ -1626,11 +1626,13 @@ std::map<std::string, device_variant_t> qhy_alpaca_camera::details() {
   detail_map["BinY"] = _bin_y;
   detail_map["ImageW"] = _image_w;
   detail_map["ImageH"] = _image_h;
+  detail_map["Offset"] = _offset;
+
   if (_offsets_mode == "offsets_index_mode") {
     detail_map["Offsets"] = _offsets;
   } else {
-    detail_map["Offset"] = _offset;
-    detail_map["Offset Max"] = _offset_max;
+    detail_map["OffsetMax"] = _offset_max;
+    detail_map["OffsetMin"] = _offset_min;
   }
   detail_map["Status"] = _camera_state;
   if (_can_control_cooler_power && _connected) {
@@ -1639,9 +1641,16 @@ std::map<std::string, device_variant_t> qhy_alpaca_camera::details() {
     detail_map["SetTemp"] = _current_set_temp;
   }
   if (_connected) {
-    detail_map["Temp"] = ccd_temperature();
+    detail_map["CCDTemperature"] = ccd_temperature();
   }
   detail_map["USBTraffic"] = _usb_traffic;
-  detail_map["ReadMode"] = _readout_mode;
+  detail_map["ReadoutMode"] = _readout_mode;
+  detail_map["FastReadout"] = _fast_readout;
+  detail_map["NumX"] = _num_x;
+  detail_map["NumY"] = _num_y;
+  detail_map["StartX"] = _start_x;
+  detail_map["StartY"] = _start_y;
+  detail_map["ExposureMax"] = _exposure_max;
+  detail_map["ExposureMin"] = _exposure_min;
   return detail_map;
 };
