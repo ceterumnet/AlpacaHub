@@ -181,6 +181,7 @@ void qhy_alpaca_camera::chip_info()
   {
     _num_x = _image_w / _bin_x;
     _num_y = _image_h / _bin_x;
+    _read_mode_changed = false;
   }
 
   // Let's initialize max width and height to the values returned for the chip
@@ -688,7 +689,10 @@ int qhy_alpaca_camera::set_bin_x(short x)
     return -1;
 
   if (x != _bin_x)
+  {
     _bin_changed = true;
+    _read_mode_changed = true;
+  }
 
   _bin_x = x;
   _bin_y = x;
@@ -1397,41 +1401,41 @@ int qhy_alpaca_camera::set_resolution(const uint32_t start_x,
                 "_effective_start_x: {}, _effective_start_y: {}",
                 _effective_num_x, _effective_num_y, _effective_start_x, _effective_start_y);
 
-  if (num_x > _effective_num_x / _bin_x)
+  if (num_x > _effective_num_x)
   {
     spdlog::warn("NumX: {} exceeds maximum of {}", num_x,
-                 _effective_num_x / _bin_x);
+                 _effective_num_x);
     throw alpaca_exception(alpaca_exception::INVALID_VALUE,
                            fmt::format("NumX: {} exceeds "
                                        "maximum of {}",
-                                       num_x, _effective_num_x / _bin_x));
+                                       num_x, _effective_num_x));
   }
 
-  if (num_y > _effective_num_y / _bin_x)
+  if (num_y > _effective_num_y)
   {
     spdlog::warn("NumY: {} exceeds maximum of {}", num_y,
-                 _effective_num_y / _bin_x);
+                 _effective_num_y);
     throw alpaca_exception(alpaca_exception::INVALID_VALUE,
                            fmt::format("NumY: {} exceeds maximum of {}", num_y,
-                                       _effective_num_y / _bin_x));
+                                       _effective_num_y));
   }
 
-  if (start_x > _effective_num_x / _bin_x)
+  if (start_x > _effective_num_x)
   {
     spdlog::warn("StartX: {} exceeds maximum of {}", start_x,
-                 _effective_num_x / _bin_x);
+                 _effective_num_x);
     throw alpaca_exception(alpaca_exception::INVALID_VALUE,
                            fmt::format("StartX: {} exceeds maximum of {}",
                                        start_x, _effective_num_x));
   }
 
-  if (start_y > _effective_num_y / _bin_x)
+  if (start_y > _effective_num_y)
   {
     spdlog::warn("StartY: {} exceeds maximum of {}", start_y,
-                 _effective_num_y / _bin_x);
+                 _effective_num_y);
     throw alpaca_exception(alpaca_exception::INVALID_VALUE,
                            fmt::format("StartY: {} exceeds maximum of {}",
-                                       start_y, _effective_num_y / _bin_x));
+                                       start_y, _effective_num_y));
   }
 
   set_result = SetQHYCCDResolution(_cam_handle, start_x, start_y, num_x, num_y);
